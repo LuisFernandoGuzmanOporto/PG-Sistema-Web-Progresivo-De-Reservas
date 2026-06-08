@@ -178,6 +178,42 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* REGISTRO EMPRESA */}
+      <section style={{ padding: '80px 0', background: '#0f0f0f' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px' }}>
+          <div style={{ background: 'linear-gradient(135deg, rgba(139,0,0,0.18) 0%, rgba(0,188,212,0.08) 100%)', border: '1px solid rgba(139,0,0,0.3)', borderRadius: 24, padding: '52px 60px', display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'center', gap: 40 }}>
+            <div>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 100, padding: '5px 14px', marginBottom: 18 }}>
+                <span style={{ fontSize: '0.75rem', color: '#f59e0b', fontWeight: 700 }}>🏢 PARA EMPRESAS DEPORTIVAS</span>
+              </div>
+              <h2 style={{ fontFamily: 'Bebas Neue', fontSize: 'clamp(1.8rem, 4vw, 2.8rem)', color: '#f5f5f5', marginBottom: 12, lineHeight: 1 }}>
+                ¿TENÉS UN COMPLEJO DEPORTIVO?
+              </h2>
+              <p style={{ color: '#888', fontSize: '1rem', lineHeight: 1.7, maxWidth: 520, marginBottom: 20 }}>
+                Registrá tu empresa en Sportika y llegá a cientos de jugadores en Cochabamba. Gestioná tus canchas, reservas, torneos y entrenamientos desde un solo panel.
+              </p>
+              <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+                {['Gestión de reservas y pagos QR', 'Panel de administración completo', 'Visibilidad ante toda la comunidad'].map(b => (
+                  <span key={b} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.82rem', color: '#666' }}>
+                    <span style={{ color: '#22c55e', fontWeight: 700 }}>✓</span> {b}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flexShrink: 0 }}>
+              <button
+                className="btn btn-primary btn-lg"
+                onClick={() => navigate('/registro-empresa')}
+                style={{ whiteSpace: 'nowrap', fontSize: '1rem' }}
+              >
+                🏢 Registrar mi empresa
+              </button>
+              <p style={{ color: '#444', fontSize: '0.75rem', textAlign: 'center' }}>Gratis — el equipo Sportika lo revisará</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* FOOTER */}
       <footer style={{ padding: '40px 24px', background: '#0a0a0a', borderTop: '1px solid #1a1a1a' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>

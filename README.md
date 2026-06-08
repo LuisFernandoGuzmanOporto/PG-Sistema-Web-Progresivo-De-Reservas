@@ -1,5 +1,5 @@
 # 🏟️ SPORTIKA
-**Sistema de Gestión de Reservas de Canchas Deportivas, Organización de Partidos y Torneos**
+**Sistema de Gestión de Reservas de Canchas Deportivas y Organización de Eventos Deportivos**
 *Cochabamba, Bolivia — Proyecto de Grado*
 
 ---
@@ -76,8 +76,8 @@ src/
 |-----|--------|
 | **Super Admin** | `/superadmin/*` — Aprueba empresas, ve estadísticas globales |
 | **Admin Empresa** | `/admin/*` — Gestiona sus canchas, reservas, empleados, torneos |
-| **Empleado** | `/admin/reservas` — Solo ve y valida reservas del día |
-| **Jugador** | `/app/*` — Reserva canchas, partidos, torneos, puntos |
+| **Empleado** | `/admin/reservas` — Ve y valida reservas del día, confirma comprobantes, consulta inscritos a entrenamientos |
+| **Cliente** | `/app/*` — Reserva canchas, partidos, torneos, puntos |
 
 ---
 
@@ -94,7 +94,12 @@ Tablas principales:
 - `torneo_equipos` — Equipos inscritos
 - `transacciones` — Historial de pagos
 - `puntos_historial` — Puntos ganados
-- `empleados` — Empleados por empresa
+- `empleados` — Empleados por empresa (creados por el admin, no se registran solos)
+- `entrenadores` — Entrenadores registrados por empresa
+- `torneo_equipos` — Equipos inscritos en torneos
+- `inscripciones` — Inscripciones a entrenamientos
+- `calificaciones` — Calificaciones de empresas (1-5 estrellas)
+- `puntos_historial` — Historial de puntos ganados y canjeados
 
 ---
 
@@ -125,3 +130,64 @@ El proyecto está configurado como Progressive Web App:
 - **Auth:** Supabase Auth (Google OAuth)
 - **Routing:** React Router v6
 - **Deploy:** Vercel / Netlify
+
+---
+
+## 🔧 Pendiente de implementar
+
+### 1. Registro de Empresas (Opción A — flujo separado)
+- Landing page: botón "¿Tenés una empresa deportiva? Regístrala"
+- Formulario de registro empresa: nombre, dirección, teléfono, tipo de deporte, descripción
+- La empresa queda en estado `pendiente_aprobacion` en Supabase
+- Super Admin ve la solicitud en su panel → aprueba o rechaza
+- Si aprueba → usuario creado con rol `admin_empresa` + email de confirmación
+- La empresa entra directo al panel admin con sus credenciales
+
+### 2. Mi Perfil completo (MiPerfil.jsx)
+- Agregar tab **Mis Reservas**: empresa, cancha, fecha, hora, estado
+- Agregar tab **Mis Entrenamientos**: entrenamientos inscritos con estado de pago
+- Ya existen: Perfil, Mis Torneos, Puntos
+- Nota: el rol del usuario se llama **Cliente** (no Jugador)
+
+### 3. Calificaciones y comentarios (EmpresaDetalle.jsx)
+- Sección de estrellas (1-5) por empresa
+- Comentario opcional
+- Promedio visible para todos los usuarios
+
+### 4. Mapa en perfil de empresa (EmpresaDetalle.jsx)
+- Instalar: `npm install leaflet react-leaflet`
+- Agregar coordenadas en el mock data de empresas
+- Mostrar mapa Leaflet con pin de ubicación
+
+### 5. Gestión de Empleados (flujo completo)
+- El Admin de Empresa crea la cuenta del empleado desde su panel (`GestionEmpleados.jsx`)
+- Formulario: nombre, correo, contraseña temporal
+- El sistema llama a `supabase.auth.admin.createUser()` desde una **Edge Function** de Supabase (no desde el frontend por seguridad)
+- Se crea el perfil en la tabla `profiles` con rol `empleado` y el `empresa_id` del admin que lo creó
+- El admin entrega las credenciales al empleado (correo + contraseña temporal)
+- El empleado entra con esas credenciales y accede solo a: ver reservas del día, confirmar/rechazar comprobantes de pago y consultar inscritos a entrenamientos
+- El admin puede desactivar al empleado desde su panel sin borrar su historial de acciones
+- Tabla `empleados`: `id` (FK profiles.id), `empresa_id` (FK empresas.id), `activo` (Boolean)
+
+falta esto :
+Buena observación. Te explico cómo funcionaría el flujo completo:
+Para un descuento en reserva:
+
+Cliente canjea → sistema genera un código único ej: SPORT-DESC20-X7K2
+El cliente ve ese código en "Mis canjes" con un botón "Copiar código"
+Cuando hace una reserva, ingresa ese código → se aplica el descuento automáticamente
+El código cambia a estado "Utilizado" y ya no funciona más
+
+Para inscripción gratis en torneo:
+
+Cliente canjea → genera código ej: SPORT-TORNEO-FREE-9A3B
+Cuando inscribe su equipo en un torneo, ingresa el código en vez de subir comprobante QR
+El sistema valida el código → inscripción aprobada automáticamente
+Código pasa a "Utilizado"
+
+Del lado del Admin:
+
+Ve en su panel una sección "Canjes de recompensas" con: cliente, recompensa, código generado, estado (Disponible/Utilizado) y fecha
+Cuando el código se usa en una reserva o torneo, el admin lo ve actualizado automáticamente
+
+Ahora implemento todo esto — el código generado en el canje del cliente + la sección del admin:

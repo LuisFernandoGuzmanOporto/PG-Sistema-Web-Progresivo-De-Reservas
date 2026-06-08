@@ -5,6 +5,7 @@ import './styles/globals.css'
 // Pages
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
+import RegistroEmpresa from './pages/RegistroEmpresa'
 import DashboardUsuario from './pages/user/DashboardUsuario'
 import ListaEmpresas from './pages/user/ListaEmpresas'
 import EmpresaDetalle from './pages/user/EmpresaDetalle'
@@ -25,6 +26,7 @@ import GestionEmpleados from './pages/admin/GestionEmpleados'
 import GestionTorneos from './pages/admin/GestionTorneos'
 import GestionEntrenamientos from './pages/admin/GestionEntrenamientos'
 import GestionRecompensas from './pages/admin/GestionRecompensas'
+import GestionCalificaciones from './pages/admin/GestionCalificaciones'
 import DashboardSuperAdmin from './pages/superadmin/DashboardSuperAdmin'
 import GestionEmpresas from './pages/superadmin/GestionEmpresas'
 import GestionUsuarios from './pages/superadmin/GestionUsuarios'
@@ -53,6 +55,7 @@ export default function App() {
         {/* Public */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/registro-empresa" element={<RegistroEmpresa />} />
 
         {/* Usuario/Jugador */}
         <Route path="/app/inicio" element={<ListaEmpresas />} />
@@ -77,6 +80,7 @@ export default function App() {
         <Route path="/admin/torneos" element={<GestionTorneos />} />
         <Route path="/admin/entrenamientos" element={<GestionEntrenamientos />} />
         <Route path="/admin/recompensas" element={<GestionRecompensas />} />
+        <Route path="/admin/calificaciones" element={<GestionCalificaciones />} />
 
         {/* Super Admin */}
         <Route path="/superadmin/dashboard" element={<DashboardSuperAdmin />} />

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import Layout from '../../components/layout/Layout'
 
 const DEPORTES = ['Futbol','Basquet','Voleibol','Tenis','Natacion','Atletismo','Artes Marciales','Otro']
 
@@ -85,6 +86,7 @@ export default function GestionEntrenadores() {
   }
 
   return (
+    <Layout role="admin">
     <div style={{ padding: '2rem', color: '#fff', maxWidth: 1100 }}>
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: '1.5rem', flexWrap:'wrap', gap:'1rem' }}>
@@ -308,5 +310,6 @@ export default function GestionEntrenadores() {
         </div>
       )}
     </div>
+    </Layout>
   )
 }

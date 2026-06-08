@@ -1,13 +1,23 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
+import L from 'leaflet'
 import Layout from '../../components/layout/Layout'
 
+// Fix ícono de Leaflet con Vite
+delete L.Icon.Default.prototype._getIconUrl
+L.Icon.Default.mergeOptions({
+  iconUrl:       'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  shadowUrl:     'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+})
+
 const EMPRESAS = [
-  { id: 1, nombre: 'Sport Center',           zona: 'Zona Norte', direccion: 'Av. Blanco Galindo Km 5', telefono: '4-123456', emoji: 'X', horario: '08:00 - 22:00', deportes: ['Futbol', 'Wally', 'Padel'],    descripcion: 'El complejo deportivo mas grande de la zona norte con canchas de primer nivel e iluminacion nocturna.' },
-  { id: 2, nombre: 'Gimnasio Central',        zona: 'Centro',     direccion: 'Calle Espana 234',         telefono: '4-234567', emoji: 'B', horario: '07:00 - 21:00', deportes: ['Basquetbol'],                  descripcion: 'Especialistas en basquetbol con cancha techada y piso de madera profesional.' },
-  { id: 3, nombre: 'Zona Deportiva Sur',      zona: 'Zona Sur',   direccion: 'Av. Petrolera 456',        telefono: '4-345678', emoji: 'V', horario: '08:00 - 20:00', deportes: ['Voleibol'],                    descripcion: 'Complejo multideportivo en la zona sur con canchas de voleibol.' },
-  { id: 4, nombre: 'Complejo Deportivo Este', zona: 'Zona Este',  direccion: 'Av. America 789',          telefono: '4-456789', emoji: 'W', horario: '07:00 - 22:00', deportes: ['Wally'],                       descripcion: 'El mejor complejo de wally en Cochabamba. Tres canchas techadas con iluminacion LED.' },
-  { id: 5, nombre: 'Zona Deportiva Oeste',    zona: 'Zona Oeste', direccion: 'Calle Lanza 101',          telefono: '4-567890', emoji: 'P', horario: '06:00 - 21:00', deportes: ['Padel'],                       descripcion: 'Canchas de padel profesionales con torneos semanales.' },
+  { id: 1, nombre: 'Sport Center',           zona: 'Zona Norte', direccion: 'Av. Blanco Galindo Km 5', telefono: '4-123456', emoji: '🏟️', horario: '06:00 - 22:00', deportes: ['Futbol', 'Wally', 'Padel'],    descripcion: 'El complejo deportivo mas grande de la zona norte con canchas de primer nivel e iluminacion nocturna.', lat: -17.3731, lng: -66.1568, referencia: 'Sobre Blanco Galindo, frente a la gasolinera' },
+  { id: 2, nombre: 'Gimnasio Central',        zona: 'Centro',     direccion: 'Calle España 234',         telefono: '4-234567', emoji: '🏀', horario: '07:00 - 21:00', deportes: ['Basquetbol'],                  descripcion: 'Especialistas en basquetbol con cancha techada y piso de madera profesional.',                       lat: -17.3935, lng: -66.1568, referencia: 'Entre Av. Ayacucho y Jordán, piso 2' },
+  { id: 3, nombre: 'Zona Deportiva Sur',      zona: 'Zona Sur',   direccion: 'Av. Petrolera 456',        telefono: '4-345678', emoji: '🏐', horario: '08:00 - 20:00', deportes: ['Voleibol'],                    descripcion: 'Complejo multideportivo en la zona sur con canchas de voleibol.',                                    lat: -17.4280, lng: -66.1650, referencia: 'Av. Petrolera, pasando el mercado Sur' },
+  { id: 4, nombre: 'Complejo Deportivo Este', zona: 'Zona Este',  direccion: 'Av. América 789',          telefono: '4-456789', emoji: '🎾', horario: '07:00 - 22:00', deportes: ['Wally'],                       descripcion: 'El mejor complejo de wally en Cochabamba. Tres canchas techadas con iluminacion LED.',               lat: -17.3850, lng: -66.1200, referencia: 'Zona Este, Av. América casi Circunvalación' },
+  { id: 5, nombre: 'Zona Deportiva Oeste',    zona: 'Zona Oeste', direccion: 'Calle Lanza 101',          telefono: '4-567890', emoji: '🏓', horario: '06:00 - 21:00', deportes: ['Padel'],                       descripcion: 'Canchas de padel profesionales con torneos semanales.',                                              lat: -17.3890, lng: -66.1900, referencia: 'Calle Lanza esquina con Punata' },
 ]
 
 const CANCHAS_POR_EMPRESA = {
@@ -89,6 +99,57 @@ const RECOMPENSAS_POR_EMPRESA = {
   5: [{ id: 1, nombre: 'Refresco gratis', descripcion: 'Un refresco en las instalaciones', puntos: 150, stock: 15 }],
 }
 
+const CALIFICACIONES_POR_EMPRESA = {
+  1: [
+    { id: 1, usuario: 'Carlos M.',  estrellas: 5, comentario: 'Excelentes canchas, iluminación nocturna de primer nivel. Muy recomendado.',         fecha: '28 May 2026', avatar: 'CM' },
+    { id: 2, usuario: 'Ana L.',     estrellas: 4, comentario: 'Buena atención y canchas en buen estado. El estacionamiento es un poco limitado.',   fecha: '22 May 2026', avatar: 'AL' },
+    { id: 3, usuario: 'Pedro G.',   estrellas: 5, comentario: 'El mejor complejo de la zona norte. Siempre limpio y bien organizado.',               fecha: '15 May 2026', avatar: 'PG' },
+    { id: 4, usuario: 'María S.',   estrellas: 3, comentario: 'Las canchas están bien pero los vestuarios necesitan mantenimiento.',                 fecha: '10 May 2026', avatar: 'MS' },
+    { id: 5, usuario: 'Juan R.',    estrellas: 5, comentario: 'Perfectas instalaciones. Los entrenamientos son muy profesionales.',                  fecha: '05 May 2026', avatar: 'JR' },
+  ],
+  2: [
+    { id: 1, usuario: 'Luis F.',    estrellas: 5, comentario: 'La cancha de básquetbol con piso de madera es increíble. Vale cada centavo.',         fecha: '25 May 2026', avatar: 'LF' },
+    { id: 2, usuario: 'Sandra V.',  estrellas: 4, comentario: 'Buen lugar, los entrenadores son muy profesionales.',                                 fecha: '18 May 2026', avatar: 'SV' },
+    { id: 3, usuario: 'Diego R.',   estrellas: 4, comentario: 'Excelente ambiente para practicar básquetbol en el centro de la ciudad.',             fecha: '12 May 2026', avatar: 'DR' },
+  ],
+  3: [
+    { id: 1, usuario: 'Elena C.',   estrellas: 4, comentario: 'Buen complejo para voleibol, canchas limpias y personal amable.',                     fecha: '20 May 2026', avatar: 'EC' },
+    { id: 2, usuario: 'Mario Q.',   estrellas: 3, comentario: 'Está bien pero los horarios son un poco limitados.',                                  fecha: '14 May 2026', avatar: 'MQ' },
+  ],
+  4: [
+    { id: 1, usuario: 'Lucía T.',   estrellas: 5, comentario: 'Las canchas de wally son las mejores de Cochabamba. Iluminación LED perfecta.',       fecha: '27 May 2026', avatar: 'LT' },
+    { id: 2, usuario: 'Roberto P.', estrellas: 5, comentario: 'Tres canchas techadas, siempre disponibles. El ambiente es muy bueno.',               fecha: '21 May 2026', avatar: 'RP' },
+    { id: 3, usuario: 'Fátima R.',  estrellas: 4, comentario: 'Muy buenas instalaciones, los precios son justos para la calidad que ofrecen.',       fecha: '16 May 2026', avatar: 'FR' },
+  ],
+  5: [
+    { id: 1, usuario: 'Pablo M.',   estrellas: 5, comentario: 'Los torneos semanales de pádel son espectaculares. Muy bien organizados.',            fecha: '29 May 2026', avatar: 'PM' },
+    { id: 2, usuario: 'Verónica H.',estrellas: 4, comentario: 'Excelentes canchas de pádel. El entrenador es muy bueno.',                            fecha: '23 May 2026', avatar: 'VH' },
+  ],
+}
+
+const calcPromedio = (cals) => {
+  if (!cals || cals.length === 0) return 0
+  return (cals.reduce((s, c) => s + c.estrellas, 0) / cals.length).toFixed(1)
+}
+
+const Estrellas = ({ valor, size = 16, interactivo = false, onSelect }) => (
+  <div style={{ display: 'flex', gap: 2 }}>
+    {[1, 2, 3, 4, 5].map(n => (
+      <span
+        key={n}
+        onClick={() => interactivo && onSelect && onSelect(n)}
+        style={{
+          fontSize: size,
+          color: n <= valor ? '#f59e0b' : '#333',
+          cursor: interactivo ? 'pointer' : 'default',
+          transition: 'color 0.15s',
+          lineHeight: 1,
+        }}
+      >★</span>
+    ))}
+  </div>
+)
+
 const NIVEL_COLORES = {
   'Principiante': { bg: 'rgba(34,197,94,0.1)',  color: '#22c55e' },
   'Intermedio':   { bg: 'rgba(245,158,11,0.1)', color: '#f59e0b' },
@@ -132,6 +193,36 @@ export default function EmpresaDetalle() {
   const torneos            = TORNEOS_POR_EMPRESA[Number(id)] || []
   const recompensas        = RECOMPENSAS_POR_EMPRESA[Number(id)] || []
   const entrenamientosBase = ENTRENAMIENTOS_POR_EMPRESA[Number(id)] || []
+
+  const [calificaciones, setCalificaciones] = useState(CALIFICACIONES_POR_EMPRESA[Number(id)] || [])
+  const [showCalModal, setShowCalModal]     = useState(false)
+  const [calEstrellas, setCalEstrellas]     = useState(0)
+  const [calHover, setCalHover]             = useState(0)
+  const [calComentario, setCalComentario]   = useState('')
+  const [yaCalifique, setYaCalifique]       = useState(false)
+
+  const promedio = calcPromedio(calificaciones)
+  const distribucion = [5,4,3,2,1].map(e => ({
+    estrella: e,
+    cantidad: calificaciones.filter(c => c.estrellas === e).length,
+  }))
+
+  const enviarCalificacion = () => {
+    if (!calEstrellas) return
+    const nueva = {
+      id: Date.now(),
+      usuario: 'Juan García',
+      avatar: 'JG',
+      estrellas: calEstrellas,
+      comentario: calComentario.trim(),
+      fecha: new Date().toLocaleDateString('es-BO', { day:'numeric', month:'short', year:'numeric' }),
+    }
+    setCalificaciones(prev => [nueva, ...prev])
+    setYaCalifique(true)
+    setShowCalModal(false)
+    setCalEstrellas(0)
+    setCalComentario('')
+  }
 
   const hoy = formatFecha(new Date())
   const fechas = Array.from({ length: 7 }, (_, i) => {
@@ -235,20 +326,89 @@ export default function EmpresaDetalle() {
       </button>
 
       <div className="card" style={{ marginBottom:24, overflow:'hidden' }}>
+        {/* Info superior */}
         <div style={{ display:'flex', gap:0 }}>
-          <div style={{ width:180, minHeight:160, background:'linear-gradient(135deg,#1a1a1a 0%,#2a2a2a 100%)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, borderRight:'1px solid #2a2a2a' }}>
-            <span style={{ fontSize:'4rem' }}>{empresa.emoji}</span>
+          <div style={{ width:160, minHeight:150, background:'#222', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, borderRight:'1px solid #2a2a2a' }}>
+            <span style={{ fontSize:'3.5rem' }}>{empresa.emoji}</span>
           </div>
-          <div style={{ padding:'20px 24px', flex:1 }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:6 }}>
+          <div style={{ padding:'18px 22px', flex:1 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:4 }}>
               <h1 style={{ fontFamily:'Bebas Neue', fontSize:'1.8rem', color:'#f5f5f5' }}>{empresa.nombre}</h1>
               <span className="badge badge-success">Activo</span>
             </div>
-            <p style={{ color:'#666', fontSize:'0.82rem', marginBottom:10 }}>{empresa.zona} - {empresa.direccion}</p>
-            <p style={{ color:'#888', fontSize:'0.83rem', lineHeight:1.6, marginBottom:12 }}>{empresa.descripcion}</p>
+            <p style={{ color:'#555', fontSize:'0.8rem', marginBottom:6 }}>{empresa.zona} — {empresa.direccion}</p>
+
+            {/* Promedio estrellas */}
+            <div
+              style={{ display:'inline-flex', alignItems:'center', gap:7, marginBottom:8, cursor:'pointer' }}
+              onClick={() => setTab('calificaciones')}
+            >
+              <div style={{ display:'flex', gap:2 }}>
+                {[1,2,3,4,5].map(n => (
+                  <span key={n} style={{ fontSize:15, color: n <= Math.round(promedio) ? '#f59e0b' : '#2a2a2a', lineHeight:1 }}>★</span>
+                ))}
+              </div>
+              <span style={{ fontFamily:'Bebas Neue', fontSize:'1rem', color:'#f59e0b' }}>{promedio}</span>
+              <span style={{ fontSize:'0.72rem', color:'#555' }}>({calificaciones.length} reseña{calificaciones.length !== 1 ? 's' : ''})</span>
+            </div>
+
+            <p style={{ color:'#888', fontSize:'0.82rem', lineHeight:1.5, marginBottom:10 }}>{empresa.descripcion}</p>
             <div style={{ display:'flex', gap:20 }}>
-              <span style={{ fontSize:'0.8rem', color:'#00BCD4' }}>{empresa.horario}</span>
-              <span style={{ fontSize:'0.8rem', color:'#666' }}>{empresa.telefono}</span>
+              <span style={{ fontSize:'0.78rem', color:'#00BCD4' }}>🕐 {empresa.horario}</span>
+              <span style={{ fontSize:'0.78rem', color:'#555' }}>📞 {empresa.telefono}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Mapa integrado */}
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 220px', borderTop:'1px solid #2a2a2a' }}>
+
+          {/* Mapa Leaflet */}
+          <div className="map-wrapper" style={{ height:210, position:'relative' }}>
+            <MapContainer
+              center={[empresa.lat, empresa.lng]}
+              zoom={15}
+              scrollWheelZoom={false}
+              style={{ height:'100%', width:'100%' }}
+              attributionControl={false}
+            >
+              <TileLayer
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+              <Marker position={[empresa.lat, empresa.lng]}>
+                <Popup>
+                  <strong>{empresa.nombre}</strong><br />
+                  {empresa.direccion}
+                </Popup>
+              </Marker>
+            </MapContainer>
+          </div>
+
+          {/* Panel derecho */}
+          <div style={{ background:'#1a1a1a', borderLeft:'1px solid #2a2a2a', padding:'16px 18px', display:'flex', flexDirection:'column', gap:12 }}>
+            <div>
+              <p style={{ fontSize:'0.68rem', color:'#555', textTransform:'uppercase', letterSpacing:'0.07em', fontWeight:700, marginBottom:3 }}>Dirección</p>
+              <p style={{ fontSize:'0.82rem', color:'#ccc' }}>{empresa.direccion}</p>
+            </div>
+            <div>
+              <p style={{ fontSize:'0.68rem', color:'#555', textTransform:'uppercase', letterSpacing:'0.07em', fontWeight:700, marginBottom:3 }}>Zona</p>
+              <p style={{ fontSize:'0.82rem', color:'#ccc' }}>{empresa.zona}, Cochabamba</p>
+            </div>
+            <div>
+              <p style={{ fontSize:'0.68rem', color:'#555', textTransform:'uppercase', letterSpacing:'0.07em', fontWeight:700, marginBottom:3 }}>Referencia</p>
+              <p style={{ fontSize:'0.78rem', color:'#666' }}>{empresa.referencia}</p>
+            </div>
+            <div style={{ marginTop:'auto' }}>
+              <a
+                href={`https://www.google.com/maps?q=${empresa.lat},${empresa.lng}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:7, padding:'9px 14px', background:'rgba(0,188,212,0.1)', border:'1px solid rgba(0,188,212,0.3)', borderRadius:10, color:'#00BCD4', fontSize:'0.8rem', fontWeight:700, textDecoration:'none', fontFamily:'Outfit', transition:'all 0.2s' }}
+                onMouseEnter={e => e.currentTarget.style.background='rgba(0,188,212,0.2)'}
+                onMouseLeave={e => e.currentTarget.style.background='rgba(0,188,212,0.1)'}
+              >
+                ➤ Cómo llegar
+              </a>
             </div>
           </div>
         </div>
@@ -256,11 +416,12 @@ export default function EmpresaDetalle() {
 
       <div style={{ display:'flex', borderBottom:'1px solid #2a2a2a', marginBottom:24, overflowX:'auto' }}>
         {[
-          { key:'canchas',        label:'Canchas (' + canchasBase.length + ')' },
-          { key:'torneos',        label:'Torneos (' + torneos.length + ')' },
-          { key:'entrenamientos', label:'Entrena (' + entrenamientosBase.length + ')' },
-          { key:'partidos',       label:'Partidos (' + partidosState.length + ')' },
-          { key:'recompensas',    label:'Puntos (' + recompensas.length + ')' },
+          { key:'canchas',         label:'Canchas (' + canchasBase.length + ')' },
+          { key:'torneos',         label:'Torneos (' + torneos.length + ')' },
+          { key:'entrenamientos',  label:'Entrena (' + entrenamientosBase.length + ')' },
+          { key:'partidos',        label:'Partidos (' + partidosState.length + ')' },
+          { key:'recompensas',     label:'Puntos (' + recompensas.length + ')' },
+          { key:'calificaciones',  label:'★ ' + promedio + ' (' + calificaciones.length + ')' },
         ].map(t => (
           <button key={t.key} onClick={() => setTab(t.key)} style={{
             padding:'12px 20px', background:tab===t.key?'rgba(139,0,0,0.2)':'transparent',
@@ -564,6 +725,167 @@ export default function EmpresaDetalle() {
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ══ TAB: CALIFICACIONES ══════════════════════════════════════════ */}
+      {tab === 'calificaciones' && (
+        <div>
+          {/* Resumen superior */}
+          <div style={{ display:'grid', gridTemplateColumns:'auto 1fr', gap:24, marginBottom:28, background:'#1a1a1a', border:'1px solid #2a2a2a', borderRadius:14, padding:24 }}>
+
+            {/* Promedio grande */}
+            <div style={{ textAlign:'center', paddingRight:24, borderRight:'1px solid #2a2a2a' }}>
+              <p style={{ fontFamily:'Bebas Neue', fontSize:'4rem', color:'#f59e0b', lineHeight:1, marginBottom:4 }}>{promedio}</p>
+              <div style={{ display:'flex', justifyContent:'center', gap:3, marginBottom:6 }}>
+                {[1,2,3,4,5].map(n => (
+                  <span key={n} style={{ fontSize:20, color: n <= Math.round(promedio) ? '#f59e0b' : '#333' }}>★</span>
+                ))}
+              </div>
+              <p style={{ color:'#555', fontSize:'0.75rem' }}>{calificaciones.length} reseña{calificaciones.length !== 1 ? 's' : ''}</p>
+            </div>
+
+            {/* Distribución por estrella */}
+            <div style={{ display:'flex', flexDirection:'column', gap:6, justifyContent:'center' }}>
+              {distribucion.map(d => {
+                const pct = calificaciones.length ? Math.round((d.cantidad / calificaciones.length) * 100) : 0
+                return (
+                  <div key={d.estrella} style={{ display:'flex', alignItems:'center', gap:8 }}>
+                    <span style={{ fontSize:'0.72rem', color:'#f59e0b', fontWeight:700, minWidth:10 }}>{d.estrella}</span>
+                    <span style={{ fontSize:12, color:'#f59e0b' }}>★</span>
+                    <div style={{ flex:1, height:6, background:'#2a2a2a', borderRadius:3, overflow:'hidden' }}>
+                      <div style={{ height:'100%', width: pct + '%', background:'#f59e0b', borderRadius:3, transition:'width 0.4s' }} />
+                    </div>
+                    <span style={{ fontSize:'0.72rem', color:'#555', minWidth:28, textAlign:'right' }}>{d.cantidad}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Botón dejar calificación */}
+          <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:20 }}>
+            {yaCalifique ? (
+              <div style={{ padding:'8px 16px', background:'rgba(34,197,94,0.1)', border:'1px solid rgba(34,197,94,0.25)', borderRadius:10, fontSize:'0.82rem', color:'#22c55e', fontWeight:600 }}>
+                ✅ Ya dejaste tu reseña
+              </div>
+            ) : (
+              <button
+                onClick={() => handleAccion(() => setShowCalModal(true))}
+                style={{ padding:'10px 20px', background:'rgba(245,158,11,0.12)', border:'1px solid rgba(245,158,11,0.35)', borderRadius:10, color:'#f59e0b', fontWeight:700, fontSize:'0.85rem', cursor:'pointer', fontFamily:'Outfit' }}
+              >
+                ★ Dejar mi calificación
+              </button>
+            )}
+          </div>
+
+          {/* Lista de reseñas */}
+          {calificaciones.length === 0 ? (
+            <div className="empty-state">
+              <div className="empty-state-icon">★</div>
+              <h3>Sin calificaciones aún</h3>
+              <p>Sé el primero en dejar una reseña</p>
+            </div>
+          ) : (
+            <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+              {calificaciones.map((c, i) => (
+                <div key={c.id} className="card" style={{ padding:18, borderLeft: i === 0 && yaCalifique ? '3px solid #f59e0b' : '3px solid transparent' }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:10 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                      <div style={{ width:38, height:38, borderRadius:'50%', background:'#8B0000', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.78rem', fontWeight:700, color:'#fff', flexShrink:0 }}>
+                        {c.avatar}
+                      </div>
+                      <div>
+                        <p style={{ fontSize:'0.88rem', fontWeight:700, color:'#f5f5f5', marginBottom:2 }}>{c.usuario}</p>
+                        <div style={{ display:'flex', gap:2 }}>
+                          {[1,2,3,4,5].map(n => (
+                            <span key={n} style={{ fontSize:13, color: n <= c.estrellas ? '#f59e0b' : '#333' }}>★</span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    <span style={{ fontSize:'0.72rem', color:'#555', flexShrink:0 }}>{c.fecha}</span>
+                  </div>
+                  {c.comentario && (
+                    <p style={{ fontSize:'0.83rem', color:'#aaa', lineHeight:1.6, paddingLeft:48 }}>{c.comentario}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ══ MODAL: DEJAR CALIFICACIÓN ═══════════════════════════════════ */}
+      {showCalModal && (
+        <div className="modal-overlay" onClick={() => setShowCalModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth:440 }}>
+            <div className="modal-header">
+              <h2 className="modal-title">Calificar empresa</h2>
+              <button className="btn btn-ghost btn-sm" onClick={() => setShowCalModal(false)}>✕</button>
+            </div>
+
+            <div style={{ textAlign:'center', marginBottom:24 }}>
+              <p style={{ color:'#888', fontSize:'0.85rem', marginBottom:20 }}>
+                ¿Cómo calificarías tu experiencia en <strong style={{ color:'#f5f5f5' }}>{empresa.nombre}</strong>?
+              </p>
+
+              {/* Estrellas interactivas grandes */}
+              <div style={{ display:'flex', justifyContent:'center', gap:8, marginBottom:10 }}>
+                {[1,2,3,4,5].map(n => (
+                  <span
+                    key={n}
+                    onMouseEnter={() => setCalHover(n)}
+                    onMouseLeave={() => setCalHover(0)}
+                    onClick={() => setCalEstrellas(n)}
+                    style={{
+                      fontSize:40,
+                      color: n <= (calHover || calEstrellas) ? '#f59e0b' : '#2a2a2a',
+                      cursor:'pointer',
+                      transition:'color 0.1s, transform 0.1s',
+                      transform: n <= (calHover || calEstrellas) ? 'scale(1.15)' : 'scale(1)',
+                      lineHeight:1,
+                      display:'inline-block',
+                    }}
+                  >★</span>
+                ))}
+              </div>
+
+              {/* Label según selección */}
+              <p style={{ fontSize:'0.82rem', fontWeight:700, color:'#f59e0b', minHeight:20 }}>
+                {(calHover || calEstrellas) === 1 && 'Muy malo'}
+                {(calHover || calEstrellas) === 2 && 'Malo'}
+                {(calHover || calEstrellas) === 3 && 'Regular'}
+                {(calHover || calEstrellas) === 4 && 'Bueno'}
+                {(calHover || calEstrellas) === 5 && 'Excelente'}
+              </p>
+            </div>
+
+            <div className="form-group" style={{ marginBottom:20 }}>
+              <label className="form-label">Comentario (opcional)</label>
+              <textarea
+                className="input"
+                rows={3}
+                placeholder="Contá tu experiencia con las canchas, atención, instalaciones..."
+                value={calComentario}
+                onChange={e => setCalComentario(e.target.value)}
+                style={{ resize:'none' }}
+              />
+              <p style={{ fontSize:'0.72rem', color:'#555', textAlign:'right', marginTop:4 }}>{calComentario.length}/300</p>
+            </div>
+
+            <div style={{ display:'flex', gap:10 }}>
+              <button className="btn btn-outline w-full" style={{ justifyContent:'center' }} onClick={() => setShowCalModal(false)}>Cancelar</button>
+              <button
+                className="btn btn-primary w-full"
+                style={{ justifyContent:'center', opacity: calEstrellas ? 1 : 0.4 }}
+                disabled={!calEstrellas}
+                onClick={enviarCalificacion}
+              >
+                ★ Enviar calificación
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
