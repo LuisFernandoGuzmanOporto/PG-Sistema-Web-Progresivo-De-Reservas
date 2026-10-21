@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
 
-const NAV_LINKS = ['Canchas', 'Torneos', 'Partidos', 'Recompensas']
 
 const FEATURES = [
   {
@@ -9,7 +9,7 @@ const FEATURES = [
     title: 'Reserva Canchas',
     desc: 'Encuentra y reserva canchas deportivas en Cochabamba en segundos.',
     color: '#8B0000',
-    items: ['Disponibilidad en tiempo real', 'Pago QR seguro', 'Confirmación instantánea']
+    items: ['Horarios libres al día', 'Pago con QR', 'Aviso cuando el complejo confirma']
   },
   {
     icon: '⚽',
@@ -21,9 +21,9 @@ const FEATURES = [
   {
     icon: '🏆',
     title: 'Torneos',
-    desc: 'Compite en torneos oficiales y gana premios reales.',
+    desc: 'Inscribe a tu equipo y sigue cada partido en vivo.',
     color: '#f59e0b',
-    items: ['Inscripción de equipos', 'Tabla de posiciones', 'Premios en efectivo']
+    items: ['Inscripción de equipos', 'Tabla de posiciones', 'Resultados en vivo']
   },
   {
     icon: '⭐',
@@ -34,11 +34,31 @@ const FEATURES = [
   }
 ]
 
-const SPORTS = ['⚽ Fútbol', '🏐 Voleibol', '🏀 Básquetbol', '🎾 Tenis', '🏸 Wally', '🎯 Pádel', '🏓 Frontón', '🏃 Futsal']
+// Los deportes que el sistema maneja hoy. Si se agrega uno nuevo,
+// se agrega aqui y en las canchas de datos.js.
+const SPORTS = ['⚽ Fútbol', '🏸 Wally', '🎯 Pádel', '🏀 Básquetbol', '🏐 Voleibol', '🎾 Tenis']
 
 export default function LandingPage() {
   const navigate = useNavigate()
   const [mobileMenu, setMobileMenu] = useState(false)
+
+  // Los números son los de la base, no inventados: complejos aprobados, sus
+  // canchas y los torneos publicados. Mientras llegan, no se muestra nada.
+  const [cifras, setCifras] = useState(null)
+  useEffect(() => {
+    const contar = (tabla, columnas, filtro) =>
+      supabase.from(tabla).select(columnas, { count: 'exact', head: true }).eq(...filtro).then(r => r.count)
+    Promise.all([
+      contar('empresas', 'id', ['estado', 'activo']),
+      contar('canchas', 'id, empresas!inner(estado)', ['empresas.estado', 'activo']),
+      contar('torneos', 'id, empresas!inner(estado)', ['empresas.estado', 'activo']),
+    ])
+      .then(([complejos, canchas, torneos]) => {
+        if ([complejos, canchas, torneos].every(n => typeof n === 'number'))
+          setCifras([[complejos, 'Complejos'], [canchas, 'Canchas'], [torneos, 'Torneos']])
+      })
+      .catch(() => {})
+  }, [])
 
   return (
     <div style={{ background: '#0f0f0f', minHeight: '100vh' }}>
@@ -49,14 +69,16 @@ export default function LandingPage() {
           SPORT<span>IKA</span>
         </div>
         <div className="flex items-center gap-4" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div className="flex gap-6" style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
-            {NAV_LINKS.map(l => (
-              <a key={l} href={`#${l.toLowerCase()}`} style={{ color: '#999', fontSize: '0.9rem', fontWeight: 500, textDecoration: 'none', transition: 'color 0.2s' }}
-                onMouseEnter={e => e.target.style.color = '#f5f5f5'}
-                onMouseLeave={e => e.target.style.color = '#999'}
-              >{l}</a>
-            ))}
-          </div>
+          {/* Antes habia cuatro enlaces —Canchas, Torneos, Partidos, Recompensas—
+              que apuntaban a anclas inexistentes. Prometian que se podia mirar
+              todo eso sin entrar, y no se puede: son pantallas de la aplicacion
+              y piden sesion. Un enlace que no lleva a ningun lado es peor que
+              no tenerlo. */}
+          <button className="btn btn-ghost btn-sm solo-escritorio"
+            onClick={() => navigate('/registro-empresa')}
+            style={{ color: '#999' }}>
+            ¿Tienes un complejo?
+          </button>
           <button className="btn btn-outline btn-sm" onClick={() => navigate('/login')}>Iniciar Sesión</button>
           <button className="btn btn-accent btn-sm" onClick={() => navigate('/login')}>Registrarse</button>
         </div>
@@ -94,8 +116,8 @@ export default function LandingPage() {
               </button>
             </div>
 
-            <div style={{ display: 'flex', gap: 32, marginTop: 40 }}>
-              {[['500+', 'Usuarios'], ['50+', 'Canchas'], ['200+', 'Partidos']].map(([n, l]) => (
+            <div style={{ display: 'flex', gap: 32, marginTop: 40, minHeight: 58 }}>
+              {(cifras || []).map(([n, l]) => (
                 <div key={l}>
                   <div style={{ fontFamily: 'Bebas Neue', fontSize: '2rem', color: '#f5f5f5' }}>{n}</div>
                   <div style={{ fontSize: '0.8rem', color: '#666', fontWeight: 500 }}>{l}</div>
@@ -178,15 +200,53 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* REGISTRO EMPRESA */}
+      <section style={{ padding: '80px 0', background: '#0f0f0f' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px' }}>
+          <div className="cartel-empresas" style={{ background: 'linear-gradient(135deg, rgba(139,0,0,0.18) 0%, rgba(0,188,212,0.08) 100%)', border: '1px solid rgba(139,0,0,0.3)', borderRadius: 24, padding: '52px 60px', display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'center', gap: 40 }}>
+            <div>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 100, padding: '5px 14px', marginBottom: 18 }}>
+                <span style={{ fontSize: '0.75rem', color: '#f59e0b', fontWeight: 700 }}>🏢 PARA EMPRESAS DEPORTIVAS</span>
+              </div>
+              <h2 style={{ fontFamily: 'Bebas Neue', fontSize: 'clamp(1.8rem, 4vw, 2.8rem)', color: '#f5f5f5', marginBottom: 12, lineHeight: 1 }}>
+                ¿TIENES UN COMPLEJO DEPORTIVO?
+              </h2>
+              <p style={{ color: '#888', fontSize: '1rem', lineHeight: 1.7, maxWidth: 520, marginBottom: 20 }}>
+                Registra tu empresa en Sportika y llega a los jugadores de Cochabamba. Gestiona tus canchas, reservas, torneos y entrenamientos desde un solo panel.
+              </p>
+              <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+                {['Gestión de reservas y pagos QR', 'Panel de administración completo', 'Visibilidad ante toda la comunidad'].map(b => (
+                  <span key={b} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.82rem', color: '#666' }}>
+                    <span style={{ color: '#22c55e', fontWeight: 700 }}>✓</span> {b}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flexShrink: 0 }}>
+              <button
+                className="btn btn-primary btn-lg"
+                onClick={() => navigate('/registro-empresa')}
+                style={{ whiteSpace: 'nowrap', fontSize: '1rem' }}
+              >
+                🏢 Registrar mi empresa
+              </button>
+              <p style={{ color: '#444', fontSize: '0.75rem', textAlign: 'center' }}>Gratis — el equipo Sportika lo revisará</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* FOOTER */}
       <footer style={{ padding: '40px 24px', background: '#0a0a0a', borderTop: '1px solid #1a1a1a' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
           <div className="logo" style={{ fontSize: '1.4rem' }}>SPORT<span>IKA</span></div>
-          <p style={{ color: '#444', fontSize: '0.8rem' }}>© 2025 Sportika — Cochabamba, Bolivia</p>
-          <div style={{ display: 'flex', gap: 16 }}>
-            {['Reservas', 'Torneos', 'Partidos', 'Recompensas'].map(l => (
-              <a key={l} href="#" style={{ color: '#555', fontSize: '0.82rem', textDecoration: 'none' }}>{l}</a>
-            ))}
+          <p style={{ color: '#444', fontSize: '0.8rem' }}>© {new Date().getFullYear()} Sportika · Cochabamba, Bolivia</p>
+          {/* Dos enlaces que llevan a algo de verdad, en vez de cuatro a '#' */}
+          <div style={{ display: 'flex', gap: 18 }}>
+            <a onClick={() => navigate('/login')}
+              style={{ color: '#555', fontSize: '0.82rem', cursor: 'pointer' }}>Iniciar sesión</a>
+            <a onClick={() => navigate('/registro-empresa')}
+              style={{ color: '#555', fontSize: '0.82rem', cursor: 'pointer' }}>Registrar mi complejo</a>
           </div>
         </div>
       </footer>

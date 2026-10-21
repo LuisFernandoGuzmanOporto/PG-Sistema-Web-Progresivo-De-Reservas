@@ -1,45 +1,116 @@
 import { useNavigate } from 'react-router-dom'
 import Layout from '../../components/layout/Layout'
+import { TORNEOS as TODOS_LOS_TORNEOS, partidosVigentes,
+         ESTADO_TORNEO, conteoEquipos, USUARIO_ACTUAL, aceptaInscripciones,
+         misReservas, empresasActivas, canchasDeEmpresa,
+         FORMAS_DE_GANAR_PUNTOS } from '../../lib/datos'
+import { hoyISO } from '../../lib/agenda'
+import { horaDelPartido } from '../../lib/horaDelPartido'
+import { primeroMiDeporte, esMiDeporte, EMOJI_DEPORTE as EMOJI } from '../../lib/preferencias'
 
-const PROXIMAS_RESERVAS = [
-  { cancha: 'Cancha Fútbol Principal', empresa: 'Sport Center', fecha: 'Hoy, 15:00 - 16:00', estado: 'confirmada' },
-  { cancha: 'Cancha de Wally 2', empresa: 'Complejo Deportivo Este', fecha: 'Mañana, 10:00 - 11:00', estado: 'pendiente' },
-]
-const PARTIDOS = [
-  { deporte: 'Fútbol 5', cancha: 'Cancha Auxiliar 3', jugadores: '8/10', tiempo: 'Ahora' },
-  { deporte: 'Baloncesto', cancha: 'Cancha Externa 1', jugadores: '6/10', tiempo: 'En 30min' },
-]
-const TORNEOS = [
-  { nombre: 'Copa Sportika Fútbol 2025', deporte: 'Fútbol', equipos: '12/16', fecha: 'Hasta 10 Feb', estado: 'Abierto' },
-  { nombre: 'Liga de Baloncesto', deporte: 'Básquetbol', equipos: '8/12', fecha: 'Hasta 15 Feb', estado: 'Abierto' },
-]
-const CANCHAS_DISPONIBLES = [
-  { nombre: 'Cancha de Fútbol Principal', empresa: 'Sport Center', deporte: '⚽' },
-  { nombre: 'Cancha de Baloncesto', empresa: 'Gimnasio Central', deporte: '🏀' },
-  { nombre: 'Cancha de Wally 1', empresa: 'Complejo Deportivo Este', deporte: '🎾' },
-]
+/**
+ * Lo que se dice cuando una lista del tablero no tiene nada.
+ *
+ * Sin esto quedaba el titulo de la seccion y debajo el aire: el que entraba
+ * sin ninguna reserva veia «Proximas Reservas» y nada, y no sabia si es que
+ * no tenia ninguna o si la pantalla se habia colgado.
+ */
+const Vacio = ({ children }) => (
+  <p style={{ fontSize: '0.8rem', color: '#555', lineHeight: 1.6, padding: '6px 2px' }}>
+    {children}
+  </p>
+)
 
 export default function DashboardUsuario() {
   const navigate = useNavigate()
 
+  // Se calcula DENTRO del componente, no al cargar el archivo: los datos
+  // llegan de Supabase despues de iniciar sesion, y una constante de modulo
+  // se quedaria con los valores vacios del arranque.
+  // Las proximas reservas del cliente, las mismas que estan en Mi Perfil
+  // «Proximas» de verdad: desde hoy y en orden de fecha y hora. Antes se
+  // tomaban las tres primeras de la lista tal como llegaban, y podia mostrar
+  // una reserva de hace meses y dejar afuera la de manana.
+  const hoy = hoyISO()
+  // Si ya reservó antes, el aviso no le dice que nunca reservó
+  const YA_RESERVO = misReservas().length > 0
+  const PROXIMAS_RESERVAS = misReservas()
+    .filter(r => (r.estado === 'pendiente' || r.estado === 'confirmada') && (r.fechaISO || '') >= hoy)
+    .sort((a, b) => (a.fechaISO + a.horaInicio).localeCompare(b.fechaISO + b.horaInicio))
+    .slice(0, 3)
+    .map(r => ({
+      cancha: r.cancha, empresa: r.empresa,
+      fecha: r.fecha + ', ' + r.horaInicio + ' - ' + r.horaFin,
+      estado: r.estado,
+    }))
+
+  // Partidos y torneos salen de la fuente unica (src/lib/datos.js)
+  // Lo del deporte favorito va primero (lo elige en Mi Perfil)
+  const FAV = USUARIO_ACTUAL.deporteFav || null
+  const PARTIDOS = primeroMiDeporte(partidosVigentes()
+    .filter(p => p.jugadoresUnidos.length < p.maxJugadores), FAV)
+    .slice(0, 2)
+    .map(p => ({
+      id: p.id, deporte: p.deporte, cancha: p.cancha,
+      jugadores: p.jugadoresUnidos.length + '/' + p.maxJugadores,
+      tiempo: horaDelPartido(p.fechaHora),
+    }))
+
+  const TORNEOS = primeroMiDeporte(TODOS_LOS_TORNEOS.filter(aceptaInscripciones), FAV)
+    .slice(0, 2)
+    .map(t => ({
+      id: t.id, nombre: t.nombre, deporte: t.deporte,
+      equipos: conteoEquipos(t),
+      fecha: 'Hasta ' + t.inscripcionHasta,
+      estado: ESTADO_TORNEO[t.estado].corto,
+    }))
+  const EMOJI_DEPORTE = {
+    'Fútbol': '⚽', 'Wally': '🎾', 'Básquetbol': '🏀',
+    'Voleibol': '🏐', 'Pádel': '🏓',
+  }
+
+  // Canchas habilitadas ahora mismo, de los complejos activos
+  const CANCHAS_DISPONIBLES = primeroMiDeporte(empresasActivas()
+    .flatMap(e => canchasDeEmpresa(e.id)
+      .filter(c => c.disponible)
+      .map(c => ({ nombre: c.nombre, empresa: e.nombre, deporte: EMOJI_DEPORTE[c.deporte] || '🏟️',
+                   nombreDeporte: c.deporte, empresa_id: e.id }))), FAV, c => c.nombreDeporte)
+    .slice(0, 3)
+
+
   return (
     <Layout role="user">
       {/* Welcome header */}
-      <div style={{ background: 'linear-gradient(135deg, rgba(139,0,0,0.2) 0%, rgba(0,188,212,0.08) 100%)', border: '1px solid #2a2a2a', borderRadius: 20, padding: 28, marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ background: 'linear-gradient(135deg, rgba(139,0,0,0.2) 0%, rgba(0,188,212,0.08) 100%)', border: '1px solid #2a2a2a', borderRadius: 20, padding: 28, marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
         <div>
-          <h1 style={{ fontFamily: 'Bebas Neue', fontSize: '2rem', color: '#f5f5f5', marginBottom: 4 }}>¡Bienvenido, Juan! 👋</h1>
+          <h1 style={{ fontFamily: 'Bebas Neue', fontSize: '2rem', color: '#f5f5f5', marginBottom: 4 }}>¡Bienvenido, {USUARIO_ACTUAL.nombre.split(' ')[0]}! 👋</h1>
           <p style={{ color: '#666', fontSize: '0.9rem' }}>¿Qué quieres hacer hoy?</p>
         </div>
         <div className="points-badge" style={{ fontSize: '1.1rem', padding: '10px 18px' }}>
-          ⭐ 75 puntos
+          ⭐ {USUARIO_ACTUAL.puntos} puntos
         </div>
       </div>
 
+      {/* El deporte favorito: qué se ve primero, o la invitación a elegirlo */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap',
+        padding: '10px 14px', marginBottom: 18, borderRadius: 12,
+        background: FAV ? 'rgba(0,188,212,0.06)' : 'rgba(245,158,11,0.06)',
+        border: '1px solid ' + (FAV ? 'rgba(0,188,212,0.25)' : 'rgba(245,158,11,0.25)') }}>
+        <p style={{ fontSize: '0.82rem', color: FAV ? '#00BCD4' : '#f59e0b', fontWeight: 600 }}>
+          {FAV
+            ? (EMOJI[FAV] || '🏅') + ' Te mostramos primero lo de ' + FAV + ', tu deporte favorito.'
+            : '🏅 ¿Cuál es tu deporte? Elígelo en Mi Perfil y te mostramos primero lo tuyo.'}
+        </p>
+        <button className="btn btn-ghost btn-sm" onClick={() => navigate('/app/perfil')}>
+          {FAV ? 'Cambiar' : 'Elegir mi deporte'}
+        </button>
+      </div>
+
       {/* Quick actions */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 28, flexWrap: 'wrap' }}>
-        <button className="btn btn-primary" onClick={() => navigate('/app/reservas')}>🏟️ Reservar</button>
+      <div className="accesos-rapidos" style={{ display: 'flex', gap: 10, marginBottom: 28, flexWrap: 'wrap' }}>
+        <button className="btn btn-primary" onClick={() => navigate('/app/inicio')}>🏟️ Reservar</button>
         <button className="btn btn-accent" style={{ color: '#000' }} onClick={() => navigate('/app/partidos')}>⚽ Crear Partido</button>
-        <button className="btn btn-outline" onClick={() => navigate('/app/partidos')}>🏃 Entrenamientos</button>
+        <button className="btn btn-outline" onClick={() => navigate('/app/entrenamientos')}>🏃 Entrenamientos</button>
         <button className="btn btn-outline" onClick={() => navigate('/app/torneos')}>🏆 Torneos</button>
       </div>
 
@@ -50,9 +121,12 @@ export default function DashboardUsuario() {
         <div className="card" style={{ padding: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <h3 style={{ fontFamily: 'Bebas Neue', fontSize: '1.1rem', color: '#f5f5f5' }}>📅 Próximas Reservas</h3>
-            <button className="btn btn-ghost btn-sm" onClick={() => navigate('/app/reservas')}>Ver todas</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => navigate('/app/perfil')}>Ver todas</button>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {PROXIMAS_RESERVAS.length === 0 && (
+              <Vacio>{YA_RESERVO ? 'No tienes reservas próximas.' : 'Todavía no reservaste ninguna cancha.'} Elige un complejo y busca un horario libre.</Vacio>
+            )}
             {PROXIMAS_RESERVAS.map((r, i) => (
               <div key={i} style={{ padding: '12px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: '1px solid #2a2a2a' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
@@ -72,6 +146,9 @@ export default function DashboardUsuario() {
             <button className="btn btn-ghost btn-sm" onClick={() => navigate('/app/partidos')}>Ver todos</button>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {PARTIDOS.length === 0 && (
+              <Vacio>No hay partidos abiertos ahora. Puedes crear uno y esperar a que se sumen.</Vacio>
+            )}
             {PARTIDOS.map((p, i) => (
               <div key={i} style={{ padding: '12px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: '1px solid #2a2a2a' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
@@ -80,7 +157,7 @@ export default function DashboardUsuario() {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: '0.78rem', color: '#666' }}>{p.cancha}</span>
-                  <button className="btn btn-accent btn-sm" style={{ color: '#000', fontSize: '0.75rem', padding: '4px 12px' }}>Unirse</button>
+                  <button className="btn btn-accent btn-sm" style={{ color: '#000', fontSize: '0.75rem', padding: '4px 12px' }} onClick={() => navigate('/app/partidos')}>Unirse</button>
                 </div>
                 <div style={{ marginTop: 8, height: 4, background: '#2a2a2a', borderRadius: 2, overflow: 'hidden' }}>
                   <div style={{ height: '100%', width: `${(parseInt(p.jugadores)/parseInt(p.jugadores.split('/')[1]))*100}%`, background: '#00BCD4', borderRadius: 2 }} />
@@ -98,8 +175,11 @@ export default function DashboardUsuario() {
             <button className="btn btn-ghost btn-sm" onClick={() => navigate('/app/torneos')}>Ver todos</button>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {TORNEOS.length === 0 && (
+              <Vacio>Ningún torneo tiene las inscripciones abiertas en este momento.</Vacio>
+            )}
             {TORNEOS.map((t, i) => (
-              <div key={i} style={{ padding: '12px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: '1px solid #2a2a2a' }}>
+              <div key={i} onClick={() => navigate('/app/torneos/' + t.id)} style={{ padding: '12px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: '1px solid #2a2a2a', cursor: 'pointer' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
                   <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#f5f5f5', lineHeight: 1.3 }}>{t.nombre}</span>
                   <span className="badge badge-success" style={{ flexShrink: 0, marginLeft: 8 }}>{t.estado}</span>
@@ -118,16 +198,14 @@ export default function DashboardUsuario() {
           <h3 style={{ fontFamily: 'Bebas Neue', fontSize: '1.1rem', color: '#f5f5f5', marginBottom: 16 }}>⭐ Mis Puntos</h3>
           <div style={{ textAlign: 'center', padding: '16px 0' }}>
             <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'rgba(245,158,11,0.15)', border: '3px solid #f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', flexDirection: 'column' }}>
-              <span style={{ fontFamily: 'Bebas Neue', fontSize: '1.8rem', color: '#f5f5f5' }}>75</span>
+              <span style={{ fontFamily: 'Bebas Neue', fontSize: '1.8rem', color: '#f5f5f5' }}>{USUARIO_ACTUAL.puntos}</span>
             </div>
             <p style={{ color: '#666', fontSize: '0.8rem', marginBottom: 16 }}>25 puntos más para el siguiente nivel</p>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {[
-              { label: 'Tu reporte fue aprobado', pts: '+10', color: '#22c55e' },
-              { label: 'Reserva confirmada', pts: '+15', color: '#22c55e' },
-              { label: 'Te uniste a un partido', pts: '+20', color: '#22c55e' },
-            ].map((item, i) => (
+            {FORMAS_DE_GANAR_PUNTOS.slice(0, 3).map((f, i) => ({
+              label: f.accion, pts: '+' + f.puntos, color: '#22c55e',
+            })).map((item, i) => (
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: '#666', padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                 <span>{item.label}</span>
                 <span style={{ color: item.color, fontWeight: 700 }}>{item.pts}</span>
@@ -142,9 +220,12 @@ export default function DashboardUsuario() {
         <div className="card" style={{ padding: 20 }}>
           <div className="section-header">
             <h3 className="section-title" style={{ fontSize: '1.1rem' }}>🟢 Canchas Disponibles Ahora</h3>
-            <button className="btn btn-ghost btn-sm" onClick={() => navigate('/app/reservas')}>Ver todas</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => navigate('/app/inicio')}>Ver todas</button>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {CANCHAS_DISPONIBLES.length === 0 && (
+              <Vacio>Ninguna cancha figura habilitada en este momento.</Vacio>
+            )}
             {CANCHAS_DISPONIBLES.map((c, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: 8, border: '1px solid #222' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -154,7 +235,7 @@ export default function DashboardUsuario() {
                     <div style={{ fontSize: '0.75rem', color: '#666' }}>{c.empresa}</div>
                   </div>
                 </div>
-                <button className="btn btn-primary btn-sm">Reservar</button>
+                <button className="btn btn-primary btn-sm" onClick={() => navigate('/app/empresa/' + c.empresa_id)}>Reservar</button>
               </div>
             ))}
           </div>
@@ -164,7 +245,7 @@ export default function DashboardUsuario() {
           <h3 className="section-title" style={{ fontSize: '1.1rem', marginBottom: 16 }}>🎯 Acciones Rápidas</h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             {[
-              { icon: '🏟️', label: 'Reservar\nCancha', path: '/app/reservas', color: '#8B0000' },
+              { icon: '🏟️', label: 'Reservar\nCancha', path: '/app/inicio', color: '#8B0000' },
               { icon: '⚽', label: 'Crear\nPartido', path: '/app/partidos', color: '#00BCD4' },
               { icon: '🏆', label: 'Torneos', path: '/app/torneos', color: '#f59e0b' },
               { icon: '⭐', label: 'Mis\nPuntos', path: '/app/perfil', color: '#22c55e' },

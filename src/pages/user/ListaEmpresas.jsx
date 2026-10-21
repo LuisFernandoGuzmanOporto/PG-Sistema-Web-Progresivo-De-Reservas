@@ -1,79 +1,19 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Layout from '../../components/layout/Layout'
+import { empresasActivas, canchasDeEmpresa, torneosDeEmpresa,
+         entrenamientosDeEmpresa, USUARIO_ACTUAL } from '../../lib/datos'
+import { urlPublica } from '../../lib/archivos'
+import { primeroMiDeporte, esMiDeporte } from '../../lib/preferencias'
 
-const EMPRESAS = [
-  {
-    id: 1,
-    nombre: 'Sport Center',
-    descripcion: 'El complejo deportivo más grande de la zona norte. Canchas de primer nivel con iluminación nocturna y estacionamiento.',
-    zona: 'Zona Norte',
-    direccion: 'Av. Blanco Galindo Km 5',
-    telefono: '4-123456',
-    deportes: ['Fútbol', 'Wally', 'Pádel'],
-    totalCanchas: 3,
-    emoji: '🏟️',
-    horario: '06:00 - 22:00',
-    torneos: 2,
-    entrenamientos: 3,
-  },
-  {
-    id: 2,
-    nombre: 'Gimnasio Central',
-    descripcion: 'Especialistas en básquetbol con cancha techada y piso de madera profesional en pleno centro.',
-    zona: 'Centro',
-    direccion: 'Calle España 234',
-    telefono: '4-234567',
-    deportes: ['Básquetbol'],
-    totalCanchas: 1,
-    emoji: '🏀',
-    horario: '07:00 - 21:00',
-    torneos: 1,
-    entrenamientos: 2,
-  },
-  {
-    id: 3,
-    nombre: 'Zona Deportiva Sur',
-    descripcion: 'Complejo multideportivo en la zona sur con canchas de voleibol de arena y grass sintético.',
-    zona: 'Zona Sur',
-    direccion: 'Av. Petrolera 456',
-    telefono: '4-345678',
-    deportes: ['Voleibol'],
-    totalCanchas: 1,
-    emoji: '🏐',
-    horario: '08:00 - 20:00',
-    torneos: 1,
-    entrenamientos: 1,
-  },
-  {
-    id: 4,
-    nombre: 'Complejo Deportivo Este',
-    descripcion: 'El mejor complejo de wally en Cochabamba. Tres canchas techadas con iluminación LED y vestuarios.',
-    zona: 'Zona Este',
-    direccion: 'Av. América 789',
-    telefono: '4-456789',
-    deportes: ['Wally'],
-    totalCanchas: 3,
-    emoji: '🎾',
-    horario: '07:00 - 22:00',
-    torneos: 1,
-    entrenamientos: 2,
-  },
-  {
-    id: 5,
-    nombre: 'Zona Deportiva Oeste',
-    descripcion: 'Canchas de pádel profesionales con torneos semanales y entrenamientos personalizados.',
-    zona: 'Zona Oeste',
-    direccion: 'Calle Lanza 101',
-    telefono: '4-567890',
-    deportes: ['Pádel'],
-    totalCanchas: 1,
-    emoji: '🏓',
-    horario: '06:00 - 21:00',
-    torneos: 1,
-    entrenamientos: 1,
-  },
-]
+// Los complejos y sus contadores salen de la fuente unica (src/lib/datos.js):
+// canchas, torneos y entrenamientos se cuentan, no se escriben a mano.
+const listaEmpresas = () => empresasActivas().map(e => ({
+  ...e,
+  totalCanchas:   canchasDeEmpresa(e.id).length,
+  torneos:        torneosDeEmpresa(e.id).length,
+  entrenamientos: entrenamientosDeEmpresa(e.id).length,
+}))
 
 const DEPORTE_COLORES = {
   'Fútbol':     { bg: 'rgba(34,197,94,0.12)',   color: '#22c55e' },
@@ -90,9 +30,12 @@ export default function ListaEmpresas() {
   const [busqueda, setBusqueda] = useState('')
   const [filtroDeporte, setFiltroDeporte] = useState('todos')
 
+  const EMPRESAS = listaEmpresas()
   const deportesUnicos = ['todos', ...new Set(EMPRESAS.flatMap(e => e.deportes))]
 
-  const empresasFiltradas = EMPRESAS.filter(e => {
+  // Los que ofrecen su deporte favorito van primero, sin esconder los demás
+  const FAV = USUARIO_ACTUAL.deporteFav || null
+  const empresasFiltradas = primeroMiDeporte(EMPRESAS, FAV, e => e.deportes).filter(e => {
     const coincideBusqueda = e.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
       e.zona.toLowerCase().includes(busqueda.toLowerCase()) ||
       e.deportes.some(d => d.toLowerCase().includes(busqueda.toLowerCase()))
@@ -175,9 +118,14 @@ export default function ListaEmpresas() {
                 position: 'relative',
                 overflow: 'hidden',
               }}>
-                <span style={{ fontSize: '4rem' }}>{empresa.emoji}</span>
-                {/* Badge horario */}
-                <div style={{
+                {/* Si el complejo subio su foto se usa esa; el emoji del
+                    deporte queda de respaldo para los que todavia no */}
+                {empresa.foto
+                  ? <img src={urlPublica(empresa.foto)} alt={empresa.nombre}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <span style={{ fontSize: '4rem' }}>{empresa.emoji}</span>}
+                {/* Badge horario: solo si el complejo cargó su horario */}
+                {empresa.horario && <div style={{
                   position: 'absolute',
                   bottom: 8,
                   right: 10,
@@ -189,7 +137,7 @@ export default function ListaEmpresas() {
                   fontWeight: 600,
                 }}>
                   🕐 {empresa.horario}
-                </div>
+                </div>}
               </div>
 
               <div className="card-body">
@@ -213,11 +161,13 @@ export default function ListaEmpresas() {
                   {empresa.deportes.map(d => (
                     <span
                       key={d}
+                      title={esMiDeporte(d, FAV) ? 'Tu deporte favorito' : undefined}
                       style={{
                         padding: '3px 10px',
                         borderRadius: 20,
                         fontSize: '0.72rem',
                         fontWeight: 600,
+                        outline: esMiDeporte(d, FAV) ? '1px solid #00BCD4' : 'none',
                         background: DEPORTE_COLORES[d]?.bg || 'rgba(255,255,255,0.06)',
                         color: DEPORTE_COLORES[d]?.color || '#888',
                       }}

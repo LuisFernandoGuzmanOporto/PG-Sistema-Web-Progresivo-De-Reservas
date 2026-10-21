@@ -1,312 +1,486 @@
 import { useState } from 'react'
+import { digitosDe, esTelefono, esUsuario, tieneNombreYApellido } from '../../lib/validaciones'
+import Layout from '../../components/layout/Layout'
+import AvisoFaltantes from '../../components/AvisoFaltantes'
+import { propsCampo, MensajeCampo, irAlPrimerError } from '../../components/Validacion'
+import {
+  PERMISOS_EMPLEADO, PERMISOS_POR_DEFECTO, RESTRICCIONES_EMPLEADO, TURNOS,
+  empleadosDeEmpresa, bitacoraDeEmpresa, TIPO_BITACORA, SESION,
+} from '../../lib/datos'
+import {
+  guardarPermisos as guardarPermisosEnBase, cambiarEstadoEmpleado, registrarEnBitacora,
+  crearCuentaEmpleado, cambiarClaveEmpleado,
+} from '../../lib/guardar'
 
-const DEPORTES = ['Futbol','Basquet','Voleibol','Tenis','Natacion','Atletismo','Artes Marciales','Otro']
-
-const MOCK_ENTRENADORES = [
-  {
-    id: 1, nombre: 'Mario Quispe', email: 'mario@email.com', telefono: '76543210',
-    deporte: 'Futbol', especialidad: 'Futbol infantil y juvenil',
-    entrenamientos: ['Escuela de Futbol Infantil', 'Futbol Avanzado Mañana'],
-    activo: true,
-  },
-  {
-    id: 2, nombre: 'Carmen Lopez', email: 'carmen@email.com', telefono: '77891234',
-    deporte: 'Basquet', especialidad: 'Basquet competitivo',
-    entrenamientos: ['Basquet Intermedio'],
-    activo: true,
-  },
-  {
-    id: 3, nombre: 'Diego Arias', email: 'diego@email.com', telefono: '71234567',
-    deporte: 'Voleibol', especialidad: 'Voleibol recreativo',
-    entrenamientos: [],
-    activo: false,
-  },
-]
 
 const FORM_INIT = {
-  nombre: '', email: '', telefono: '',
-  deporte: 'Futbol', especialidad: '',
+  nombre: '', usuario: '', telefono: '',
+  password: '', password2: '',
+  turno: '',
+  permisos: PERMISOS_POR_DEFECTO,
 }
 
-function Initials({ nombre }) {
-  const parts = nombre.trim().split(' ')
-  const ini = parts.length >= 2
-    ? parts[0][0] + parts[1][0]
-    : (parts[0][0] || '?')
-  return ini.toUpperCase()
+const COLORES = ['#8b5cf6', '#00BCD4', '#f59e0b', '#22c55e', '#ef4444', '#e879f9']
+
+const iniciales = (nombre) => {
+  const p = nombre.trim().split(' ')
+  return ((p[0]?.[0] || '?') + (p[1]?.[0] || '')).toUpperCase()
 }
 
-const COLORES = ['#e53935','#8e24aa','#1e88e5','#00897b','#f4511e','#6d4c41']
-function colorFor(id) { return COLORES[id % COLORES.length] }
+export default function GestionEmpleados() {
+  const [empleados, setEmpleados] = useState(empleadosDeEmpresa(SESION.empresaId))
+  const [bitacora]                = useState(bitacoraDeEmpresa(SESION.empresaId))
 
-export default function GestionEntrenadores() {
-  const [entrenadores, setEntrenadores] = useState(MOCK_ENTRENADORES)
-  const [modal, setModal] = useState(null) // null | 'nuevo' | { ...entrenador }
-  const [form, setForm] = useState(FORM_INIT)
-  const [busqueda, setBusqueda] = useState('')
+  const [tab, setTab]           = useState('cuentas')
+  const [filtroEmp, setFiltro]  = useState('todos')
+  const [showForm, setShowForm] = useState(false)
+  const [editando, setEditando] = useState(null)   // empleado al que se le editan permisos
+  const [claveDe, setClaveDe]   = useState(null)   // empleado al que se le cambia la clave
+  const [nuevaClave, setClave]  = useState({ a: '', b: '' })
+  const [form, setForm]         = useState(FORM_INIT)
+  const [aviso, setAviso]       = useState(null)
 
-  const filtrados = entrenadores.filter(e =>
-    e.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-    e.deporte.toLowerCase().includes(busqueda.toLowerCase())
-  )
+  const avisar = (txt) => { setAviso(txt); setTimeout(() => setAviso(null), 3000) }
 
-  function abrirNuevo() {
-    setForm(FORM_INIT)
-    setModal('nuevo')
+  const togglePermisoForm = (key) => setForm(f => ({
+    ...f,
+    permisos: f.permisos.includes(key) ? f.permisos.filter(p => p !== key) : [...f.permisos, key],
+  }))
+
+  const togglePermisoEmpleado = (key) => setEditando(e => ({
+    ...e,
+    permisos: e.permisos.includes(key) ? e.permisos.filter(p => p !== key) : [...e.permisos, key],
+  }))
+
+  const usuarioRepetido = form.usuario.trim() !== '' &&
+    empleados.some(e => e.usuario.toLowerCase() === form.usuario.trim().toLowerCase())
+  const [guardando, setGuardando] = useState(false)
+  const [errorForm, setErrorForm]  = useState(null)
+  const [intento, setIntento]      = useState(false)
+
+  // Cada campo con su motivo. Se muestran después del primer intento de guardar.
+  const erroresEmp = {}
+  {
+    const usuario = form.usuario.trim()
+    const digitos = digitosDe(form.telefono)
+    if (!form.nombre.trim()) erroresEmp.nombre = 'Escribe el nombre y apellido del empleado.'
+    else if (!tieneNombreYApellido(form.nombre)) erroresEmp.nombre = 'Falta el apellido: escribe nombre y apellido.'
+    if (form.telefono.trim() && !esTelefono(form.telefono))
+      erroresEmp.telefono = `El teléfono debe tener 7 u 8 dígitos (tiene ${digitos.length}). Déjalo vacío si no lo sabes.`
+    if (!usuario) erroresEmp.usuario = 'Escribe el usuario con el que va a entrar, por ejemplo rosa.v.'
+    else if (!esUsuario(usuario))
+      erroresEmp.usuario = 'El usuario solo puede tener letras sin tilde, números, punto o guion, y al menos 3 caracteres.'
+    else if (usuarioRepetido) erroresEmp.usuario = `El usuario «${usuario}» ya existe en tu complejo. Prueba con otro, por ejemplo ${usuario}2.`
+    if (!form.password) erroresEmp.password = 'Crea una contraseña para el empleado.'
+    else if (form.password.length < 6) erroresEmp.password = `La contraseña debe tener al menos 6 caracteres (tiene ${form.password.length}).`
+    if (!form.password2) erroresEmp.password2 = 'Repite la contraseña para confirmarla.'
+    else if (form.password !== form.password2) erroresEmp.password2 = 'Las contraseñas no coinciden. Escríbelas de nuevo.'
   }
+  const ORDEN_EMP = ['nombre', 'telefono', 'usuario', 'password', 'password2']
+  const faltaEnEmpleado = intento
+    ? ORDEN_EMP.filter(c => erroresEmp[c]).map(c => ({ campo: c, texto: erroresEmp[c] })) : []
+  const pe = (c) => propsCampo(c, erroresEmp[c], intento)
+  const me = (c) => <MensajeCampo nombre={c} error={erroresEmp[c]} mostrar={intento} />
 
-  function abrirEditar(ent) {
-    setForm({
-      nombre: ent.nombre, email: ent.email, telefono: ent.telefono,
-      deporte: ent.deporte, especialidad: ent.especialidad,
+  const crearEmpleado = async () => {
+    setIntento(true)
+    if (Object.keys(erroresEmp).length) { irAlPrimerError(erroresEmp, ORDEN_EMP); return }
+    setGuardando(true)
+    setErrorForm(null)
+    const g = await crearCuentaEmpleado({
+      usuario: form.usuario.trim(), password: form.password,
+      nombre: form.nombre.trim(), telefono: form.telefono,
+      turno: form.turno, permisos: form.permisos,
     })
-    setModal(ent)
-  }
+    setGuardando(false)
+    if (g.error) { setErrorForm(g.error); return }
 
-  function guardar() {
-    if (!form.nombre.trim() || !form.email.trim()) return
-    if (modal === 'nuevo') {
-      const nuevo = { id: Date.now(), ...form, entrenamientos: [], activo: true }
-      setEntrenadores(prev => [...prev, nuevo])
-    } else {
-      setEntrenadores(prev => prev.map(e => e.id === modal.id ? { ...e, ...form } : e))
+    const nuevo = {
+      id: g.empleado.id, empresa_id: SESION.empresaId,
+      nombre: form.nombre.trim(), usuario: form.usuario.trim(), telefono: form.telefono,
+      turno: form.turno, activo: true, permisos: form.permisos,
+      creado: new Date().toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' }),
     }
-    setModal(null)
+    setEmpleados(prev => [...prev, nuevo])
+    setForm(FORM_INIT)
+    setShowForm(false)
+    avisar('Cuenta de ' + nuevo.nombre + ' creada. Entrégale el usuario y la contraseña.')
   }
 
-  function toggleActivo(id) {
-    setEntrenadores(prev => prev.map(e => e.id === id ? { ...e, activo: !e.activo } : e))
+  const guardarPermisos = async () => {
+    const g = await guardarPermisosEnBase(editando.id, editando.permisos)
+    if (g.error) { avisar('No se guardó el cambio. ' + g.error); return }
+
+    setEmpleados(prev => prev.map(e => e.id === editando.id ? editando : e))
+    registrarEnBitacora({
+      tipo: 'cuenta', accion: 'Cambió los permisos de un empleado',
+      detalle: editando.nombre + ' · ' + (editando.permisos.length || 'sin') + ' permisos',
+    })
+    avisar('Permisos de ' + editando.nombre + ' actualizados')
+    setEditando(null)
   }
 
-  function eliminar(id) {
-    if (window.confirm('Seguro que deseas eliminar este entrenador?')) {
-      setEntrenadores(prev => prev.filter(e => e.id !== id))
-    }
+  const alternarActivo = async (emp) => {
+    const g = await cambiarEstadoEmpleado(emp.id, !emp.activo)
+    if (g.error) { avisar('No se guardó el cambio. ' + g.error); return }
+
+    setEmpleados(prev => prev.map(e => e.id === emp.id ? { ...e, activo: !e.activo } : e))
+    registrarEnBitacora({
+      tipo: 'cuenta',
+      accion: emp.activo ? 'Dio de baja a un empleado' : 'Reactivó a un empleado',
+      detalle: emp.nombre,
+    })
+    avisar(emp.activo
+      ? emp.nombre + ' fue dado de baja. Ya no puede entrar, pero su historial se conserva.'
+      : emp.nombre + ' fue reactivado')
   }
+
+  const [intentoClave, setIntentoClave] = useState(false)
+  const erroresClave = {}
+  if (!nuevaClave.a) erroresClave.claveA = 'Escribe la nueva contraseña.'
+  else if (nuevaClave.a.length < 6) erroresClave.claveA = `La contraseña debe tener al menos 6 caracteres (tiene ${nuevaClave.a.length}).`
+  if (!nuevaClave.b) erroresClave.claveB = 'Repite la contraseña para confirmarla.'
+  else if (nuevaClave.a !== nuevaClave.b) erroresClave.claveB = 'Las contraseñas no coinciden. Escríbelas de nuevo.'
+
+  const guardarClave = async () => {
+    setIntentoClave(true)
+    if (Object.keys(erroresClave).length) { irAlPrimerError(erroresClave, ['claveA', 'claveB']); return }
+    setGuardando(true)
+    setErrorForm(null)
+    const g = await cambiarClaveEmpleado(claveDe.id, nuevaClave.a)
+    setGuardando(false)
+    if (g.error) { setErrorForm(g.error); return }
+
+    avisar('Contraseña de ' + claveDe.nombre + ' actualizada. Comunícasela en persona.')
+    setClaveDe(null)
+    setClave({ a: '', b: '' })
+  }
+
+  const bitacoraVisible = filtroEmp === 'todos'
+    ? bitacora
+    : bitacora.filter(b => String(b.empleado_id) === String(filtroEmp))
+
+  const activos = empleados.filter(e => e.activo)
 
   return (
-    <div style={{ padding: '2rem', color: '#fff', maxWidth: 1100 }}>
-      {/* Header */}
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: '1.5rem', flexWrap:'wrap', gap:'1rem' }}>
+    <Layout role="admin">
+      <div className="section-header">
         <div>
-          <h1 style={{ margin:0, fontSize:'1.8rem', display:'flex', alignItems:'center', gap:10 }}>
-            <span style={{ fontSize:'2rem' }}>🏃</span> GESTION DE ENTRENADORES
-          </h1>
-          <p style={{ margin:'4px 0 0', color:'#aaa', fontSize:'0.9rem' }}>
-            Administra los entrenadores de tu empresa
+          <h1 style={{ fontFamily: 'Bebas Neue', fontSize: '2rem', color: '#f5f5f5' }}>🧑‍💼 Empleados</h1>
+          <p style={{ color: '#666', fontSize: '0.85rem' }}>
+            Crea las cuentas de tu personal y decide qué puede hacer cada uno
           </p>
         </div>
-        <button onClick={abrirNuevo} style={{
-          background:'#e53935', color:'#fff', border:'none', borderRadius:8,
-          padding:'0.7rem 1.4rem', fontWeight:700, fontSize:'1rem', cursor:'pointer'
-        }}>
-          + Agregar Entrenador
+        <button className="btn btn-primary" onClick={() => { setForm(FORM_INIT); setIntento(false); setErrorForm(null); setShowForm(true) }}>
+          + Nuevo empleado
         </button>
       </div>
 
-      {/* Info banner */}
-      <div style={{
-        background:'rgba(255,193,7,0.12)', border:'1px solid rgba(255,193,7,0.3)',
-        borderRadius:8, padding:'0.75rem 1rem', marginBottom:'1.5rem',
-        color:'#ffc107', fontSize:'0.88rem'
-      }}>
-        Los entrenadores son asignados a los entrenamientos al crearlos o editarlos.
-        Aqui puedes registrar su perfil y gestionarlos.
+      {aviso && (
+        <div style={{ padding: '10px 14px', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.35)', borderRadius: 10, marginBottom: 16 }}>
+          <p style={{ color: '#22c55e', fontSize: '0.82rem', fontWeight: 600 }}>✓ {aviso}</p>
+        </div>
+      )}
+
+      <div className="tabs" style={{ marginBottom: 20 }}>
+        <button className={`tab ${tab === 'cuentas' ? 'active' : ''}`} onClick={() => setTab('cuentas')}>
+          Cuentas ({activos.length} activas de {empleados.length})
+        </button>
+        <button className={`tab ${tab === 'bitacora' ? 'active' : ''}`} onClick={() => setTab('bitacora')}>
+          🧾 Bitácora ({bitacora.length})
+        </button>
       </div>
 
-      {/* Busqueda */}
-      <input
-        placeholder="Buscar por nombre o deporte..."
-        value={busqueda}
-        onChange={e => setBusqueda(e.target.value)}
-        style={{
-          width:'100%', maxWidth:380, padding:'0.6rem 1rem', borderRadius:8,
-          border:'1px solid #333', background:'#1a1a1a', color:'#fff',
-          fontSize:'0.95rem', marginBottom:'1.5rem', boxSizing:'border-box'
-        }}
-      />
+      {/* ══ CUENTAS ══ */}
+      {tab === 'cuentas' && (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16, marginBottom: 24 }}>
+            {empleados.map((e, i) => {
+              const color = COLORES[i % COLORES.length]
+              return (
+                <div key={e.id} className="card" style={{ padding: 20, opacity: e.activo ? 1 : 0.55 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                    <div style={{ width: 44, height: 44, borderRadius: '50%', background: color + '22', color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, flexShrink: 0 }}>
+                      {iniciales(e.nombre)}
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ color: '#f5f5f5', fontWeight: 700, fontSize: '0.95rem' }}>{e.nombre}</p>
+                      <p style={{ color: '#666', fontSize: '0.78rem' }}>usuario: <strong style={{ color: '#888' }}>{e.usuario}</strong></p>
+                    </div>
+                    <span className="badge" style={{ marginLeft: 'auto', flexShrink: 0,
+                      background: e.activo ? 'rgba(34,197,94,0.12)' : 'rgba(100,100,100,0.15)',
+                      color: e.activo ? '#22c55e' : '#777' }}>
+                      {e.activo ? 'Activo' : 'De baja'}
+                    </span>
+                  </div>
 
-      {/* Stats */}
-      <div style={{ display:'flex', gap:'1rem', marginBottom:'2rem', flexWrap:'wrap' }}>
-        {[
-          { label:'Total', value: entrenadores.length, color:'#1e88e5' },
-          { label:'Activos', value: entrenadores.filter(e=>e.activo).length, color:'#43a047' },
-          { label:'Inactivos', value: entrenadores.filter(e=>!e.activo).length, color:'#888' },
-        ].map(s => (
-          <div key={s.label} style={{
-            background:'#1a1a1a', borderRadius:10, padding:'0.9rem 1.5rem',
-            borderLeft:`4px solid ${s.color}`, minWidth:120
-          }}>
-            <div style={{ fontSize:'1.6rem', fontWeight:700, color: s.color }}>{s.value}</div>
-            <div style={{ color:'#aaa', fontSize:'0.85rem' }}>{s.label}</div>
-          </div>
-        ))}
-      </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 12 }}>
+                    <p style={{ color: '#666', fontSize: '0.78rem' }}>🕐 {e.turno}</p>
+                    {e.telefono && <p style={{ color: '#666', fontSize: '0.78rem' }}>📞 {e.telefono}</p>}
+                    <p style={{ color: '#555', fontSize: '0.75rem' }}>Cuenta creada el {e.creado}</p>
+                  </div>
 
-      {/* Cards */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))', gap:'1.25rem' }}>
-        {filtrados.map(ent => (
-          <div key={ent.id} style={{
-            background:'#1a1a1a', borderRadius:14, padding:'1.25rem',
-            border: ent.activo ? '1px solid #2a2a2a' : '1px solid #333',
-            opacity: ent.activo ? 1 : 0.7,
-          }}>
-            {/* Avatar + nombre */}
-            <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:'0.9rem' }}>
-              <div style={{
-                width:54, height:54, borderRadius:'50%',
-                background: colorFor(ent.id),
-                display:'flex', alignItems:'center', justifyContent:'center',
-                fontWeight:700, fontSize:'1.2rem', flexShrink:0
-              }}>
-                <Initials nombre={ent.nombre} />
-              </div>
-              <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontWeight:700, fontSize:'1.05rem', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-                  {ent.nombre}
+                  <div style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: 8, marginBottom: 12 }}>
+                    <p style={{ color: '#555', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
+                      Puede hacer ({e.permisos.length} de {PERMISOS_EMPLEADO.length})
+                    </p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                      {e.permisos.length === 0 && <span style={{ color: '#555', fontSize: '0.75rem' }}>Sin permisos asignados</span>}
+                      {PERMISOS_EMPLEADO.filter(p => e.permisos.includes(p.key)).map(p => (
+                        <span key={p.key} style={{ padding: '2px 8px', borderRadius: 20, fontSize: '0.7rem', background: 'rgba(0,188,212,0.1)', color: '#00BCD4' }}>
+                          {p.icon} {p.label}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    <button className="btn btn-outline btn-sm" onClick={() => setEditando({ ...e })}>Permisos</button>
+                    <button className="btn btn-outline btn-sm" onClick={() => { setClaveDe(e); setClave({ a: '', b: '' }); setIntentoClave(false); setErrorForm(null) }}>🔑 Contraseña</button>
+                    <button className="btn btn-ghost btn-sm" onClick={() => alternarActivo(e)}>
+                      {e.activo ? 'Dar de baja' : 'Reactivar'}
+                    </button>
+                  </div>
                 </div>
-                <div style={{ color:'#aaa', fontSize:'0.82rem', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-                  {ent.email}
+              )
+            })}
+          </div>
+
+          {/* Lo que ningun empleado puede hacer */}
+          <div className="card" style={{ padding: 20, borderLeft: '3px solid #ef4444' }}>
+            <h3 style={{ color: '#ef4444', fontWeight: 700, fontSize: '0.9rem', marginBottom: 4 }}>
+              🔒 Ningún empleado puede hacer esto
+            </h3>
+            <p style={{ color: '#666', fontSize: '0.8rem', marginBottom: 12 }}>
+              Está bloqueado siempre, sin importar los permisos que le actives. Solo tú lo haces.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 8 }}>
+              {RESTRICCIONES_EMPLEADO.map(r => (
+                <p key={r} style={{ color: '#888', fontSize: '0.8rem' }}>✕ {r}</p>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ══ BITACORA ══ */}
+      {tab === 'bitacora' && (
+        <div className="card">
+          <div style={{ padding: 18, borderBottom: '1px solid #2a2a2a', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <div>
+              <h3 style={{ color: '#f5f5f5', fontWeight: 700 }}>Bitácora de actividad</h3>
+              <p style={{ color: '#666', fontSize: '0.8rem' }}>Cada acción que hace un empleado queda registrada aquí</p>
+            </div>
+            <select className="input" style={{ maxWidth: 220 }} value={filtroEmp} onChange={e => setFiltro(e.target.value)}>
+              <option value="todos">Todos los empleados</option>
+              {empleados.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
+            </select>
+          </div>
+
+          {bitacoraVisible.length === 0 ? (
+            <div className="empty-state"><p>Sin actividad registrada</p></div>
+          ) : (
+            <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {bitacoraVisible.map(b => {
+                const t = TIPO_BITACORA[b.tipo] || TIPO_BITACORA.cuenta
+                return (
+                  <div key={b.id} style={{ display: 'flex', gap: 12, padding: '12px 14px', background: 'rgba(255,255,255,0.02)', border: '1px solid #2a2a2a', borderRadius: 10, alignItems: 'flex-start' }}>
+                    <span style={{ fontSize: '1.1rem', flexShrink: 0 }}>{t.icon}</span>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <p style={{ color: '#f5f5f5', fontWeight: 600, fontSize: '0.87rem' }}>
+                        {b.accion} <span style={{ color: t.color, fontWeight: 700 }}>· {b.empleado}</span>
+                      </p>
+                      <p style={{ color: '#666', fontSize: '0.78rem' }}>{b.detalle}</p>
+                    </div>
+                    <span style={{ color: '#555', fontSize: '0.75rem', flexShrink: 0, textAlign: 'right' }}>
+                      {b.fecha}<br />{b.hora}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ══ MODAL: NUEVO EMPLEADO ══ */}
+      {showForm && (
+        <div className="modal-overlay" onClick={() => setShowForm(false)}>
+          <div className="modal" style={{ maxWidth: 640 }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <h2 className="modal-title">Nuevo empleado</h2>
+                <p style={{ color: '#666', fontSize: '0.8rem' }}>
+                  Tú creas la cuenta y le entregas el usuario y la contraseña en persona
+                </p>
+              </div>
+              <button className="btn btn-ghost btn-sm" onClick={() => setShowForm(false)}>✕</button>
+            </div>
+
+            <div style={{ padding: 16, background: 'rgba(255,255,255,0.02)', borderRadius: 12, border: '1px solid #2a2a2a', marginBottom: 16 }}>
+              <p style={{ color: '#00BCD4', fontWeight: 700, fontSize: '0.85rem', marginBottom: 12 }}>👤 Datos de la persona</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="form-group">
+                  <label className="form-label">Nombre completo *</label>
+                  <input className="input" value={form.nombre} onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))} placeholder="Ej: Rosa Villarroel" {...pe('nombre')} />
+                  {me('nombre')}
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Teléfono</label>
+                  <input className="input" inputMode="tel" value={form.telefono} onChange={e => setForm(f => ({ ...f, telefono: e.target.value }))} placeholder="Ej: 70012345" {...pe('telefono')} />
+                  {me('telefono')}
+                </div>
+                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                  <label className="form-label">Turno (opcional)</label>
+                  <select className="input" value={form.turno} onChange={e => setForm(f => ({ ...f, turno: e.target.value }))}>
+                    <option value="">Sin turno fijo</option>
+                    {TURNOS.map(t => <option key={t}>{t}</option>)}
+                  </select>
+                  <p style={{ color: '#555', fontSize: '0.72rem', marginTop: 4 }}>
+                    Solo sirve para saber a quién buscar a cada hora. No limita cuándo
+                    puede entrar: si trabaja todo el día, déjalo sin turno.
+                  </p>
                 </div>
               </div>
-              <span style={{
-                background: ent.activo ? 'rgba(67,160,71,0.18)' : 'rgba(150,150,150,0.18)',
-                color: ent.activo ? '#43a047' : '#888',
-                borderRadius:20, padding:'2px 10px', fontSize:'0.78rem', fontWeight:600,
-                whiteSpace:'nowrap'
-              }}>
-                {ent.activo ? 'Activo' : 'Inactivo'}
-              </span>
             </div>
 
-            {/* Info */}
-            <div style={{ fontSize:'0.87rem', color:'#bbb', marginBottom:'0.4rem' }}>
-              📞 {ent.telefono}
+            <div style={{ padding: 16, background: 'rgba(255,255,255,0.02)', borderRadius: 12, border: '1px solid #2a2a2a', marginBottom: 16 }}>
+              <p style={{ color: '#f59e0b', fontWeight: 700, fontSize: '0.85rem', marginBottom: 12 }}>🔑 Acceso al sistema</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                  <label className="form-label">Usuario *</label>
+                  <input className="input" autoComplete="off" value={form.usuario} onChange={e => setForm(f => ({ ...f, usuario: e.target.value }))} placeholder="Ej: rosa.v" {...pe('usuario')} />
+                  {me('usuario')}
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Contraseña *</label>
+                  <input className="input" type="password" autoComplete="new-password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="Mínimo 6 caracteres" {...pe('password')} />
+                  {me('password')}
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Repetir contraseña *</label>
+                  <input className="input" type="password" autoComplete="new-password" value={form.password2} onChange={e => setForm(f => ({ ...f, password2: e.target.value }))} placeholder="Repite la contraseña" {...pe('password2')} />
+                  {me('password2')}
+                </div>
+              </div>
+              <p style={{ color: '#555', fontSize: '0.75rem', marginTop: 6 }}>
+                Solo tú puedes cambiar esta contraseña después. El empleado no puede modificarla.
+              </p>
             </div>
-            <div style={{ fontSize:'0.87rem', color:'#bbb', marginBottom:'0.4rem' }}>
-              ⚽ <strong style={{color:'#fff'}}>{ent.deporte}</strong>
-              {ent.especialidad && <span style={{color:'#888'}}> · {ent.especialidad}</span>}
-            </div>
-            {ent.entrenamientos.length > 0 && (
-              <div style={{ fontSize:'0.83rem', color:'#888', marginBottom:'0.75rem' }}>
-                📋 {ent.entrenamientos.length} entrenamiento{ent.entrenamientos.length > 1 ? 's' : ''} asignado{ent.entrenamientos.length > 1 ? 's' : ''}
-              </div>
-            )}
-            {ent.entrenamientos.length === 0 && (
-              <div style={{ fontSize:'0.83rem', color:'#555', marginBottom:'0.75rem' }}>
-                Sin entrenamientos asignados
-              </div>
-            )}
 
-            {/* Entrenamientos chips */}
-            {ent.entrenamientos.length > 0 && (
-              <div style={{ display:'flex', flexWrap:'wrap', gap:5, marginBottom:'0.9rem' }}>
-                {ent.entrenamientos.map(t => (
-                  <span key={t} style={{
-                    background:'rgba(229,57,53,0.15)', color:'#ef9a9a',
-                    borderRadius:20, padding:'2px 10px', fontSize:'0.75rem'
-                  }}>{t}</span>
-                ))}
-              </div>
-            )}
-
-            {/* Acciones */}
-            <div style={{ display:'flex', gap:8, marginTop:'auto' }}>
-              <button onClick={() => abrirEditar(ent)} style={{
-                flex:1, padding:'0.5rem', borderRadius:7, border:'1px solid #444',
-                background:'transparent', color:'#fff', cursor:'pointer', fontWeight:600, fontSize:'0.88rem'
-              }}>Editar</button>
-              <button onClick={() => toggleActivo(ent.id)} style={{
-                flex:1, padding:'0.5rem', borderRadius:7, border:'none',
-                background: ent.activo ? 'rgba(229,57,53,0.12)' : 'rgba(67,160,71,0.12)',
-                color: ent.activo ? '#ef5350' : '#43a047',
-                cursor:'pointer', fontWeight:600, fontSize:'0.88rem'
-              }}>
-                {ent.activo ? 'Desactivar' : 'Activar'}
-              </button>
-              <button onClick={() => eliminar(ent.id)} style={{
-                padding:'0.5rem 0.7rem', borderRadius:7, border:'1px solid #333',
-                background:'transparent', color:'#555', cursor:'pointer', fontSize:'0.88rem'
-              }}>🗑</button>
-            </div>
-          </div>
-        ))}
-
-        {filtrados.length === 0 && (
-          <div style={{ color:'#555', gridColumn:'1/-1', textAlign:'center', padding:'3rem' }}>
-            No se encontraron entrenadores
-          </div>
-        )}
-      </div>
-
-      {/* Modal nuevo / editar */}
-      {modal && (
-        <div style={{
-          position:'fixed', inset:0, background:'rgba(0,0,0,0.7)',
-          display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:'1rem'
-        }}>
-          <div style={{
-            background:'#1a1a1a', borderRadius:14, padding:'2rem',
-            width:'100%', maxWidth:480, border:'1px solid #333'
-          }}>
-            <h2 style={{ margin:'0 0 1.5rem', fontSize:'1.2rem' }}>
-              {modal === 'nuevo' ? 'Agregar Entrenador' : 'Editar Entrenador'}
-            </h2>
-
-            <div style={{ display:'flex', flexDirection:'column', gap:'1rem' }}>
-              <div>
-                <label style={{ color:'#aaa', fontSize:'0.85rem', display:'block', marginBottom:4 }}>Nombre completo *</label>
-                <input className="input" value={form.nombre}
-                  onChange={e => setForm(p=>({...p, nombre: e.target.value}))}
-                  placeholder="Ej: Mario Quispe"
-                  style={{ width:'100%', boxSizing:'border-box' }} />
-              </div>
-              <div>
-                <label style={{ color:'#aaa', fontSize:'0.85rem', display:'block', marginBottom:4 }}>Correo electronico *</label>
-                <input className="input" type="email" value={form.email}
-                  onChange={e => setForm(p=>({...p, email: e.target.value}))}
-                  placeholder="correo@email.com"
-                  style={{ width:'100%', boxSizing:'border-box' }} />
-              </div>
-              <div>
-                <label style={{ color:'#aaa', fontSize:'0.85rem', display:'block', marginBottom:4 }}>Telefono</label>
-                <input className="input" value={form.telefono}
-                  onChange={e => setForm(p=>({...p, telefono: e.target.value}))}
-                  placeholder="7XXXXXXX"
-                  style={{ width:'100%', boxSizing:'border-box' }} />
-              </div>
-              <div>
-                <label style={{ color:'#aaa', fontSize:'0.85rem', display:'block', marginBottom:4 }}>Deporte principal</label>
-                <select className="input" value={form.deporte}
-                  onChange={e => setForm(p=>({...p, deporte: e.target.value}))}
-                  style={{ width:'100%', boxSizing:'border-box', background:'#111' }}>
-                  {DEPORTES.map(d => <option key={d}>{d}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={{ color:'#aaa', fontSize:'0.85rem', display:'block', marginBottom:4 }}>Especialidad / descripcion</label>
-                <input className="input" value={form.especialidad}
-                  onChange={e => setForm(p=>({...p, especialidad: e.target.value}))}
-                  placeholder="Ej: Futbol infantil y juvenil"
-                  style={{ width:'100%', boxSizing:'border-box' }} />
+            <div style={{ padding: 16, background: 'rgba(255,255,255,0.02)', borderRadius: 12, border: '1px solid #2a2a2a', marginBottom: 16 }}>
+              <p style={{ color: '#22c55e', fontWeight: 700, fontSize: '0.85rem', marginBottom: 4 }}>✅ ¿Qué podrá hacer?</p>
+              <p style={{ color: '#666', fontSize: '0.78rem', marginBottom: 12 }}>
+                Solo verá en su panel las funciones que actives aquí.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {PERMISOS_EMPLEADO.map(p => {
+                  const on = form.permisos.includes(p.key)
+                  return (
+                    <button key={p.key} onClick={() => togglePermisoForm(p.key)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', textAlign: 'left', cursor: 'pointer', borderRadius: 10,
+                        background: on ? 'rgba(34,197,94,0.08)' : 'rgba(255,255,255,0.02)',
+                        border: '1px solid ' + (on ? 'rgba(34,197,94,0.35)' : '#2a2a2a') }}>
+                      <span style={{ width: 38, height: 22, borderRadius: 20, background: on ? '#22c55e' : '#333', position: 'relative', flexShrink: 0, transition: 'background 0.15s' }}>
+                        <span style={{ position: 'absolute', top: 3, left: on ? 19 : 3, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left 0.15s' }} />
+                      </span>
+                      <span style={{ minWidth: 0 }}>
+                        <span style={{ display: 'block', color: '#f5f5f5', fontWeight: 600, fontSize: '0.85rem' }}>{p.icon} {p.label}</span>
+                        <span style={{ display: 'block', color: '#666', fontSize: '0.76rem' }}>{p.desc}</span>
+                      </span>
+                    </button>
+                  )
+                })}
               </div>
             </div>
 
-            <div style={{ display:'flex', gap:10, marginTop:'1.75rem' }}>
-              <button onClick={() => setModal(null)} style={{
-                flex:1, padding:'0.7rem', borderRadius:8, border:'1px solid #444',
-                background:'transparent', color:'#aaa', cursor:'pointer', fontWeight:600
-              }}>Cancelar</button>
-              <button onClick={guardar} style={{
-                flex:2, padding:'0.7rem', borderRadius:8, border:'none',
-                background:'#e53935', color:'#fff', cursor:'pointer', fontWeight:700, fontSize:'1rem'
-              }}>
-                {modal === 'nuevo' ? 'Agregar' : 'Guardar cambios'}
+            <AvisoFaltantes faltantes={faltaEnEmpleado} error={errorForm} />
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button className="btn btn-outline w-full" style={{ justifyContent: 'center' }} onClick={() => setShowForm(false)}>Cancelar</button>
+              <button className="btn btn-primary w-full" style={{ justifyContent: 'center' }}
+                disabled={guardando} onClick={crearEmpleado}>
+                {guardando ? 'Creando…' : 'Crear cuenta'}
               </button>
             </div>
           </div>
         </div>
       )}
-    </div>
+
+      {/* ══ MODAL: EDITAR PERMISOS ══ */}
+      {editando && (
+        <div className="modal-overlay" onClick={() => setEditando(null)}>
+          <div className="modal" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <h2 className="modal-title">Permisos de {editando.nombre}</h2>
+                <p style={{ color: '#666', fontSize: '0.8rem' }}>Activa o desactiva lo que puede hacer</p>
+              </div>
+              <button className="btn btn-ghost btn-sm" onClick={() => setEditando(null)}>✕</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+              {PERMISOS_EMPLEADO.map(p => {
+                const on = editando.permisos.includes(p.key)
+                return (
+                  <button key={p.key} onClick={() => togglePermisoEmpleado(p.key)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', textAlign: 'left', cursor: 'pointer', borderRadius: 10,
+                      background: on ? 'rgba(34,197,94,0.08)' : 'rgba(255,255,255,0.02)',
+                      border: '1px solid ' + (on ? 'rgba(34,197,94,0.35)' : '#2a2a2a') }}>
+                    <span style={{ width: 38, height: 22, borderRadius: 20, background: on ? '#22c55e' : '#333', position: 'relative', flexShrink: 0 }}>
+                      <span style={{ position: 'absolute', top: 3, left: on ? 19 : 3, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left 0.15s' }} />
+                    </span>
+                    <span style={{ minWidth: 0 }}>
+                      <span style={{ display: 'block', color: '#f5f5f5', fontWeight: 600, fontSize: '0.85rem' }}>{p.icon} {p.label}</span>
+                      <span style={{ display: 'block', color: '#666', fontSize: '0.76rem' }}>{p.desc}</span>
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button className="btn btn-outline w-full" style={{ justifyContent: 'center' }} onClick={() => setEditando(null)}>Cancelar</button>
+              <button className="btn btn-primary w-full" style={{ justifyContent: 'center' }} onClick={guardarPermisos}>Guardar permisos</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══ MODAL: CAMBIAR CONTRASEÑA ══ */}
+      {claveDe && (
+        <div className="modal-overlay" onClick={() => setClaveDe(null)}>
+          <div className="modal" style={{ maxWidth: 420 }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <h2 className="modal-title">Cambiar contraseña</h2>
+                <p style={{ color: '#666', fontSize: '0.8rem' }}>{claveDe.nombre} · usuario {claveDe.usuario}</p>
+              </div>
+              <button className="btn btn-ghost btn-sm" onClick={() => setClaveDe(null)}>✕</button>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Nueva contraseña *</label>
+              <input className="input" type="password" autoComplete="new-password" value={nuevaClave.a} onChange={e => setClave(c => ({ ...c, a: e.target.value }))} placeholder="Mínimo 6 caracteres" {...propsCampo('claveA', erroresClave.claveA, intentoClave)} />
+              <MensajeCampo nombre="claveA" error={erroresClave.claveA} mostrar={intentoClave} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Repetir contraseña *</label>
+              <input className="input" type="password" autoComplete="new-password" value={nuevaClave.b} onChange={e => setClave(c => ({ ...c, b: e.target.value }))} placeholder="Repite la contraseña" {...propsCampo('claveB', erroresClave.claveB, intentoClave)} />
+              <MensajeCampo nombre="claveB" error={erroresClave.claveB} mostrar={intentoClave} />
+            </div>
+            <p style={{ color: '#555', fontSize: '0.75rem', marginBottom: 14 }}>
+              Entrégasela en persona. El empleado no puede cambiarla por su cuenta.
+            </p>
+            <AvisoFaltantes error={errorForm} />
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button className="btn btn-outline w-full" style={{ justifyContent: 'center' }} onClick={() => setClaveDe(null)}>Cancelar</button>
+              <button className="btn btn-primary w-full" style={{ justifyContent: 'center' }}
+                disabled={guardando} onClick={guardarClave}>
+                {guardando ? 'Guardando…' : 'Guardar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </Layout>
   )
 }

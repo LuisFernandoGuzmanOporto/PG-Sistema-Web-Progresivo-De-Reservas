@@ -1,24 +1,31 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Layout from '../../components/layout/Layout'
-
-const TORNEOS = [
-  { id: 1, nombre: 'Copa Sportika Fútbol 2025', deporte: '⚽ Fútbol', empresa: 'Sport Center', fechaInicio: '14 Feb', fechaFin: '28 Feb', equipos: '0/16', inscripcionHasta: '10 Feb', precio: 200, premios: ['', 'Trofeo + Bs. 500', 'Trofeo + Bs. 300'], estado: 'abierto', desc: 'El torneo de fútbol más grande de Cochabamba. Equipos de todos los niveles compiten por la gloria.' },
-  { id: 2, nombre: 'Liga de Baloncesto Sportika', deporte: '🏀 Básquetbol', empresa: 'Gimnasio Central', fechaInicio: '28 Feb', fechaFin: '14 Mar', equipos: '0/12', inscripcionHasta: '24 Feb', precio: 150, premios: ['', 'Trofeo + Bs. 400', ''], estado: 'abierto', desc: 'Competencia de baloncesto para todos los niveles.' },
-  { id: 3, nombre: 'Championship Wally Cup', deporte: '🎾 Wally', empresa: 'Complejo Deportivo Este', fechaInicio: '19 Feb', fechaFin: '24 Feb', equipos: '0/8', inscripcionHasta: '17 Feb', precio: 100, premios: ['', 'Trofeo + Bs. 200', ''], estado: 'abierto', desc: 'El torneo de wally más emocionante del semestre.' },
-  { id: 4, nombre: 'Torneo de Voleibol Sportika', deporte: '🏐 Voleibol', empresa: 'Sport Center', fechaInicio: '8 Mar', fechaFin: '19 Mar', equipos: '0/10', inscripcionHasta: '4 Mar', precio: 120, premios: ['', 'Trofeo + Bs. 350', ''], estado: 'abierto', desc: 'Competencia oficial de voleibol con equipos mínimos de toda la ciudad.' },
-  { id: 5, nombre: 'Open de Tenis Sportika', deporte: '🎾 Tenis', empresa: 'Zona Deportiva Oeste', fechaInicio: '31 Mar', fechaFin: '6 Abr', equipos: '0/18', inscripcionHasta: '27 Mar', precio: 80, premios: ['', 'Trofeo + Bs. 250', ''], estado: 'abierto', desc: 'Torneo de tenis en modalidad dobles para deportistas de Cochabamba.' },
-]
+import { TORNEOS, ESTADO_TORNEO, estadoDeTorneo, conteoEquipos, torneosCreadosPor,
+         torneosDondeParticipa, miEquipoEn, solicitudesPendientes,
+         SOLICITUD_BADGE, aceptaInscripciones, solicitudDe,
+         ESTADO_SOLICITUD, empresasActivas } from '../../lib/datos'
 
 export default function Torneos() {
   const navigate = useNavigate()
+
+  // Se derivan de la fuente unica: nunca se escriben a mano
+  // Un torneo aparece aqui solo si el complejo ya aprobo la cancha
+  const disponibles   = TORNEOS.filter(aceptaInscripciones)
+
+  // Los que ya arrancaron o ya terminaron. Son los que se miran, no los que se
+  // juegan: hasta ahora un torneo desaparecia de esta pantalla en cuanto se
+  // cerraban las inscripciones, y el que no jugaba no tenia forma de seguirlo
+  // ni de ver como habia quedado.
+  const enJuego = TORNEOS
+    .filter(t => t.estado === 'en_curso' || t.estado === 'finalizado')
+    .sort((a, b) => (a.estado === b.estado ? 0 : a.estado === 'en_curso' ? -1 : 1))
+  const misTorneos    = torneosCreadosPor()
+  const participacion = torneosDondeParticipa()
   const [tab, setTab] = useState('disponibles')
   const [showDetalle, setShowDetalle] = useState(null)
   const [showCrear, setShowCrear] = useState(false)
-  const [reglas, setReglas] = useState(['Todos los jugadores deben ser mayores de 16 años'])
 
-  const agregarRegla = () => setReglas(prev => [...prev, ''])
-  const actualizarRegla = (i, val) => setReglas(prev => prev.map((r, idx) => idx === i ? val : r))
 
   return (
     <Layout role="user">
@@ -41,9 +48,10 @@ export default function Torneos() {
 
       {/* Tabs */}
       <div className="tabs" style={{ marginBottom: 20 }}>
-        <button className={`tab ${tab === 'disponibles' ? 'active' : ''}`} onClick={() => setTab('disponibles')}>Disponibles ({TORNEOS.length})</button>
-        <button className={`tab ${tab === 'participaciones' ? 'active' : ''}`} onClick={() => setTab('participaciones')}>Mis Participaciones (0)</button>
-        <button className={`tab ${tab === 'mis' ? 'active' : ''}`} onClick={() => setTab('mis')}>Mis Torneos (0)</button>
+        <button className={`tab ${tab === 'disponibles' ? 'active' : ''}`} onClick={() => setTab('disponibles')}>Disponibles ({disponibles.length})</button>
+        <button className={`tab ${tab === 'enjuego' ? 'active' : ''}`} onClick={() => setTab('enjuego')}>En juego y terminados ({enJuego.length})</button>
+        <button className={`tab ${tab === 'participaciones' ? 'active' : ''}`} onClick={() => setTab('participaciones')}>Mis Participaciones ({participacion.length})</button>
+        <button className={`tab ${tab === 'mis' ? 'active' : ''}`} onClick={() => setTab('mis')}>Mis Torneos ({misTorneos.length})</button>
       </div>
 
       {tab === 'disponibles' && (
@@ -52,26 +60,26 @@ export default function Torneos() {
             <p style={{ color: '#00BCD4', fontSize: '0.82rem' }}>🏅 Únete a la Competencia — Estos son los torneos donde puedes inscribir tu equipo y competir.</p>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
-            {TORNEOS.map(t => (
+            {disponibles.map(t => (
               <div key={t.id} className="card">
                 <div className="cancha-img" style={{ height: 140 }}>
-                  <span style={{ fontSize: '3rem' }}>{t.deporte.split(' ')[0]}</span>
+                  <span style={{ fontSize: '3rem' }}>{t.emoji}</span>
                 </div>
                 <div className="card-body">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                     <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#f5f5f5', lineHeight: 1.3 }}>{t.nombre}</h3>
-                    <span className="badge badge-success" style={{ flexShrink: 0, marginLeft: 8 }}>Abierto</span>
+                    <span className="badge badge-success" style={{ flexShrink: 0, marginLeft: 8 }}>{estadoDeTorneo(t).corto}</span>
                   </div>
                   <p style={{ fontSize: '0.78rem', color: '#666', marginBottom: 10, lineHeight: 1.5 }}>{t.desc}</p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12 }}>
                     <p style={{ fontSize: '0.78rem', color: '#666' }}>📅 {t.fechaInicio} — {t.fechaFin}</p>
                     <p style={{ fontSize: '0.78rem', color: '#666' }}>🏢 {t.empresa}</p>
-                    <p style={{ fontSize: '0.78rem', color: '#666' }}>👥 {t.equipos} equipos inscritos</p>
+                    <p style={{ fontSize: '0.78rem', color: '#666' }}>👥 {conteoEquipos(t)} equipos inscritos</p>
                     <p style={{ fontSize: '0.78rem', color: '#666' }}>⏰ Inscripciones hasta {t.inscripcionHasta}</p>
                   </div>
-                  {t.premios[1] && (
+                  {t.premios.primero && (
                     <div style={{ padding: '8px 10px', background: 'rgba(245,158,11,0.08)', borderRadius: 8, marginBottom: 12 }}>
-                      <p style={{ fontSize: '0.75rem', color: '#f59e0b', fontWeight: 600 }}>🏅 Premios: {t.premios[1]}</p>
+                      <p style={{ fontSize: '0.75rem', color: '#f59e0b', fontWeight: 600 }}>🏅 Premios: {t.premios.primero}</p>
                     </div>
                   )}
                   <div style={{ display: 'flex', gap: 8 }}>
@@ -85,28 +93,150 @@ export default function Torneos() {
         </>
       )}
 
+      {tab === 'enjuego' && (
+        enJuego.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-state-icon">🏆</div>
+            <h3>Todavía no arrancó ninguno</h3>
+            <p>Aquí van a aparecer los torneos en curso y los que ya terminaron.</p>
+          </div>
+        ) : (
+          <>
+            <div style={{ padding: '10px 14px', background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.18)', borderRadius: 10, marginBottom: 20 }}>
+              <p style={{ color: '#f59e0b', fontSize: '0.82rem' }}>
+                👀 Puedes seguir cualquiera de estos torneos aunque no juegues: tabla, resultados y partidos en vivo.
+              </p>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+              {enJuego.map(t => {
+                const badge = estadoDeTorneo(t)
+                const enVivo = t.estado === 'en_curso'
+                return (
+                  <div key={t.id} className="card">
+                    <div className="cancha-img" style={{ height: 140 }}>
+                      <span style={{ fontSize: '3rem' }}>{t.emoji}</span>
+                    </div>
+                    <div className="card-body">
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                        <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#f5f5f5', lineHeight: 1.3 }}>{t.nombre}</h3>
+                        <span className="badge" style={{ flexShrink: 0, marginLeft: 8, color: badge.color, background: badge.bg }}>{badge.corto}</span>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12 }}>
+                        <p style={{ fontSize: '0.78rem', color: '#666' }}>📅 {t.fechaInicio} — {t.fechaFin}</p>
+                        <p style={{ fontSize: '0.78rem', color: '#666' }}>🏢 {t.empresa}</p>
+                        <p style={{ fontSize: '0.78rem', color: '#666' }}>👥 {conteoEquipos(t)} equipos</p>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button className="btn btn-outline btn-sm w-full" style={{ justifyContent: 'center' }} onClick={() => navigate(`/app/torneos/${t.id}`)}>Ver Detalles</button>
+                        <button className="btn btn-primary btn-sm w-full" style={{ justifyContent: 'center' }} onClick={() => navigate(`/app/torneos/${t.id}/en-vivo`)}>
+                          {enVivo ? '🔴 En vivo' : '🏆 Resultados'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </>
+        )
+      )}
+
       {tab === 'participaciones' && (
-        <div className="empty-state">
-          <div className="empty-state-icon">🏆</div>
-          <h3>Torneos donde Participas</h3>
-          <p>Aquí puedes ver todos los torneos donde tienes equipos inscritos y seguir tu progreso.</p>
-          <br />
-          <p style={{ color: '#555', fontSize: '0.85rem' }}>No estás participando en torneos aún</p>
-          <p style={{ color: '#555', fontSize: '0.82rem' }}>Inscribe tu equipo en algún torneo disponible para empezar a competir</p>
-          <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={() => setTab('disponibles')}>Ver Torneos Disponibles</button>
-        </div>
+        participacion.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-state-icon">🏆</div>
+            <h3>Torneos donde Participas</h3>
+            <p style={{ color: '#555', fontSize: '0.82rem' }}>Inscribe tu equipo en algún torneo disponible para empezar a competir</p>
+            <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={() => setTab('disponibles')}>Ver Torneos Disponibles</button>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+            {participacion.map(t => {
+              const eq = miEquipoEn(t)
+              const sb = SOLICITUD_BADGE[eq.estado]
+              return (
+                <div key={t.id} className="card" style={{ padding: 20 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                    <div>
+                      <p style={{ fontSize: '0.9rem', fontWeight: 700, color: '#f5f5f5' }}>{t.emoji} {t.nombre}</p>
+                      <p style={{ fontSize: '0.78rem', color: '#666' }}>{t.empresa}</p>
+                    </div>
+                    <span className="badge" style={{ background: estadoDeTorneo(t).bg, color: estadoDeTorneo(t).color, flexShrink: 0 }}>
+                      {estadoDeTorneo(t).corto}
+                    </span>
+                  </div>
+                  <div style={{ padding: '10px 12px', background: 'rgba(0,188,212,0.06)', borderRadius: 8, marginBottom: 12 }}>
+                    <p style={{ fontSize: '0.72rem', color: '#666', marginBottom: 2 }}>Mi equipo</p>
+                    <p style={{ fontSize: '0.88rem', color: '#00BCD4', fontWeight: 700 }}>{eq.nombre}</p>
+                    <p style={{ fontSize: '0.75rem', color: sb.color, marginTop: 4 }}>Inscripción: {sb.label}</p>
+                  </div>
+                  <p style={{ fontSize: '0.78rem', color: '#666', marginBottom: 12 }}>👥 {conteoEquipos(t)} equipos • 📅 desde {t.fechaInicio}</p>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button className="btn btn-outline btn-sm w-full" style={{ justifyContent: 'center' }} onClick={() => navigate(`/app/torneos/${t.id}`)}>Ver Torneo</button>
+                    {t.estado === 'en_curso' && (
+                      <button className="btn btn-primary btn-sm w-full" style={{ justifyContent: 'center' }} onClick={() => navigate(`/app/torneos/${t.id}/en-vivo`)}>🔴 En Vivo</button>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )
       )}
 
       {tab === 'mis' && (
-        <div className="empty-state">
-          <div className="empty-state-icon">⚙️</div>
-          <h3>Torneos que Organizas</h3>
-          <p>Aquí puedes ver y gestionar los torneos que has creado, incluyendo los equipos inscritos.</p>
-          <br />
-          <p style={{ color: '#555', fontSize: '0.82rem' }}>No has creado torneos aún</p>
-          <p style={{ color: '#555', fontSize: '0.78rem' }}>Crea tu primer torneo y organiza competencias deportivas</p>
-          <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={() => setShowCrear(true)}>+ Crear mi Primer Torneo</button>
-        </div>
+        misTorneos.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-state-icon">⚙️</div>
+            <h3>Torneos que Organizas</h3>
+            <p style={{ color: '#555', fontSize: '0.78rem' }}>Crea tu primer torneo y organiza competencias deportivas</p>
+            <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={() => setShowCrear(true)}>+ Crear mi Primer Torneo</button>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+            {misTorneos.map(t => {
+              const pendientes = solicitudesPendientes(t).length
+              return (
+                <div key={t.id} className="card" style={{ padding: 20 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                    <div>
+                      <p style={{ fontSize: '0.9rem', fontWeight: 700, color: '#f5f5f5' }}>{t.emoji} {t.nombre}</p>
+                      <p style={{ fontSize: '0.78rem', color: '#666' }}>{t.empresa} • {t.formato}</p>
+                    </div>
+                    <span className="badge" style={{ background: estadoDeTorneo(t).bg, color: estadoDeTorneo(t).color, flexShrink: 0 }}>
+                      {estadoDeTorneo(t).corto}
+                    </span>
+                  </div>
+                  <p style={{ fontSize: '0.78rem', color: '#666', marginBottom: 6 }}>👥 {conteoEquipos(t)} equipos aprobados</p>
+                  {t.creador_tipo === 'cliente' && solicitudDe(t).estado !== 'aprobada' && (
+                    <div style={{ padding: '8px 10px', borderRadius: 8, marginBottom: 6,
+                      background: ESTADO_SOLICITUD[solicitudDe(t).estado].bg }}>
+                      <p style={{ fontSize: '0.76rem', fontWeight: 600, color: ESTADO_SOLICITUD[solicitudDe(t).estado].color }}>
+                        {solicitudDe(t).estado === 'pendiente'
+                          ? '⏳ Esperando que ' + t.empresa + ' apruebe la cancha'
+                          : '✕ ' + t.empresa + ' rechazó la cancha'}
+                      </p>
+                      {solicitudDe(t).motivo && (
+                        <p style={{ fontSize: '0.74rem', color: '#888', marginTop: 3 }}>{solicitudDe(t).motivo}</p>
+                      )}
+                    </div>
+                  )}
+                  {pendientes > 0 && (
+                    <p style={{ fontSize: '0.78rem', color: '#f59e0b', fontWeight: 600, marginBottom: 6 }}>
+                      ⏳ {pendientes} solicitud{pendientes > 1 ? 'es' : ''} por revisar
+                    </p>
+                  )}
+                  <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                    <button className="btn btn-outline btn-sm w-full" style={{ justifyContent: 'center' }} onClick={() => navigate(`/app/torneos/${t.id}`)}>Gestionar</button>
+                    {t.estado === 'en_curso' && (
+                      <button className="btn btn-primary btn-sm w-full" style={{ justifyContent: 'center' }} onClick={() => navigate(`/app/torneos/${t.id}/mesa`)}>🎮 Mesa</button>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )
       )}
 
       {/* Modal Ver Detalles */}
@@ -120,7 +250,7 @@ export default function Torneos() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <p style={{ color: '#888', lineHeight: 1.6 }}>{showDetalle.desc}</p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                {[['Deporte', showDetalle.deporte], ['Empresa', showDetalle.empresa], ['Fechas', `${showDetalle.fechaInicio} - ${showDetalle.fechaFin}`], ['Equipos', showDetalle.equipos], ['Inscripción hasta', showDetalle.inscripcionHasta], ['Precio', `Bs. ${showDetalle.precio}`]].map(([k, v]) => (
+                {[['Deporte', showDetalle.deporte], ['Empresa', showDetalle.empresa], ['Fechas', `${showDetalle.fechaInicio} - ${showDetalle.fechaFin}`], ['Equipos', conteoEquipos(showDetalle)], ['Inscripción hasta', showDetalle.inscripcionHasta], ['Precio', `Bs. ${showDetalle.precio}`]].map(([k, v]) => (
                   <div key={k} style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: 8 }}>
                     <p style={{ fontSize: '0.72rem', color: '#666', marginBottom: 2 }}>{k}</p>
                     <p style={{ fontSize: '0.88rem', color: '#f5f5f5', fontWeight: 600 }}>{v}</p>
@@ -131,118 +261,47 @@ export default function Torneos() {
                 <p style={{ color: '#00BCD4', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>💳 Pago de Inscripción con QR</p>
                 <p style={{ color: '#666', fontSize: '0.78rem' }}>Tras inscribirte, recibirás el código QR del organizador para realizar el pago y subir tu comprobante.</p>
               </div>
-              <button className="btn btn-primary w-full" style={{ justifyContent: 'center', marginTop: 8 }}>Inscribir mi Equipo</button>
+              <button className="btn btn-primary w-full" style={{ justifyContent: 'center', marginTop: 8 }}
+                onClick={() => navigate(`/app/torneos/${showDetalle.id}/inscribir`)}>
+                Inscribir mi Equipo
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Modal Crear Torneo */}
+      {/* Crear torneo: se elige el complejo y sigue el asistente real */}
       {showCrear && (
         <div className="modal-overlay" onClick={() => setShowCrear(false)}>
-          <div className="modal" style={{ maxWidth: 620 }} onClick={e => e.stopPropagation()}>
+          <div className="modal" style={{ maxWidth: 460 }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <div>
-                <h2 className="modal-title">Crear Nuevo Torneo</h2>
+                <h2 className="modal-title">¿En qué complejo?</h2>
+                <p style={{ color: '#666', fontSize: '0.8rem' }}>
+                  Un torneo ocupa las canchas de un complejo, así que primero elige dónde quieres jugarlo
+                </p>
               </div>
               <button className="btn btn-ghost btn-sm" onClick={() => setShowCrear(false)}>✕</button>
             </div>
-
-            <div style={{ padding: '10px 14px', background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.15)', borderRadius: 10, marginBottom: 20 }}>
-              <p style={{ color: '#f59e0b', fontSize: '0.82rem' }}>🏆 Organiza tu Torneo Deportivo — Completa el formulario para crear tu torneo. Una vez creado, los usuarios podrán inscribir sus equipos y tú podrás gestionar toda la competencia.</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {empresasActivas().map(e => (
+                <button key={e.id} onClick={() => navigate('/app/empresa/' + e.id + '/crear-torneo')}
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'rgba(255,255,255,0.03)', border: '1px solid #2a2a2a', borderRadius: 10, cursor: 'pointer', textAlign: 'left' }}>
+                  <span style={{ fontSize: '1.6rem' }}>{e.emoji}</span>
+                  <span>
+                    <span style={{ display: 'block', color: '#f5f5f5', fontWeight: 600, fontSize: '0.88rem' }}>{e.nombre}</span>
+                    <span style={{ display: 'block', color: '#666', fontSize: '0.75rem' }}>{e.zona} • {e.deportes.join(', ')}</span>
+                  </span>
+                </button>
+              ))}
             </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {/* Informacion basica */}
-              <div style={{ padding: 16, background: 'rgba(255,255,255,0.02)', borderRadius: 12, border: '1px solid #2a2a2a' }}>
-                <p style={{ color: '#f59e0b', fontWeight: 700, fontSize: '0.85rem', marginBottom: 12 }}>🏆 Información Básica</p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <div className="form-group">
-                    <label className="form-label">Nombre del Torneo *</label>
-                    <input className="input" placeholder="Ej: Copa Sportika Fútbol 2025" />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Deporte *</label>
-                    <select className="input">
-                      <option value="">Selecciona el deporte</option>
-                      {['Fútbol', 'Wally', 'Básquetbol', 'Voleibol', 'Tenis', 'Pádel', 'Futsal'].map(d => <option key={d}>{d}</option>)}
-                    </select>
-                  </div>
-                </div>
-                <div className="form-group" style={{ marginTop: 12 }}>
-                  <label className="form-label">Descripción del Torneo *</label>
-                  <textarea className="input" rows={3} placeholder="Describe el torneo: objetivos, formato, nivel de competencia, etc." style={{ resize: 'none' }} />
-                </div>
-              </div>
-
-              {/* Fechas */}
-              <div style={{ padding: 16, background: 'rgba(255,255,255,0.02)', borderRadius: 12, border: '1px solid #2a2a2a' }}>
-                <p style={{ color: '#00BCD4', fontWeight: 700, fontSize: '0.85rem', marginBottom: 12 }}>📅 Fechas y Configuración</p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-                  <div className="form-group"><label className="form-label">Límite inscripciones *</label><input className="input" type="date" /></div>
-                  <div className="form-group"><label className="form-label">Fecha de inicio *</label><input className="input" type="date" /></div>
-                  <div className="form-group"><label className="form-label">Fecha de finalización *</label><input className="input" type="date" /></div>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginTop: 12 }}>
-                  <div className="form-group">
-                    <label className="form-label">Número máximo de equipos *</label>
-                    <select className="input"><option>8</option><option>12</option><option>16</option><option>32</option></select>
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Ubicación / Cancha *</label>
-                    <select className="input"><option value="">Selecciona la cancha</option><option>Cancha Fútbol Principal</option><option>Cancha de Wally 1</option></select>
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Costo de inscripción (Bs.)</label>
-                    <input className="input" type="number" placeholder="Bs. 150 o Gratis" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Premios */}
-              <div style={{ padding: 16, background: 'rgba(255,255,255,0.02)', borderRadius: 12, border: '1px solid #2a2a2a' }}>
-                <p style={{ color: '#f59e0b', fontWeight: 700, fontSize: '0.85rem', marginBottom: 12 }}>🏅 Premios</p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-                  <div className="form-group"><label className="form-label">🥇 1er Lugar *</label><input className="input" placeholder="Ej: Trofeo + Bs. 500" /></div>
-                  <div className="form-group"><label className="form-label">🥈 2do Lugar *</label><input className="input" placeholder="Ej: Trofeo + Bs. 300" /></div>
-                  <div className="form-group"><label className="form-label">🥉 3er Lugar</label><input className="input" placeholder="Ej: Trofeo + Bs. 150" /></div>
-                </div>
-              </div>
-
-              {/* Reglas */}
-              <div style={{ padding: 16, background: 'rgba(255,255,255,0.02)', borderRadius: 12, border: '1px solid #2a2a2a' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <p style={{ color: '#888', fontWeight: 700, fontSize: '0.85rem' }}>📋 Reglas del Torneo</p>
-                  <button className="btn btn-outline btn-sm" onClick={agregarRegla}>+ Agregar Regla</button>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {reglas.map((r, i) => (
-                    <input key={i} className="input" value={r} onChange={e => actualizarRegla(i, e.target.value)} placeholder={`Regla ${i + 1}: Ej: Todos los jugadores deben ser activos`} />
-                  ))}
-                </div>
-              </div>
-
-              {/* QR Pago */}
-              <div style={{ padding: 16, background: 'rgba(255,255,255,0.02)', borderRadius: 12, border: '1px solid #2a2a2a' }}>
-                <p style={{ color: '#22c55e', fontWeight: 700, fontSize: '0.85rem', marginBottom: 8 }}>📱 Información de Pago (QR)</p>
-                <div style={{ border: '2px dashed #2a2a2a', borderRadius: 10, padding: 20, textAlign: 'center', cursor: 'pointer', marginBottom: 10 }}>
-                  <p style={{ color: '#555', fontSize: '0.85rem' }}>📷 Sube tu código QR para recibir pagos de inscripción</p>
-                  <button className="btn btn-outline btn-sm" style={{ marginTop: 8 }}>Subir imagen QR</button>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Información de Contacto del Organizador</label>
-                  <textarea className="input" rows={2} placeholder="Ej: WhatsApp: 300-123-4567 | Email: organizador@sportika.com" style={{ resize: 'none' }} />
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: 10 }}>
-                <button className="btn btn-outline w-full" style={{ justifyContent: 'center' }} onClick={() => setShowCrear(false)}>Cancelar</button>
-                <button className="btn btn-primary w-full" style={{ justifyContent: 'center' }} onClick={() => setShowCrear(false)}>🏆 Crear Torneo</button>
-              </div>
-            </div>
+            <p style={{ color: '#555', fontSize: '0.76rem', marginTop: 14 }}>
+              ⏳ El complejo debe aprobar la cancha antes de que los equipos puedan inscribirse.
+            </p>
           </div>
         </div>
       )}
+
     </Layout>
   )
 }

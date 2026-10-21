@@ -1,4 +1,13 @@
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700;800&display=swap');
+/* Leaflet sale del paquete instalado, no de un CDN ajeno: si unpkg.com se cae
+   o cambia, el mapa se rompe igual, y ademas obligaria a abrirle la puerta a
+   ese dominio en la politica de seguridad del sitio. */
+@import 'leaflet/dist/leaflet.css';
+
+/* Anular hover de .card dentro del mapa */
+.leaflet-container { z-index: 1; border-radius: 0; }
+.map-wrapper .leaflet-container { border-radius: 0; }
+.map-wrapper:hover { transform: none !important; box-shadow: none !important; }
 
 :root {
   --primary: #8B0000;
@@ -146,6 +155,16 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: 1px; }
 }
 .input:focus { outline: none; border-color: var(--accent); }
 .input::placeholder { color: var(--text-dim); }
+
+/* Campo con un dato que falta o no es válido (ver components/Validacion.jsx) */
+.input.invalido, .input[aria-invalid="true"] {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+}
+.mensaje-campo {
+  display: flex; align-items: flex-start; gap: 6px;
+  margin-top: 6px; color: #f87171; font-size: 0.78rem; line-height: 1.4;
+}
 
 /* Navbar */
 .navbar {
@@ -434,11 +453,190 @@ tr:hover td { background: rgba(255,255,255,0.02); }
 .empty-state h3 { font-size: 1.1rem; margin-bottom: 8px; color: var(--text); }
 .empty-state p { font-size: 0.9rem; }
 
-/* Responsive */
+/* ════════════════════════════════════════════════════════════════════════
+   CELULAR
+   ────────────────────────────────────────────────────────────────────────
+   Casi todas las pantallas arman su grilla con estilos escritos en el propio
+   componente (style={{ gridTemplateColumns: '1fr 1fr' }}). Un estilo asi no
+   puede cambiar segun el ancho, y por eso en un celular las columnas se
+   aplastaban hasta cortar el texto.
+
+   En vez de tocar cien grillas repartidas en treinta archivos, estas reglas
+   las reconocen por lo que dice su atributo style y las acomodan. El
+   navegador escribe ese atributo como «grid-template-columns: 1fr 1fr;»,
+   con espacio despues de los dos puntos, y eso es lo que se busca.
+
+   Lo que tiene que seguir en columnas aunque la pantalla sea chica —el
+   calendario de 7 dias, el marcador «equipo · resultado · equipo»— no entra
+   en estos patrones y no se toca.
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* El paso del asistente dicho en palabras: solo en el celular */
+.paso-actual-movil { display: none; }
+
 @media (max-width: 768px) {
   .sidebar { transform: translateX(-100%); transition: transform 0.3s; }
   .sidebar.open { transform: translateX(0); }
   .main-with-sidebar { margin-left: 0; }
   .page-content { padding: 16px; }
-  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  /* Columnas de escritorio: una principal y otra lateral fija */
+  [style*="grid-template-columns: 2fr 1fr"],
+  [style*="grid-template-columns: 1fr 340px"],
+  [style*="grid-template-columns: 1fr 220px"],
+  [style*="grid-template-columns: 300px 1fr"],
+  [style*="grid-template-columns: 280px 1fr"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  /* Tarjetas en grilla que piden un minimo mas ancho que el celular */
+  [style*="minmax(320px"],
+  [style*="minmax(400px"],
+  [style*="minmax(420px"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  /* Las tablas y las filas de pestañas se desplazan de costado en vez de
+     cortarse */
+  .table-container, .tabs, .barra-pestanas {
+    overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+  }
+  /* Con un ancho mínimo la tabla se desplaza de costado con sus columnas
+     legibles, en vez de apretarse hasta partir «RSV-2026-00001» en tres */
+  .table-container table, .tabla-desplazable table { min-width: 680px; }
+  /* Cada dato en un renglón: la tabla se hace más ancha y se desplaza, pero se lee */
+  .table-container td, .table-container th,
+  .tabla-desplazable td, .tabla-desplazable th { white-space: nowrap; }
+  .barra-pestanas > * { flex-shrink: 0; white-space: nowrap; }
+  .tabs { flex-wrap: nowrap; }
+  .tabs > * { flex-shrink: 0; }
+
+  /* Los modales ocupan casi toda la pantalla, con menos relleno */
+  .modal-overlay { padding: 12px; align-items: flex-end; }
+  .modal { padding: 20px; max-height: 88vh; border-radius: 18px; }
+
+  /* El encabezado: menos aire entre las piezas */
+  .navbar-derecha { gap: 8px !important; }
 }
+
+@media (max-width: 560px) {
+  /* Tres columnas no entran: una sola */
+  [style*="grid-template-columns: 1fr 1fr 1fr"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  /* Dos columnas tampoco, salvo que el componente pida mantenerlas
+     (data-columnas), por ejemplo para dos numeros cortos lado a lado */
+  [style*="grid-template-columns: 1fr 1fr"]:not([data-columnas]),
+  [style*="grid-template-columns: auto 1fr"]:not([data-columnas]) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  /* Grillas de tarjetas de 280 a 300: con el margen del celular no entran */
+  [style*="minmax(280px"],
+  [style*="minmax(300px"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  /* El nombre del usuario en el encabezado se esconde: queda la inicial.
+     Con nombre, puntos y campana no entra en un celular, y el nombre
+     completo se partia en cuatro renglones. */
+  .navbar-quien { display: none; }
+  .points-badge { padding: 5px 9px; font-size: 0.8rem; white-space: nowrap; }
+  .logo { font-size: 1.35rem; }
+
+  /* La ficha del complejo: la imagen arriba y los datos abajo */
+  .ficha-cabecera { flex-direction: column; }
+  .ficha-imagen {
+    width: 100% !important; min-height: 160px !important; max-height: 200px;
+    border-right: none !important; border-bottom: 1px solid var(--border);
+  }
+  .ficha-titulo { flex-wrap: wrap; gap: 6px; }
+
+  /* Un correo o un codigo largo, que se parta antes que empujar la columna.
+     break-word y no anywhere: anywhere cortaba tambien las palabras comunes
+     por la mitad («REGISTRA / DOS»). break-word solo parte una palabra si ella
+     sola no entra en el renglon. */
+  .card, .stat-card, .modal { overflow-wrap: break-word; }
+
+  /* Las tarjetas de numeros van de a dos: menos relleno y la etiqueta sin
+     tanto espaciado, para que «Ingresos registrados» entre entera */
+  .stat-card { min-width: 0; padding: 14px 14px; }
+  .stat-label { letter-spacing: 0.3px; font-size: 0.7rem; line-height: 1.3; }
+  .stat-value { font-size: 1.8rem; }
+
+  /* Lo que sobra en el celular */
+  .solo-escritorio { display: none !important; }
+
+  /* El cartel «¿Tienes un complejo?» de la portada: el boton debajo del texto */
+  .cartel-empresas {
+    grid-template-columns: minmax(0, 1fr) !important;
+    padding: 28px 22px !important; gap: 20px !important;
+  }
+
+  /* Lo que va en fila y no entra, que baje */
+  .fila-que-baja { flex-wrap: wrap !important; }
+
+  /* El título de cada página a todo el ancho y su botón debajo: al lado, un
+     título largo se partía a la mitad de la palabra («ENTRENAMIE / NTOS») */
+  .section-header { flex-wrap: wrap; gap: 12px; align-items: flex-start; }
+  .section-header > div:first-child { flex: 1 1 100%; }
+
+  /* El panel de la campana, a lo ancho de la pantalla */
+  .panel-avisos { position: fixed !important; top: 60px !important; left: 12px !important;
+                  right: 12px !important; width: auto !important; max-width: none !important; }
+
+  /* El margen de cada página: 32 px es mucho en un celular de 360 px */
+  .contenido-pagina { padding: 18px 16px !important; }
+
+  /* La cabecera de un torneo: la imagen arriba y el nombre a todo el ancho */
+  .cabecera-torneo { flex-direction: column; }
+  .cabecera-torneo-imagen { width: 100% !important; min-height: 96px !important;
+                            border-right: none !important; border-bottom: 1px solid #2a2a2a; }
+  .cabecera-torneo-titulo { flex-direction: column; }
+  .cabecera-torneo-estado { text-align: left !important; display: flex; align-items: center; gap: 10px; }
+  .cabecera-torneo-estado > span { margin-bottom: 0 !important; }
+
+  /* El asistente de pasos: solo los números, y debajo el paso en palabras */
+  .pasos-asistente .paso-etiqueta { display: none; }
+  .pasos-asistente .paso-linea { width: 16px !important; margin-bottom: 0 !important; }
+  .paso-actual-movil { display: block; }
+
+  /* Los accesos rápidos del inicio: de a dos y del mismo ancho, no uno por
+     renglón y cada uno de su tamaño */
+  .accesos-rapidos { display: grid !important; grid-template-columns: 1fr 1fr; }
+  .accesos-rapidos > .btn { justify-content: center; padding-left: 8px; padding-right: 8px; }
+
+  /* Titulos grandes, un poco mas chicos */
+  h1 { word-break: break-word; }
+  .display-md { font-size: 2rem !important; }
+}
+
+/* ── La PWA instalada en un iPhone ──
+   Con la app abierta a pantalla completa, el encabezado quedaba debajo de la
+   barra de estado y de la muesca. env(safe-area-inset-*) es el alto de esa
+   zona; en el navegador comun vale cero y no cambia nada. */
+.navbar {
+  padding-top: env(safe-area-inset-top);
+  height: calc(64px + env(safe-area-inset-top));
+  padding-left: max(24px, env(safe-area-inset-left));
+  padding-right: max(24px, env(safe-area-inset-right));
+}
+@media (max-width: 768px) {
+  .navbar {
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+  }
+}
+.main-with-sidebar { padding-top: calc(64px + env(safe-area-inset-top)); }
+body { padding-bottom: env(safe-area-inset-bottom); }
+
+/* En pantallas tactiles no hay «pasar el mouse»: que las tarjetas no salten */
+@media (hover: none) {
+  .card:hover { transform: none; box-shadow: none; }
+}
+
+/* Nada de desplazamiento horizontal de toda la pagina por un elemento suelto */
+html, body { overflow-x: hidden; max-width: 100%; }
+img, video { max-width: 100%; }

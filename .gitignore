@@ -1,0 +1,44 @@
+# Claves y variables de entorno: NUNCA se suben al repositorio
+.env
+.env.local
+.env.*.local
+
+# Dependencias y build
+node_modules/
+dist/
+
+# Archivos temporales de Vite
+vite.config.js.timestamp-*
+
+# Sistema operativo / editor
+.DS_Store
+Thumbs.db
+*.log
+
+# Resultados de Playwright
+test-results/
+playwright-report/
+pruebas/e2e/resultados.json
+pruebas/e2e/capturas/
+pruebas/carga/resultados.json
+
+# Datos de prueba generados: llevan la contraseña de las cuentas demo
+sportika_datos_iniciales.sql
+
+# Documentos personales del proyecto de grado: se quedan solo en la computadora
+*.docx
+*.xlsx
+*.xlsm
+*.pdf
+cronograma*
+perfil*.md
+
+# Configuración local del editor y del asistente
+.claude/
+.vscode/
+
+# Consultas sueltas para el panel de Supabase
+consultas/
+
+# Archivos temporales de la CLI de Supabase
+supabase/.temp/

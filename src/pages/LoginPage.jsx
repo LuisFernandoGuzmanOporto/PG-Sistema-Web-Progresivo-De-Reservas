@@ -1,25 +1,130 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { esCorreo, esUsuario, tieneNombreYApellido } from '../lib/validaciones'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { useAuth, INICIO_POR_ROL } from '../lib/auth'
+import { rutaInterna } from '../lib/rutas'
+import { supabase } from '../lib/supabase'
+import { propsCampo, MensajeCampo, irAlPrimerError } from '../components/Validacion'
+import AvisoFaltantes from '../components/AvisoFaltantes'
 
 export default function LoginPage() {
   const navigate = useNavigate()
+  const lugar    = useLocation()
+  const { entrar, registrarse, autenticado, perfil, cargando } = useAuth()
+
+  // Al volver de Google, el navegador aterriza en esta pantalla con la sesion
+  // ya establecida. Sin esto se quedaba mirando el formulario de login aunque
+  // ya estuviera dentro.
+  useEffect(() => {
+    if (!cargando && autenticado && perfil) {
+      navigate(INICIO_POR_ROL[perfil.rol] || '/app/dashboard', { replace: true })
+    }
+  }, [cargando, autenticado, perfil])
   const [loading, setLoading] = useState(false)
+  const [avisoConfirmar, setAvisoConfirmar] = useState(null)
+  const [errorServidor, setErrorServidor] = useState(null)
   const [tab, setTab] = useState('login') // login | register
 
+  // Formulario de email: campos controlados y validados
+  const [form, setForm]     = useState({ nombre: '', email: '', password: '', password2: '' })
+  const [errores, setError] = useState({})
+  const [enviado, setEnv]   = useState(false)
+
+  const set = (campo) => (e) => {
+    setForm(f => ({ ...f, [campo]: e.target.value }))
+    setError(er => ({ ...er, [campo]: null }))
+  }
+
+  const cambiarTab = (t) => {
+    setTab(t)
+    setForm({ nombre: '', email: '', password: '', password2: '' })
+    setError({})
+    setEnv(false)
+  }
+
+  /** Valida el formulario y devuelve los errores encontrados. */
+  const validar = () => {
+    const e = {}
+    const email = form.email.trim()
+    // Al registrarse siempre es un correo. Al entrar puede ser el usuario que
+    // el administrador le dio a un empleado ('rosa.v'), que no lleva arroba.
+    const correoValido = esCorreo(email)
+    if (!email) {
+      e.email = tab === 'register' ? 'Escribe tu correo electrónico.' : 'Escribe tu correo o tu usuario.'
+    } else if (tab === 'register' && !correoValido) {
+      e.email = 'El correo no es válido: debe tener @ y un dominio, por ejemplo nombre@gmail.com.'
+    } else if (!correoValido && !esUsuario(email)) {
+      e.email = 'Escribe un correo válido (nombre@gmail.com) o el usuario que te dio tu complejo (por ejemplo, rosa.v).'
+    }
+
+    if (!form.password) e.password = 'Escribe tu contraseña.'
+    else if (form.password.length < 6) {
+      e.password = `La contraseña debe tener al menos 6 caracteres (tiene ${form.password.length}).`
+    }
+
+    if (tab === 'register') {
+      if (!form.nombre.trim()) e.nombre = 'Escribe tu nombre y apellido.'
+      else if (!tieneNombreYApellido(form.nombre)) e.nombre = 'Falta el apellido: escribe nombre y apellido, por ejemplo Juan Pérez.'
+      if (!form.password2) e.password2 = 'Repite la contraseña para confirmarla.'
+      else if (form.password !== form.password2) e.password2 = 'Las contraseñas no coinciden. Escríbelas de nuevo.'
+    }
+    return e
+  }
+
+  /** Entra o crea la cuenta contra Supabase, y lleva a cada rol a su panel. */
+  const enviar = async () => {
+    setEnv(true)
+    setErrorServidor(null)
+    const e = validar()
+    setError(e)
+    if (Object.keys(e).length > 0) { irAlPrimerError(e, ['nombre', 'email', 'password', 'password2']); return }
+
+    setLoading(true)
+    const r = tab === 'login'
+      ? await entrar(form.email, form.password)
+      : await registrarse(form.email, form.password, form.nombre.trim())
+
+    if (r.error) { setErrorServidor(r.error); setLoading(false); return }
+
+    // La cuenta quedo creada pero el proyecto pide confirmar el correo: no hay
+    // sesion todavia, asi que no tiene sentido llevarlo a su panel.
+    if (r.debeConfirmar) {
+      setAvisoConfirmar(r.correo)
+      setLoading(false)
+      return
+    }
+
+    // El rol lo define la base, no el navegador
+    const rol = r.usuario?.app_metadata?.rol || r.usuario?.user_metadata?.rol || 'cliente'
+    const destino = rutaInterna(lugar.state?.volverA) || INICIO_POR_ROL[rol] || '/app/dashboard'
+    navigate(destino, { replace: true })
+  }
+
+
+
+  /**
+   * Entrar con Google.
+   *
+   * Funciona en cuanto el proveedor este habilitado en Supabase
+   * (Authentication > Providers > Google). Mientras no lo este, Supabase
+   * responde con un error y se muestra tal cual: antes este boton simulaba
+   * un ingreso que nunca ocurria y dejaba al usuario dando vueltas.
+   */
   const handleGoogleLogin = async () => {
     setLoading(true)
-    try {
-      // TODO: Implement real Supabase Google auth
-      // await supabase.auth.signInWithOAuth({ provider: 'google' })
-      // Simulated for demo:
-      setTimeout(() => {
-        navigate('/app/inicio')
-        setLoading(false)
-      }, 1000)
-    } catch (err) {
-      console.error(err)
+    setErrorServidor(null)
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin + '/login' },
+    })
+    if (error) {
+      const m = (error.message || '').toLowerCase()
+      setErrorServidor(m.includes('not enabled') || m.includes('provider')
+        ? 'El ingreso con Google todavía no está habilitado. Entra con tu correo y contraseña.'
+        : error.message)
       setLoading(false)
     }
+    // Si sale bien, el navegador se va a Google: no hay nada mas que hacer aqui
   }
 
   return (
@@ -53,10 +158,10 @@ export default function LoginPage() {
         <div style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 20, padding: 36 }}>
           {/* Tabs */}
           <div className="tabs" style={{ marginBottom: 28 }}>
-            <button className={`tab ${tab === 'login' ? 'active' : ''}`} onClick={() => setTab('login')}>
+            <button className={`tab ${tab === 'login' ? 'active' : ''}`} onClick={() => cambiarTab('login')}>
               Iniciar Sesión
             </button>
-            <button className={`tab ${tab === 'register' ? 'active' : ''}`} onClick={() => setTab('register')}>
+            <button className={`tab ${tab === 'register' ? 'active' : ''}`} onClick={() => cambiarTab('register')}>
               Registrarse
             </button>
           </div>
@@ -128,44 +233,75 @@ export default function LoginPage() {
           {/* Email form */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {tab === 'register' && (
-              <input className="input" type="text" placeholder="Nombre completo" />
+              <>
+                <div>
+                  <input className="input" type="text" placeholder="Nombre y apellido" autoComplete="name"
+                    value={form.nombre} onChange={set('nombre')} {...propsCampo('nombre', errores.nombre)} />
+                  <MensajeCampo nombre="nombre" error={errores.nombre} />
+                </div>
+              </>
             )}
-            <input className="input" type="email" placeholder="Correo electrónico" />
-            <input className="input" type="password" placeholder="Contraseña" />
+            <div>
+              <input className="input" type={tab === 'register' ? 'email' : 'text'}
+                placeholder={tab === 'register' ? 'Correo electrónico' : 'Correo o usuario'}
+                autoComplete={tab === 'register' ? 'email' : 'username'}
+                value={form.email} onChange={set('email')}
+                onKeyDown={e => e.key === 'Enter' && enviar()} {...propsCampo('email', errores.email)} />
+              <MensajeCampo nombre="email" error={errores.email} />
+            </div>
+
+            <div>
+              <input className="input" type="password" placeholder="Contraseña"
+                autoComplete={tab === 'register' ? 'new-password' : 'current-password'}
+                value={form.password} onChange={set('password')}
+                onKeyDown={e => e.key === 'Enter' && enviar()} {...propsCampo('password', errores.password)} />
+              <MensajeCampo nombre="password" error={errores.password} />
+            </div>
+
             {tab === 'register' && (
-              <input className="input" type="password" placeholder="Confirmar contraseña" />
+              <>
+                <div>
+                  <input className="input" type="password" placeholder="Repite la contraseña" autoComplete="new-password"
+                    value={form.password2} onChange={set('password2')}
+                    onKeyDown={e => e.key === 'Enter' && enviar()} {...propsCampo('password2', errores.password2)} />
+                  <MensajeCampo nombre="password2" error={errores.password2} />
+                </div>
+              </>
             )}
-            <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: 4 }}>
-              {tab === 'login' ? 'Iniciar Sesión' : 'Crear Cuenta'}
+
+            {avisoConfirmar && (
+              <div style={{ padding: '12px 14px', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.35)', borderRadius: 10 }}>
+                <p style={{ color: '#22c55e', fontSize: '0.84rem', fontWeight: 600, marginBottom: 4 }}>
+                  ✓ Tu cuenta quedó creada
+                </p>
+                <p style={{ color: '#888', fontSize: '0.78rem', lineHeight: 1.5 }}>
+                  Te enviamos un correo a <strong style={{ color: '#f5f5f5' }}>{avisoConfirmar}</strong>.
+                  Confirmalo y después inicia sesión aquí mismo.
+                </p>
+              </div>
+            )}
+
+            <AvisoFaltantes
+              titulo={tab === 'register' ? 'Para crear tu cuenta revisa:' : 'Para entrar revisa:'}
+              faltantes={['nombre', 'email', 'password', 'password2']
+                .filter(c => errores[c]).map(c => ({ campo: c, texto: errores[c] }))}
+              error={errorServidor} />
+
+            <button className="btn btn-primary" onClick={enviar} disabled={loading}
+              style={{ width: '100%', justifyContent: 'center', marginTop: 4, opacity: loading ? 0.6 : 1 }}>
+              {loading ? 'Entrando...' : tab === 'login' ? 'Iniciar Sesión' : 'Crear Cuenta'}
             </button>
+
+            {tab === 'login' && (
+              <button onClick={() => navigate('/recuperar', { state: { correo: form.email.trim() } })}
+                style={{ background: 'none', border: 'none', color: '#00BCD4', fontSize: '0.82rem',
+                  fontFamily: 'Outfit', cursor: 'pointer', padding: '4px 0', textAlign: 'center' }}>
+                ¿Olvidaste tu contraseña?
+              </button>
+            )}
+
           </div>
 
-          {/* Demo quick access */}
-          <div style={{ marginTop: 24, padding: 16, background: 'rgba(0,188,212,0.06)', border: '1px solid rgba(0,188,212,0.15)', borderRadius: 10 }}>
-            <p style={{ color: '#00BCD4', fontSize: '0.8rem', fontWeight: 600, marginBottom: 10 }}>🎮 Acceso Demo</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {[
-                { label: 'Usuario Jugador', path: '/app/inicio' },
-                { label: 'Admin Empresa', path: '/admin/dashboard' },
-                { label: 'Super Admin', path: '/superadmin/dashboard' }
-              ].map(({ label, path }) => (
-                <button key={label} onClick={() => navigate(path)} style={{
-                  padding: '6px 12px',
-                  background: 'rgba(0,188,212,0.1)',
-                  border: '1px solid rgba(0,188,212,0.2)',
-                  borderRadius: 6,
-                  color: '#00BCD4',
-                  fontSize: '0.8rem',
-                  cursor: 'pointer',
-                  fontFamily: 'Outfit',
-                  textAlign: 'left',
-                  transition: 'all 0.2s'
-                }}>
-                  → {label}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
 
         <p style={{ textAlign: 'center', color: '#444', fontSize: '0.8rem', marginTop: 20 }}>

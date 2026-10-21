@@ -1,0 +1,302 @@
+[
+  {
+    "id": "A1",
+    "que": "Cliente se pone rol superadmin y 99.999 puntos",
+    "estado": "BLOQUEADO",
+    "detalle": "no afectó filas"
+  },
+  {
+    "id": "A2",
+    "que": "Cliente edita el perfil de otro cliente",
+    "estado": "BLOQUEADO",
+    "detalle": "no afectó filas"
+  },
+  {
+    "id": "A3",
+    "que": "Cliente cambia el correo de su perfil por el de otro",
+    "estado": "BLOQUEADO",
+    "detalle": "no afectó filas"
+  },
+  {
+    "id": "A4",
+    "que": "Cuenta que se desactiva a sí misma puede volver a activarse",
+    "estado": "BLOQUEADO",
+    "detalle": "no afectó filas"
+  },
+  {
+    "id": "B1",
+    "que": "sumar_puntos a sí mismo (cliente)",
+    "estado": "BLOQUEADO",
+    "detalle": "42501 permission denied for function sumar_puntos"
+  },
+  {
+    "id": "B2",
+    "que": "avisar: notificación falsa (cliente)",
+    "estado": "BLOQUEADO",
+    "detalle": "42501 permission denied for function avisar"
+  },
+  {
+    "id": "B3",
+    "que": "avisar: notificación falsa (visitante)",
+    "estado": "BLOQUEADO",
+    "detalle": "42501 permission denied for function avisar"
+  },
+  {
+    "id": "B4",
+    "que": "avisar_al_complejo (cliente)",
+    "estado": "BLOQUEADO",
+    "detalle": "42501 permission denied for function avisar_al_complejo"
+  },
+  {
+    "id": "B5",
+    "que": "devolver_puntos (cliente)",
+    "estado": "BLOQUEADO",
+    "detalle": "PGRST202 Could not find the function public.devolver_puntos without parameters in the schema cache"
+  },
+  {
+    "id": "B6",
+    "que": "generar_nro_reserva (visitante)",
+    "estado": "BLOQUEADO",
+    "detalle": "PGRST202 Could not find the function public.generar_nro_reserva without parameters in the schema ca"
+  },
+  {
+    "id": "B7",
+    "que": "datos_iniciales sin sesión trae datos privados",
+    "estado": "BLOQUEADO",
+    "detalle": "solo datos públicos"
+  },
+  {
+    "id": "B8",
+    "que": "canjear_recompensa sin sesión",
+    "estado": "BLOQUEADO",
+    "detalle": "Tenes que iniciar sesion para canjear"
+  },
+  {
+    "id": "B9",
+    "que": "calcular_monto_reserva (cliente)",
+    "estado": "BLOQUEADO",
+    "detalle": "PGRST202 Could not find the function public.calcular_monto_reserva without parameters in the schema"
+  },
+  {
+    "id": "B10",
+    "que": "handle_new_user (cliente)",
+    "estado": "BLOQUEADO",
+    "detalle": "PGRST202 Could not find the function public.handle_new_user without parameters in the schema cache"
+  },
+  {
+    "id": "C1",
+    "que": "Cliente se da de alta como empleado de un complejo",
+    "estado": "BLOQUEADO",
+    "detalle": "42501 new row violates row-level security policy for table \"empleados\""
+  },
+  {
+    "id": "C2",
+    "que": "Cliente crea un complejo ya aprobado",
+    "estado": "BLOQUEADO",
+    "detalle": "no afectó filas"
+  },
+  {
+    "id": "C3",
+    "que": "Cliente escribe una notificación para otro usuario",
+    "estado": "BLOQUEADO",
+    "detalle": "42501 new row violates row-level security policy for table \"notificaciones\""
+  },
+  {
+    "id": "C4",
+    "que": "Cliente crea un canje sin gastar puntos",
+    "estado": "BLOQUEADO",
+    "detalle": "42501 new row violates row-level security policy for table \"canjes\""
+  },
+  {
+    "id": "C5",
+    "que": "Cliente sube el stock de una recompensa",
+    "estado": "BLOQUEADO",
+    "detalle": "no afectó filas"
+  },
+  {
+    "id": "C6",
+    "que": "Cliente se suma puntos en el historial",
+    "estado": "BLOQUEADO",
+    "detalle": "42501 new row violates row-level security policy for table \"puntos_historial\""
+  },
+  {
+    "id": "C7",
+    "que": "Cliente escribe en la bitácora de un complejo",
+    "estado": "BLOQUEADO",
+    "detalle": "42501 new row violates row-level security policy for table \"bitacora\""
+  },
+  {
+    "id": "C8",
+    "que": "Cliente califica dos veces el mismo complejo (puntos repetidos)",
+    "estado": "BLOQUEADO",
+    "detalle": "42501 una calificación por persona (restricción única)"
+  },
+  {
+    "id": "C9",
+    "que": "Cliente edita el comentario de otro",
+    "estado": "BLOQUEADO",
+    "detalle": "no afectó filas"
+  },
+  {
+    "id": "C10",
+    "que": "Cliente borra el comentario de otro",
+    "estado": "BLOQUEADO",
+    "detalle": "no afectó filas"
+  },
+  {
+    "id": "C11",
+    "que": "Cliente cambia el precio de una cancha",
+    "estado": "BLOQUEADO",
+    "detalle": "no afectó filas"
+  },
+  {
+    "id": "C12",
+    "que": "Cliente cambia el estado de un torneo del complejo",
+    "estado": "BLOQUEADO",
+    "detalle": "no afectó filas"
+  },
+  {
+    "id": "C13",
+    "que": "Cliente cancela un partido espontáneo ajeno",
+    "estado": "BLOQUEADO",
+    "detalle": "no afectó filas"
+  },
+  {
+    "id": "C14",
+    "que": "Administrador cambia canchas de OTRO complejo",
+    "estado": "BLOQUEADO",
+    "detalle": "no afectó filas"
+  },
+  {
+    "id": "C15",
+    "que": "Administrador aprueba su propio complejo / cambia estado",
+    "estado": "BLOQUEADO",
+    "detalle": "no afectó filas"
+  },
+  {
+    "id": "C16",
+    "que": "Empleada confirma reservas de OTRO complejo",
+    "estado": "BLOQUEADO",
+    "detalle": "no afectó filas"
+  },
+  {
+    "id": "C17",
+    "que": "Empleada se da más permisos a sí misma",
+    "estado": "BLOQUEADO",
+    "detalle": "no afectó filas"
+  },
+  {
+    "id": "C18",
+    "que": "Cliente marca asistencia a su propia reserva",
+    "estado": "BLOQUEADO",
+    "detalle": "P0001 Una reserva solo la puede modificar el complejo"
+  },
+  {
+    "id": "D-profiles",
+    "que": "Visitante lee «profiles»",
+    "estado": "BLOQUEADO",
+    "detalle": "0 filas"
+  },
+  {
+    "id": "D-reservas",
+    "que": "Visitante lee «reservas»",
+    "estado": "BLOQUEADO",
+    "detalle": "0 filas"
+  },
+  {
+    "id": "D-notificaciones",
+    "que": "Visitante lee «notificaciones»",
+    "estado": "BLOQUEADO",
+    "detalle": "0 filas"
+  },
+  {
+    "id": "D-canjes",
+    "que": "Visitante lee «canjes»",
+    "estado": "BLOQUEADO",
+    "detalle": "0 filas"
+  },
+  {
+    "id": "D-empleados",
+    "que": "Visitante lee «empleados»",
+    "estado": "BLOQUEADO",
+    "detalle": "0 filas"
+  },
+  {
+    "id": "D-bitacora",
+    "que": "Visitante lee «bitacora»",
+    "estado": "BLOQUEADO",
+    "detalle": "0 filas"
+  },
+  {
+    "id": "D-puntos_historial",
+    "que": "Visitante lee «puntos_historial»",
+    "estado": "BLOQUEADO",
+    "detalle": "0 filas"
+  },
+  {
+    "id": "D-solicitudes_empresa",
+    "que": "Visitante lee «solicitudes_empresa»",
+    "estado": "BLOQUEADO",
+    "detalle": "0 filas"
+  },
+  {
+    "id": "D-calificaciones",
+    "que": "Visitante lee «calificaciones»",
+    "estado": "REVISAR",
+    "detalle": "5 filas"
+  },
+  {
+    "id": "D-equipo_jugadores",
+    "que": "Visitante lee «equipo_jugadores»",
+    "estado": "BLOQUEADO",
+    "detalle": "permission denied for table equipo_jugadores"
+  },
+  {
+    "id": "D-perfiles",
+    "que": "Cliente lee correos o teléfonos de otros usuarios",
+    "estado": "BLOQUEADO",
+    "detalle": "0 de 0 perfiles"
+  },
+  {
+    "id": "D-ci",
+    "que": "Cliente lee el C.I. de jugadores de otros equipos",
+    "estado": "BLOQUEADO",
+    "detalle": "0 con C.I."
+  },
+  {
+    "id": "E1",
+    "que": "Cliente lista los comprobantes de todo el complejo",
+    "estado": "BLOQUEADO",
+    "detalle": "0 archivos visibles"
+  },
+  {
+    "id": "E2",
+    "que": "Visitante lista comprobantes",
+    "estado": "BLOQUEADO",
+    "detalle": "0 archivos"
+  },
+  {
+    "id": "E3",
+    "que": "Administrador lista comprobantes de OTRO complejo",
+    "estado": "BLOQUEADO",
+    "detalle": "0 archivos"
+  },
+  {
+    "id": "E4",
+    "que": "Subir un SVG con script al depósito público",
+    "estado": "BLOQUEADO",
+    "detalle": "mime type image/svg+xml is not supported"
+  },
+  {
+    "id": "E5",
+    "que": "Subir un HTML al depósito público",
+    "estado": "BLOQUEADO",
+    "detalle": "mime type text/html is not supported"
+  },
+  {
+    "id": "E6",
+    "que": "Cliente sube una imagen a la carpeta de un complejo",
+    "estado": "BLOQUEADO",
+    "detalle": "new row violates row-level security policy"
+  }
+]
