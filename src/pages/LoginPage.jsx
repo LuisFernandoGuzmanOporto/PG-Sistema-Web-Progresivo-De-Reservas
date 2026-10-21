@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { esCorreo, esUsuario, tieneNombreYApellido } from '../lib/validaciones'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useAuth, INICIO_POR_ROL } from '../lib/auth'
 import { rutaInterna } from '../lib/rutas'
 import { supabase } from '../lib/supabase'
@@ -306,9 +306,9 @@ export default function LoginPage() {
 
         <p style={{ textAlign: 'center', color: '#444', fontSize: '0.8rem', marginTop: 20 }}>
           Al continuar aceptas los{' '}
-          <a href="#" style={{ color: '#00BCD4', textDecoration: 'none' }}>Términos de Servicio</a>
+          <Link to="/terminos" style={{ color: '#00BCD4', textDecoration: 'none' }}>Términos de Servicio</Link>
           {' '}y la{' '}
-          <a href="#" style={{ color: '#00BCD4', textDecoration: 'none' }}>Política de Privacidad</a>
+          <Link to="/privacidad" style={{ color: '#00BCD4', textDecoration: 'none' }}>Política de Privacidad</Link>
         </p>
       </div>
     </div>

@@ -21,6 +21,8 @@ import PaginaInexistente from './components/PaginaInexistente'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 const RecuperarClave = lazy(() => import('./pages/RecuperarClave'))
+const Privacidad = lazy(() => import('./pages/Privacidad'))
+const Terminos = lazy(() => import('./pages/Terminos'))
 const RegistroEmpresa = lazy(() => import('./pages/RegistroEmpresa'))
 const MiCuenta = lazy(() => import('./pages/MiCuenta'))
 const DashboardUsuario = lazy(() => import('./pages/user/DashboardUsuario'))
@@ -77,6 +79,9 @@ export default function App() {
           <Route path="/registro-empresa" element={<RegistroEmpresa />} />
           {/* Se llega desde el enlace del correo: es publica a proposito */}
           <Route path="/recuperar" element={<RecuperarClave />} />
+          {/* El login enlaza a las dos, y Google pide la de privacidad */}
+          <Route path="/privacidad" element={<Privacidad />} />
+          <Route path="/terminos" element={<Terminos />} />
 
           {/* Usuario/Jugador */}
           <Route path="/app/inicio" element={<RutaProtegida roles={['cliente']}><ListaEmpresas /></RutaProtegida>} />

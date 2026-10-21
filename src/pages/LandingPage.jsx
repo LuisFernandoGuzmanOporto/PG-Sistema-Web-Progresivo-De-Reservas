@@ -241,12 +241,16 @@ export default function LandingPage() {
         <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
           <div className="logo" style={{ fontSize: '1.4rem' }}>SPORT<span>IKA</span></div>
           <p style={{ color: '#444', fontSize: '0.8rem' }}>© {new Date().getFullYear()} Sportika · Cochabamba, Bolivia</p>
-          {/* Dos enlaces que llevan a algo de verdad, en vez de cuatro a '#' */}
-          <div style={{ display: 'flex', gap: 18 }}>
+          {/* Enlaces que llevan a algo de verdad, ninguno a '#' */}
+          <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
             <a onClick={() => navigate('/login')}
               style={{ color: '#555', fontSize: '0.82rem', cursor: 'pointer' }}>Iniciar sesión</a>
             <a onClick={() => navigate('/registro-empresa')}
               style={{ color: '#555', fontSize: '0.82rem', cursor: 'pointer' }}>Registrar mi complejo</a>
+            <a onClick={() => navigate('/privacidad')}
+              style={{ color: '#555', fontSize: '0.82rem', cursor: 'pointer' }}>Privacidad</a>
+            <a onClick={() => navigate('/terminos')}
+              style={{ color: '#555', fontSize: '0.82rem', cursor: 'pointer' }}>Términos</a>
           </div>
         </div>
       </footer>
