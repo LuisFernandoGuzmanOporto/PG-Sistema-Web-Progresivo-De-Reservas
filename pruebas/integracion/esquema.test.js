@@ -9,7 +9,7 @@ import { hayBase, clienteAnonimo } from './conexion.js'
 // lo detecta antes que un usuario.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const ULTIMA_MIGRACION = 43
+const ULTIMA_MIGRACION = 44
 
 describe.skipIf(!hayBase)('Versión del esquema', () => {
   it('PI-17 · la base de datos tiene su estructura al día, en la versión vigente', async () => {

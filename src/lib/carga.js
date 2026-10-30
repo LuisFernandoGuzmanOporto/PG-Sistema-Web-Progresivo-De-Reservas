@@ -1,6 +1,7 @@
 import { supabase } from './supabase'
 import * as D from './datos'
 import { traducirError } from './errores'
+import { hoyBolivia } from './fecha'
 
 // Las columnas del plantel que usa la aplicación
 const COLUMNAS_JUGADOR = 'id, equipo_id, jugador_id, nombre, dorsal, posicion, habilitado'
@@ -49,8 +50,7 @@ const fechaCorta = (iso) => {
 /** Las reservas de hoy se muestran como "Hoy", igual que antes. */
 const fechaReserva = (iso) => {
   if (!iso) return ''
-  const hoy = new Date().toISOString().slice(0, 10)
-  if (iso === hoy) return 'Hoy'
+  if (iso === hoyBolivia()) return 'Hoy'
   const [a, m, d] = iso.split('-')
   return `${Number(d)} ${MESES[Number(m) - 1]} ${a}`
 }

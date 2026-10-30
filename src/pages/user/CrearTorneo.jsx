@@ -9,6 +9,7 @@ import { subirPublico, revisarArchivo, TIPOS_IMAGEN } from '../../lib/archivos'
 import NoEncontrado from '../../components/NoEncontrado'
 import { DEPORTE_CONFIG } from '../../lib/deportes'
 import { DIAS_SEMANA, jornadasDelTorneo, costoDelTorneo } from '../../lib/jornadas'
+import { hoyBolivia } from '../../lib/fecha'
 import { choquesEnFranja } from '../../lib/datos'
 
 // Pasos del formulario
@@ -118,7 +119,7 @@ export default function CrearTorneo() {
 
   const erroresDelPaso = () => {
     const e = {}
-    const hoy = new Date().toISOString().slice(0, 10)
+    const hoy = hoyBolivia()
     const n = (v) => Number(v)
 
     if (paso === 0) {
@@ -273,7 +274,7 @@ export default function CrearTorneo() {
     const nuevo = {
       id: g.torneo.id, qrPago: rutaQR,
       creador_id: USUARIO_ACTUAL.id, creador: USUARIO_ACTUAL.nombre, creador_tipo: 'cliente',
-      solicitud: { estado: 'pendiente', fecha: fechaLegible(new Date().toISOString().slice(0, 10)), resueltaPor: null, motivo: null },
+      solicitud: { estado: 'pendiente', fecha: fechaLegible(hoyBolivia()), resueltaPor: null, motivo: null },
       nombre: form.nombre.trim(), emoji: EMOJI[form.deporte] || '🏆',
       deporte: form.deporte, deporteKey: form.deporte,
       empresa_id: id, empresa: emp?.nombre || '', cancha: form.cancha,

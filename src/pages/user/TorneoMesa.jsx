@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import Layout from '../../components/layout/Layout'
 import NoEncontrado from '../../components/NoEncontrado'
@@ -77,6 +77,16 @@ export default function TorneoMesa() {
     return out
   })
   const [partidoSeleccionado, setPartidoSeleccionado] = useState(null)
+
+  // En el teléfono el panel del partido queda debajo de toda la lista: al
+  // elegir uno, la página baja hasta él. Antes no bajaba y parecía que el
+  // toque no había hecho nada.
+  const panelRef = useRef(null)
+  useEffect(() => {
+    if (partidoSeleccionado === null) return
+    if (window.matchMedia('(max-width: 900px)').matches)
+      panelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [partidoSeleccionado])
   const [confirmFinalizar, setConfirmFinalizar] = useState(false)
   const [ultimaAccion, setUltimaAccion] = useState(null)
   const [modalJugador, setModalJugador] = useState(null)
@@ -512,7 +522,10 @@ export default function TorneoMesa() {
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <span style={{ fontSize: '0.82rem', color: '#f5f5f5', fontWeight: 600, flex: 1 }}>{p.equipo1}</span>
-                      <span style={{ fontFamily: 'Bebas Neue', fontSize: '1.1rem', color: '#f5f5f5', margin: '0 8px' }}>{p.g1} - {p.g2}</span>
+                      {/* Un partido que no empezó no tiene marcador: «0 - 0» parecía jugado */}
+                      <span style={{ fontFamily: 'Bebas Neue', fontSize: '1.1rem', color: p.estado === 'programado' ? '#666' : '#f5f5f5', margin: '0 8px' }}>
+                        {p.estado === 'programado' ? 'vs' : p.g1 + ' - ' + p.g2}
+                      </span>
                       <span style={{ fontSize: '0.82rem', color: '#f5f5f5', fontWeight: 600, flex: 1, textAlign: 'right' }}>{p.equipo2}</span>
                     </div>
                   </div>
@@ -522,7 +535,7 @@ export default function TorneoMesa() {
           ))}
         </div>
 
-        <div>
+        <div ref={panelRef} style={{ scrollMarginTop: 80 }}>
           {!partido ? (
             <div className="empty-state" style={{ minHeight: 300 }}>
               <div className="empty-state-icon">-</div>
@@ -685,7 +698,7 @@ export default function TorneoMesa() {
           <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 400 }}>
             <div className="modal-header">
               <h2 className="modal-title">
-                {modalJugador.tipo === 'gol' ? 'Quien marco?' : modalJugador.tipo === 'amarilla' ? 'A quien la amarilla?' : 'A quien la roja?'}
+                {modalJugador.tipo === 'gol' ? '¿Quién marcó?' : modalJugador.tipo === 'amarilla' ? '¿A quién la amarilla?' : '¿A quién la roja?'}
               </h2>
               <button className="btn btn-ghost btn-sm" onClick={() => setModalJugador(null)}>X</button>
             </div>
@@ -848,7 +861,7 @@ export default function TorneoMesa() {
                 )}
               </div>
             ) : (
-              <p style={{ color: '#888', fontSize: '0.78rem', marginBottom: 20 }}>Esta accion no se puede deshacer.</p>
+              <p style={{ color: '#888', fontSize: '0.78rem', marginBottom: 20 }}>Esta acción no se puede deshacer.</p>
             )}
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={() => { setConfirmFinalizar(false); setTanda([]) }} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid #2a2a2a', borderRadius: 10, color: '#666', cursor: 'pointer', fontFamily: 'Outfit', fontWeight: 600 }}>

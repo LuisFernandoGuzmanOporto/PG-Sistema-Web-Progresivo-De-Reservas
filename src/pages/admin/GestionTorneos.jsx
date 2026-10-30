@@ -11,6 +11,7 @@ import {
 import { resolverSolicitudCancha, registrarEnBitacora, guardarTorneo,
          guardarQRTorneo } from '../../lib/guardar'
 import { jornadasDelTorneo, DIAS_SEMANA, costoDelTorneo } from '../../lib/jornadas'
+import { hoyBolivia } from '../../lib/fecha'
 import { subirPublico, revisarArchivo, TIPOS_IMAGEN, urlPublica } from '../../lib/archivos'
 import { DEPORTE_CONFIG } from '../../lib/deportes'
 
@@ -154,7 +155,7 @@ export default function GestionTorneos() {
   /** Fechas coherentes, cupo par y mayor a 3, precio no negativo. */
   const validarTorneo = () => {
     const e = {}
-    const hoy = new Date().toISOString().slice(0, 10)
+    const hoy = hoyBolivia()
     if (!form.nombre.trim()) e.nombre = 'Escribe el nombre del torneo, por ejemplo «Copa Sport Center 2026».'
     else if (form.nombre.trim().length < 4) e.nombre = 'El nombre es muy corto: usa al menos 4 caracteres.'
     else if (TORNEOS.some(t => t.nombre.toLowerCase() === form.nombre.trim().toLowerCase()))
@@ -267,7 +268,7 @@ export default function GestionTorneos() {
       horarios: form.dias.join(', ') + ': ' + form.horaInicio + ' a ' + form.horaFin,
       // Lo organiza el complejo, asi que no hay a quien pedirle la cancha:
       // la solicitud nace aprobada y las jornadas ya quedan ocupadas
-      solicitud: { estado: 'aprobada', fecha: fechaLegible(new Date().toISOString().slice(0, 10)),
+      solicitud: { estado: 'aprobada', fecha: fechaLegible(hoyBolivia()),
                    resueltaPor: USUARIO_ACTUAL.nombre, motivo: null,
                    cancha: form.cancha, dias: form.dias,
                    horaInicio: form.horaInicio, horaFin: form.horaFin,

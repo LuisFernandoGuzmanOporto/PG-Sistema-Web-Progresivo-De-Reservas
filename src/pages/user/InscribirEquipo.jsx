@@ -6,7 +6,7 @@ import NoEncontrado from '../../components/NoEncontrado'
 import AvisoFaltantes from '../../components/AvisoFaltantes'
 import { propsCampo, MensajeCampo, irAlPrimerError } from '../../components/Validacion'
 import { validarDorsales } from '../../lib/torneo'
-import { torneoPorId, aceptaInscripciones, inscripcionVencida } from '../../lib/datos'
+import { torneoPorId, aceptaInscripciones, inscripcionVencida, USUARIO_ACTUAL } from '../../lib/datos'
 import { guardarEquipo, guardarComprobanteEquipo, revisarCodigoCanje } from '../../lib/guardar'
 import { subirComprobante, subirPublico, urlPublica,
          revisarArchivo, TIPOS_IMAGEN } from '../../lib/archivos'
@@ -65,7 +65,11 @@ export default function InscribirEquipo() {
   const [subiendoComp, setSubiendoComp]   = useState(false)
   const [errorComp, setErrorComp]         = useState(null)
   const [equipoId, setEquipoId]           = useState(null)
-  const [capitan, setCapitan] = useState({ nombre: '', telefono: '' })
+  // El que inscribe suele ser el capitán: sus datos ya vienen de su cuenta y
+  // los puede cambiar si el capitán es otro. Antes había que escribirlos.
+  const [capitan, setCapitan] = useState({
+    nombre: USUARIO_ACTUAL.nombre || '', telefono: USUARIO_ACTUAL.telefono || '',
+  })
   // Una sola lista, no titulares y suplentes por separado.
   //
   // Al inscribirse nadie sabe todavia quien va a ser titular: eso se decide

@@ -361,7 +361,7 @@ export default function GestionEntrenamientos() {
               <button aria-label="Cerrar" className="btn btn-ghost btn-sm" onClick={() => setShowEliminar(null)}>✕</button>
             </div>
             <p style={{ color: '#888', fontSize: '0.85rem', lineHeight: 1.6, marginBottom: 20 }}>
-              Se quitara <strong style={{ color: '#f5f5f5' }}>{showEliminar.nombre}</strong> del horario publico. Esta accion no se puede deshacer.
+              Se quitará <strong style={{ color: '#f5f5f5' }}>{showEliminar.nombre}</strong> del horario público. Esta acción no se puede deshacer.
             </p>
             <div style={{ display: 'flex', gap: 10 }}>
               <button className="btn btn-outline w-full" style={{ justifyContent: 'center' }} onClick={() => setShowEliminar(null)}>Cancelar</button>

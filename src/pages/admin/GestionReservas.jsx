@@ -6,6 +6,7 @@ import {
   reservasDeEmpresa, canchasDeEmpresa, EMPRESAS, BITACORA, SESION, USUARIO_ACTUAL,
 } from '../../lib/datos'
 import { resolverReserva, registrarEnBitacora } from '../../lib/guardar'
+import { hoyBolivia } from '../../lib/fecha'
 
 
 const ESTADO = {
@@ -14,6 +15,8 @@ const ESTADO = {
   rechazada:  { label: 'Rechazada',  color: '#ef4444', bg: 'rgba(239,68,68,0.12)'  },
   // Pagó cuando ya se le había pasado el tiempo y otra persona tomó la hora
   vencida:    { label: 'Pago fuera de tiempo', color: '#a855f7', bg: 'rgba(168,85,247,0.12)' },
+  // Quedó pendiente y su día ya pasó: nadie la revisó a tiempo
+  pasada:     { label: 'Sin revisar · ya pasó', color: '#888', bg: 'rgba(255,255,255,0.06)' },
 }
 
 const ahora = () => new Date().toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit', hour12: false })
@@ -65,17 +68,38 @@ export function GestionReservas() {
   const deClientes = reservas.filter(r => r.origen !== 'torneo' && r.estado !== 'apartada')
   const deTorneos  = reservas.filter(r => r.origen === 'torneo')
 
-  const pendientes  = deClientes.filter(r => r.estado === 'pendiente')
+  // Una pendiente cuyo día ya pasó no es algo por revisar: va aparte. Antes
+  // seguían en «Por revisar» reservas pendientes de hace meses.
+  const hoy = hoyBolivia()
+  const yaPaso = (r) => (r.fechaISO || '') < hoy
+  const estadoDe = (r) => r.estado === 'pendiente' && yaPaso(r) ? 'pasada' : r.estado
+
+  const pendientes  = deClientes.filter(r => estadoDe(r) === 'pendiente')
+  const pasadas     = deClientes.filter(r => estadoDe(r) === 'pasada')
   const confirmadas = deClientes.filter(r => r.estado === 'confirmada')
   const rechazadas  = deClientes.filter(r => r.estado === 'rechazada')
   const fueraDeTiempo = deClientes.filter(r => r.estado === 'vencida')
+  // «Hoy» es la fecha de la reserva, no cuándo se confirmó: antes contaba las
+  // confirmadas de cualquier mes
+  const confirmadasHoy = confirmadas.filter(r => r.fechaISO === hoy)
 
-  const visibles = filtro === 'todas'   ? deClientes
-                 : filtro === 'torneos' ? deTorneos
-                 : deClientes.filter(r => r.estado === filtro)
+  // Primero lo que viene, de lo más cercano a lo más lejano; después lo que
+  // ya pasó, de lo más reciente a lo más antiguo. Antes iban en el orden en
+  // que llegaban de la base, y costaba encontrar una reserva.
+  const ordenar = (lista) => [...lista].sort((a, b) => {
+    const pa = yaPaso(a), pb = yaPaso(b)
+    if (pa !== pb) return pa ? 1 : -1
+    const ka = (a.fechaISO || '') + (a.horaInicio || '')
+    const kb = (b.fechaISO || '') + (b.horaInicio || '')
+    return pa ? kb.localeCompare(ka) : ka.localeCompare(kb)
+  })
 
-  // Ingreso del día: solo lo confirmado, y solo lo que pago un cliente
-  const ingresoConfirmado = confirmadas.reduce((s, r) => s + r.monto, 0)
+  const visibles = ordenar(filtro === 'todas'   ? deClientes
+                         : filtro === 'torneos' ? deTorneos
+                         : deClientes.filter(r => estadoDe(r) === filtro))
+
+  // Ingreso de hoy: solo lo confirmado, y solo lo que pagó un cliente
+  const ingresoConfirmado = confirmadasHoy.reduce((s, r) => s + r.monto, 0)
 
   return (
     <Layout role="admin">
@@ -101,9 +125,9 @@ export function GestionReservas() {
       <div className="stats-grid" style={{ marginBottom: 20 }}>
         {[
           { label: 'Por revisar',       value: pendientes.length,          icon: '⏳' },
-          { label: 'Confirmadas hoy',   value: confirmadas.length,         icon: '✅' },
+          { label: 'Confirmadas hoy',   value: confirmadasHoy.length,      icon: '✅' },
           { label: 'Rechazadas',        value: rechazadas.length,          icon: '✕'  },
-          { label: 'Ingreso confirmado', value: 'Bs. ' + ingresoConfirmado, icon: '💰' },
+          { label: 'Ingreso de hoy',    value: 'Bs. ' + ingresoConfirmado, icon: '💰' },
         ].map(s => (
           <div key={s.label} className="stat-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -122,6 +146,7 @@ export function GestionReservas() {
           ['confirmada', `Confirmadas (${confirmadas.length})`],
           ['rechazada',  `Rechazadas (${rechazadas.length})`],
           ...(fueraDeTiempo.length ? [['vencida', `Pagos fuera de tiempo (${fueraDeTiempo.length})`]] : []),
+          ...(pasadas.length ? [['pasada', `Sin revisar, ya pasadas (${pasadas.length})`]] : []),
           ['torneos',    `🏆 Horas de torneo (${deTorneos.length})`],
         ].map(([k, label]) => (
           <button key={k} className={`tab ${filtro === k ? 'active' : ''}`} onClick={() => setFiltro(k)}>{label}</button>
@@ -187,8 +212,8 @@ export function GestionReservas() {
                             : <span style={{ color: '#ef4444', fontSize: '0.76rem' }}>Sin comprobante</span>}
                     </td>
                     <td>
-                      <span className="badge" style={{ background: ESTADO[r.estado].bg, color: ESTADO[r.estado].color }}>
-                        {ESTADO[r.estado].label}
+                      <span className="badge" style={{ background: ESTADO[estadoDe(r)].bg, color: ESTADO[estadoDe(r)].color }}>
+                        {ESTADO[estadoDe(r)].label}
                       </span>
                     </td>
                     <td>

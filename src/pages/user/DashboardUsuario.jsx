@@ -3,7 +3,7 @@ import Layout from '../../components/layout/Layout'
 import { TORNEOS as TODOS_LOS_TORNEOS, partidosVigentes,
          ESTADO_TORNEO, conteoEquipos, USUARIO_ACTUAL, aceptaInscripciones,
          misReservas, empresasActivas, canchasDeEmpresa,
-         FORMAS_DE_GANAR_PUNTOS } from '../../lib/datos'
+         FORMAS_DE_GANAR_PUNTOS, nivelDe, torneosCreadosPor } from '../../lib/datos'
 import { hoyISO } from '../../lib/agenda'
 import { horaDelPartido } from '../../lib/horaDelPartido'
 import { primeroMiDeporte, esMiDeporte, EMOJI_DEPORTE as EMOJI } from '../../lib/preferencias'
@@ -32,6 +32,17 @@ export default function DashboardUsuario() {
   // tomaban las tres primeras de la lista tal como llegaban, y podia mostrar
   // una reserva de hace meses y dejar afuera la de manana.
   const hoy = hoyISO()
+
+  // Lo que le falta para el siguiente nivel, con la misma cuenta que la
+  // pantalla de Recompensas. Antes aquí decía «25 puntos» fijo.
+  const nivel = nivelDe(USUARIO_ACTUAL.puntos)
+  const faltanParaNivel = nivel.hasta === Infinity ? 0 : nivel.hasta - USUARIO_ACTUAL.puntos + 1
+
+  // Los torneos que organiza y ya se están jugando: desde aquí entra directo a
+  // su Mesa Técnica. Antes solo se llegaba por Torneos → Mis Torneos, y los que
+  // organizaban un torneo no la encontraban.
+  const MIS_MESAS = torneosCreadosPor().filter(t => t.estado === 'en_curso')
+
   // Si ya reservó antes, el aviso no le dice que nunca reservó
   const YA_RESERVO = misReservas().length > 0
   const PROXIMAS_RESERVAS = misReservas()
@@ -113,6 +124,24 @@ export default function DashboardUsuario() {
         <button className="btn btn-outline" onClick={() => navigate('/app/entrenamientos')}>🏃 Entrenamientos</button>
         <button className="btn btn-outline" onClick={() => navigate('/app/torneos')}>🏆 Torneos</button>
       </div>
+
+      {MIS_MESAS.length > 0 && (
+        <div className="card" style={{ padding: 18, marginBottom: 20, border: '1px solid rgba(239,68,68,0.35)', background: 'linear-gradient(135deg, rgba(139,0,0,0.18) 0%, #1a1a1a 70%)' }}>
+          <p style={{ color: '#ef4444', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', marginBottom: 10 }}>
+            🎮 ERES ORGANIZADOR · MESA TÉCNICA
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {MIS_MESAS.map(t => (
+              <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <span style={{ color: '#f5f5f5', fontWeight: 600, fontSize: '0.9rem' }}>{t.nombre}</span>
+                <button className="btn btn-primary btn-sm" onClick={() => navigate(`/app/torneos/${t.id}/mesa`)}>
+                  Abrir Mesa Técnica
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Main grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, marginBottom: 24 }}>
@@ -200,7 +229,9 @@ export default function DashboardUsuario() {
             <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'rgba(245,158,11,0.15)', border: '3px solid #f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', flexDirection: 'column' }}>
               <span style={{ fontFamily: 'Bebas Neue', fontSize: '1.8rem', color: '#f5f5f5' }}>{USUARIO_ACTUAL.puntos}</span>
             </div>
-            <p style={{ color: '#666', fontSize: '0.8rem', marginBottom: 16 }}>25 puntos más para el siguiente nivel</p>
+            <p style={{ color: '#666', fontSize: '0.8rem', marginBottom: 16 }}>
+              {faltanParaNivel > 0 ? `${faltanParaNivel} puntos más para el siguiente nivel` : `Nivel ${nivel.nombre}: el más alto`}
+            </p>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {FORMAS_DE_GANAR_PUNTOS.slice(0, 3).map((f, i) => ({

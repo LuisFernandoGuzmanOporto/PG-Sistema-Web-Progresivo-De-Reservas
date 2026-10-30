@@ -8,6 +8,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { yaSeJugo } from './horaDelPartido.js'
+import { hoyBolivia } from './fecha.js'
 
 /**
  * Compara dos identificadores sin importar si son numero o texto.
@@ -509,11 +510,8 @@ export const solicitudesDeCancha = (empresaId) =>
 export const solicitudDe = (t) =>
   t.creador_tipo === 'complejo' ? { estado: 'aprobada' } : (t.solicitud || { estado: 'pendiente' })
 
-// La fecha de hoy en el teléfono, como 'AAAA-MM-DD'
-const hoyLocal = () => {
-  const d = new Date()
-  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
-}
+// La fecha de hoy en Bolivia, como 'AAAA-MM-DD'
+const hoyLocal = hoyBolivia
 
 /** El organizador puso una fecha límite de inscripción y ya pasó. */
 export const inscripcionVencida = (t) =>
@@ -840,7 +838,7 @@ export const ESTADISTICAS = {
 // Se devuelve la misma forma vacia en vez de null: asi la pantalla muestra
 // ceros en lugar de romperse.
 const SIN_ESTADISTICAS = {
-  periodo: 'Sin datos todavia', totalReservas: 0, horasVendidas: 0,
+  periodo: 'Sin datos todavía', totalReservas: 0, horasVendidas: 0,
   ocupacion: 0, ingresoMes: 0, horasDeTorneo: 0, noShow: 0, canceladas: 0,
   porDia: ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'].map(dia => ({ dia, reservas: 0 })),
   porHora: [], porCancha: [],
@@ -903,6 +901,24 @@ export const RECOMPENSAS_POR_EMPRESA = {
 export const recompensasDeEmpresa = (empresaId) => RECOMPENSAS_POR_EMPRESA[empresaId] || []
 
 /** Catálogo completo que ve el cliente: las recompensas activas de todos los complejos. */
+/**
+ * Cuántas quedan de una recompensa. El stock es lo que el complejo ofreció en
+ * total; cada canje se lleva una. Antes se mostraba el stock tal cual, y una
+ * recompensa con 5 de stock y 3 canjes seguía diciendo "5 disponibles".
+ */
+export const quedanDe = (r) => Math.max((Number(r?.stock) || 0) - (Number(r?.canjeados) || 0), 0)
+
+/** Cómo se usa el código de un canje. Depende de lo que se canjeó: antes la
+ * botella de agua decía que el código era para inscribir un equipo. */
+export const comoUsarCanje = (tipo, empresa = 'el complejo') =>
+  tipo === 'descuento_reserva' ? `Ingresa este código al hacer tu reserva en ${empresa}: el descuento se aplica solo.`
+  : tipo === 'torneo_gratis'   ? `Ingresa este código al inscribir tu equipo en un torneo de ${empresa}.`
+  : `Muestra este código en el mostrador de ${empresa}. El personal lo valida y te entrega tu premio.`
+
+/** Las que un cliente puede ver en un complejo: solo las activas. */
+export const recompensasVisibles = (empresaId) =>
+  recompensasDeEmpresa(empresaId).filter(r => r.activa)
+
 export const catalogoRecompensas = () =>
   empresasActivas().flatMap(e => recompensasDeEmpresa(e.id)
     .filter(r => r.activa)
@@ -1151,6 +1167,9 @@ export const registrarCanje = (recompensa, guardado = null, cliente = USUARIO_AC
     codigo: guardado?.codigo ?? generarCodigoCanje(), estado: 'disponible', fecha: 'Hoy',
   }
   CANJES.unshift(nuevo)
+  // La recompensa canjeada queda con una menos disponible
+  const real = (RECOMPENSAS_POR_EMPRESA[recompensa.empresa_id] || []).find(r => mismo(r.id, recompensa.id))
+  if (real) real.canjeados = (Number(real.canjeados) || 0) + 1
   return nuevo
 }
 

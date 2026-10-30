@@ -3,8 +3,9 @@ import Layout from '../../components/layout/Layout'
 import { catalogoRecompensas, NIVELES as NIVELES_BASE, nivelDe,
          FORMAS_DE_GANAR_PUNTOS, USUARIO_ACTUAL, canjesDeCliente,
          registrarCanje, empresaPorId, TIPO_RECOMPENSA,
-         PUNTOS_HISTORIAL } from '../../lib/datos'
+         PUNTOS_HISTORIAL, quedanDe, comoUsarCanje } from '../../lib/datos'
 import { guardarCanje } from '../../lib/guardar'
+import { useAuth } from '../../lib/auth'
 
 
 // Los canjes de este cliente, del mismo registro que ven el complejo y su
@@ -34,6 +35,8 @@ const TIPO_LABEL = {
 }
 
 export default function Recompensas() {
+  // Para que los puntos de la cabecera bajen apenas se canjea
+  const { recargarPerfil } = useAuth()
   const [puntos, setPuntos]             = useState(USUARIO_ACTUAL.puntos)
   const [canjes, setCanjes]             = useState(canjesDeCliente().map(aTarjeta))
   const [tab, setTab]                   = useState('catalogo') // catalogo | miscanjes | historial
@@ -48,7 +51,7 @@ export default function Recompensas() {
     .map(r => ({
       id: r.id, titulo: r.nombre, desc: r.descripcion, puntos: r.puntos,
       icon: r.icono, tipo: r.tipo, empresa: r.empresa, empresa_id: r.empresa_id,
-      disponible: r.stock > 0,
+      disponible: quedanDe(r) > 0,
     }))
     .sort((a, b) => a.puntos - b.puntos)
 
@@ -85,6 +88,7 @@ export default function Recompensas() {
     setCanjes(prev => [tarjeta, ...prev])
     setShowConfirm(null)
     setShowExito(tarjeta)
+    recargarPerfil?.()
   }
 
   // ── Copiar código ────────────────────────────────────────────────────────
@@ -186,7 +190,7 @@ export default function Recompensas() {
           <div className="barra-pestanas" style={{ display: 'flex', borderBottom: '1px solid #2a2a2a', marginBottom: 20 }}>
             {[
               { key: 'catalogo',   label: '🎁 Catálogo' },
-              { key: 'miscanjes',  label: `🎟️ Mis Canjes${canjesDisponibles.length ? ` (${canjesDisponibles.length})` : ''}` },
+              { key: 'miscanjes',  label: `🎟️ Mis Canjes${canjes.length ? ` (${canjes.length})` : ''}` },
               { key: 'historial',  label: '📋 Historial de Puntos' },
             ].map(t => (
               <button key={t.key} onClick={() => setTab(t.key)} style={{
@@ -280,7 +284,7 @@ export default function Recompensas() {
                       <div style={{ marginTop: 14, padding: '10px 14px', background: disponible ? 'rgba(0,188,212,0.06)' : 'rgba(255,255,255,0.03)', border: `1px dashed ${disponible ? 'rgba(0,188,212,0.3)' : '#2a2a2a'}`, borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
                         <div>
                           <p style={{ fontSize: '0.68rem', color: '#555', marginBottom: 4 }}>
-                            {c.tipo === 'descuento_reserva' ? 'Ingresa este código al hacer tu reserva' : 'Ingresa este código al inscribir tu equipo'}
+                            {comoUsarCanje(c.tipo, c.empresa || 'el complejo')}
                           </p>
                           <p style={{ fontFamily: 'Bebas Neue', fontSize: '1.2rem', color: disponible ? '#00BCD4' : '#444', letterSpacing: 3 }}>
                             {c.codigo}

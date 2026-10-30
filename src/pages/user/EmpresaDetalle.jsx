@@ -5,7 +5,7 @@ import Layout from '../../components/layout/Layout'
 import NoEncontrado from '../../components/NoEncontrado'
 import { empresasActivas, USUARIO_ACTUAL, torneosDeEmpresa, partidosDeEmpresa,
          conteoEquipos, ESTADO_TORNEO, CANCHAS_POR_EMPRESA,
-         ENTRENAMIENTOS_POR_EMPRESA, RECOMPENSAS_POR_EMPRESA,
+         ENTRENAMIENTOS_POR_EMPRESA, recompensasVisibles, quedanDe, comoUsarCanje,
          CALIFICACIONES_POR_EMPRESA, promedioEstrellas,
          aceptaInscripciones, reservasDeEmpresa, reservaEnFranja, mismo,
          registrarReserva, registrarCanje, PARTIDOS_ESPONTANEOS, RESERVAS_EMPRESA,
@@ -15,6 +15,7 @@ import { apartarHora, enviarComprobanteReserva, soltarApartado,
          guardarPartidoEspontaneo, unirseAPartido, salirDePartido } from '../../lib/guardar'
 import { subirComprobante, urlPublica } from '../../lib/archivos'
 import { recargarComentarios, recargarHorarios } from '../../lib/carga'
+import { useAuth } from '../../lib/auth'
 import { horaDelPartido, fechaHoraElegida, yaSeJugo } from '../../lib/horaDelPartido'
 import TabTorneos from './empresa/TabTorneos'
 import TabRecompensas from './empresa/TabRecompensas'
@@ -70,6 +71,8 @@ function mmss(ms) {
 
 const HOY = formatFecha(new Date())
 export default function EmpresaDetalle() {
+  // Para que los puntos de la cabecera bajen apenas se canjea
+  const { recargarPerfil } = useAuth()
   const { id } = useParams()
   const navigate = useNavigate()
 
@@ -79,7 +82,8 @@ export default function EmpresaDetalle() {
   const tieneUbicacion     = Boolean(empresa?.lat) && Boolean(empresa?.lng)
   const torneos            = torneosDeEmpresa(id)
   const torneosAbiertos    = torneos.filter(aceptaInscripciones)
-  const recompensas        = RECOMPENSAS_POR_EMPRESA[id] || []
+  // Solo las activas: la base rechaza el canje de una desactivada
+  const recompensas        = recompensasVisibles(id)
   const entrenamientosBase = ENTRENAMIENTOS_POR_EMPRESA[id] || []
 
   const [calificaciones, setCalificaciones] = useState(CALIFICACIONES_POR_EMPRESA[id] || [])
@@ -153,7 +157,7 @@ export default function EmpresaDetalle() {
   const [errorCanje, setErrorCanje] = useState(null)
 
   const canjear = async (r) => {
-    if (puntosUsuario < r.puntos) return
+    if (puntosUsuario < r.puntos || quedanDe(r) === 0) return
 
     // La base decide: si no alcanzan los puntos, responde con el error
     const g = await guardarCanje(r)
@@ -164,6 +168,7 @@ export default function EmpresaDetalle() {
     setPuntos(pu => pu - r.puntos)
     setErrorCanje(null)
     setCanjeHecho({ ...r, codigo: g.canje.codigo })
+    recargarPerfil?.()
   }
   const estaLogueado  = true
 
@@ -1298,7 +1303,7 @@ export default function EmpresaDetalle() {
               <p style={{ fontFamily: 'Bebas Neue', fontSize: '2rem', color: '#f59e0b', letterSpacing: 3 }}>{canjeHecho.codigo}</p>
             </div>
             <p style={{ color: '#888', fontSize: '0.82rem', lineHeight: 1.5, marginBottom: 16 }}>
-              Muestra este código en el mostrador de {empresa?.nombre}. El personal lo valida y te entrega tu premio.
+              {comoUsarCanje(canjeHecho.tipo, empresa?.nombre)}
             </p>
             <p style={{ color: '#666', fontSize: '0.8rem', marginBottom: 16 }}>
               Se descontaron <strong style={{ color: '#f59e0b' }}>{canjeHecho.puntos} pts</strong>.

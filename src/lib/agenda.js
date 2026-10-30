@@ -1,3 +1,4 @@
+import { hoyBolivia } from './fecha.js'
 import {
   CANCHAS_POR_EMPRESA, ENTRENAMIENTOS_POR_EMPRESA, RESERVAS_EMPRESA,
   empresaPorId, mismo, ocupaLaCancha,
@@ -116,13 +117,8 @@ export function horasLibres(empresaId, canchaId, fechaISO) {
     .map(f => f.slot)
 }
 
-/** Fecha de hoy como 'YYYY-MM-DD', en hora local y no en UTC. */
-export const hoyISO = () => {
-  const d = new Date()
-  return d.getFullYear() + '-' +
-    String(d.getMonth() + 1).padStart(2, '0') + '-' +
-    String(d.getDate()).padStart(2, '0')
-}
+/** Fecha de hoy como 'YYYY-MM-DD', la de Bolivia (src/lib/fecha.js). */
+export const hoyISO = hoyBolivia
 
 /** 'YYYY-MM-DD' → '16 de septiembre', para mostrar. */
 export function fechaLegible(fechaISO) {
