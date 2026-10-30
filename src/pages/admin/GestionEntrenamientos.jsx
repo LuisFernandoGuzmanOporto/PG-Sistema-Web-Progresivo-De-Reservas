@@ -5,6 +5,7 @@ import { propsCampo, MensajeCampo, irAlPrimerError } from '../../components/Vali
 import { entrenadoresDeEmpresa, canchasDeEmpresa, ENTRENAMIENTOS_POR_EMPRESA, entrenamientosDeEmpresa, SESION,
 } from '../../lib/datos'
 import { guardarEntrenamiento as guardarEnBase, borrarEntrenamiento, registrarEnBitacora } from '../../lib/guardar'
+import { montoBs } from '../../lib/dinero'
 
 const DEPORTE_COLORES = {
   Futbol: '#ef4444', 'Futbol 5': '#ef4444', Wally: '#00BCD4',
@@ -241,7 +242,7 @@ export default function GestionEntrenamientos() {
                   </div>
                   {e.precio !== '' && e.precio != null && (
                     <span style={{ fontSize: '0.72rem', background: 'rgba(255,255,255,0.05)', border: '1px solid #2a2a2a', padding: '2px 8px', borderRadius: 20, color: '#888' }}>
-                      Bs. {e.precio}
+                      Bs. {montoBs(e.precio)}
                     </span>
                   )}
                 </div>

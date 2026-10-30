@@ -1,7 +1,7 @@
 import { supabase } from './supabase'
 import * as D from './datos'
 import { traducirError } from './errores'
-import { hoyBolivia } from './fecha'
+import { hoyBolivia, fechaDeBolivia, horaDeBolivia } from './fecha'
 
 // Las columnas del plantel que usa la aplicación
 const COLUMNAS_JUGADOR = 'id, equipo_id, jugador_id, nombre, dorsal, posicion, habilitado'
@@ -165,7 +165,7 @@ export async function cargarDatos({ forzar = false } = {}) {
         adminId: e.admin_id || null,
         admin: nombrePorPerfil.get(e.admin_id) || '—',
         adminEmail: correoPorPerfil.get(e.admin_id) || '',
-        fechaSolicitud: fechaCorta(String(e.created_at).slice(0, 10)),
+        fechaSolicitud: fechaCorta(fechaDeBolivia(e.created_at)),
       }
     }))
 
@@ -195,7 +195,7 @@ export async function cargarDatos({ forzar = false } = {}) {
       nombre: nombrePorPerfil.get(e.id) || e.usuario,
       usuario: e.usuario, telefono: telefonoDeEmpleado.get(e.id) || null, turno: e.turno,
       activo: e.activo, permisos: e.permisos || [],
-      creado: fechaCorta(String(e.created_at).slice(0, 10)),
+      creado: fechaCorta(fechaDeBolivia(e.created_at)),
     })))
 
     // ── Entrenadores y entrenamientos ────────────────────────────────────
@@ -258,7 +258,7 @@ export async function cargarDatos({ forzar = false } = {}) {
       // Quién entregó el premio y cuándo: lo anota la base (migraciones/040)
       entregadoPor: c.entregado_por ? (nombrePorPerfil.get(c.entregado_por) || null) : null,
       entregadoEl: c.entregado_at || null,
-      fecha: fechaReserva(String(c.created_at).slice(0, 10)),
+      fecha: fechaReserva(fechaDeBolivia(c.created_at)),
     })))
 
     // ── Calificaciones ───────────────────────────────────────────────────
@@ -272,7 +272,7 @@ export async function cargarDatos({ forzar = false } = {}) {
           // ya habia dejado la suya, y le ofrecia dejar otra encima
           cliente_id: c.cliente_id,
           estrellas: c.estrellas,
-          fecha: fechaReserva(String(c.created_at).slice(0, 10)),
+          fecha: fechaReserva(fechaDeBolivia(c.created_at)),
         }
       })
     }
@@ -360,7 +360,7 @@ export async function cargarDatos({ forzar = false } = {}) {
       puntos: u.puntos ?? 0, foto: u.avatar_url || null,
       reservas: (reservas.data || []).filter(r => r.cliente_id === u.id).length,
       estado: u.activo ? 'activo' : 'suspendido',
-      alta: fechaCorta(String(u.created_at).slice(0, 10)),
+      alta: fechaCorta(fechaDeBolivia(u.created_at)),
       empresa: empresaDelAdmin.get(u.id) || empresaDelEmpleado.get(u.id) || null,
     })))
 
@@ -369,7 +369,7 @@ export async function cargarDatos({ forzar = false } = {}) {
     reemplazar(D.PUNTOS_HISTORIAL, (puntos.data || []).map(h => ({
       id: h.id, concepto: h.concepto,
       puntos: (h.puntos > 0 ? '+' : '') + h.puntos,
-      fecha: fechaCorta(String(h.created_at).slice(0, 10)),
+      fecha: fechaCorta(fechaDeBolivia(h.created_at)),
       icon: h.puntos > 0 ? '⭐' : '🎁',
     })))
 
@@ -421,8 +421,8 @@ export async function cargarDatos({ forzar = false } = {}) {
         solicitud: solicitudPorTorneo.get(t.id)
           ? { estado: solicitudPorTorneo.get(t.id).estado,
               // Pendiente: cuándo se pidió. Resuelta: cuándo y quién la resolvió
-              fecha: fechaCorta(String(solicitudPorTorneo.get(t.id).resuelta_at
-                                       || solicitudPorTorneo.get(t.id).created_at).slice(0, 10)),
+              fecha: fechaCorta(fechaDeBolivia(solicitudPorTorneo.get(t.id).resuelta_at
+                                       || solicitudPorTorneo.get(t.id).created_at)),
               resueltaPor: nombrePorPerfil.get(solicitudPorTorneo.get(t.id).resuelta_por) || null,
               motivo: solicitudPorTorneo.get(t.id).motivo,
               // Lo que se le pidio al complejo: cancha, dias y horario
@@ -437,7 +437,13 @@ export async function cargarDatos({ forzar = false } = {}) {
 
         equipos: misEquipos.map(e => ({
           id: e.id, nombre: e.nombre, capitan: e.capitan_nombre, estado: e.estado,
-          comprobante: e.comprobante_url, integrantes_ids: [],
+          comprobante: e.comprobante_url, capitan_id: e.capitan_id,
+          // Quienes con cuenta son parte del equipo: el capitan que lo inscribio
+          // y los jugadores que tengan cuenta. Antes quedaba vacio, y el cliente
+          // no encontraba su equipo ni en «Mis participaciones» ni en el torneo:
+          // le seguia ofreciendo inscribirse, como si nunca lo hubiera hecho.
+          integrantes_ids: [e.capitan_id,
+            ...(jugadoresPorEquipo[e.id] || []).map(j => j.jugador_id)].filter(Boolean),
           // El escudo que subio el capitan, y con que codigo cubrio la
           // inscripcion si la cubrio con puntos
           escudo: e.escudo_url || null,
@@ -492,12 +498,13 @@ export async function cargarDatos({ forzar = false } = {}) {
 
     // ── Bitacora ─────────────────────────────────────────────────────────
     reemplazar(D.BITACORA, (bitacora.data || []).map(b => {
-      const f = new Date(b.created_at)
+      // Fecha y hora, las dos de Bolivia: antes la fecha salía en UTC y la hora
+      // en la del equipo, y podía decir «30 Oct, 21:52» de algo del 29
       return {
         id: b.id, empresa_id: b.empresa_id, empleado_id: b.actor_id,
         empleado: b.actor_nombre, tipo: b.tipo, accion: b.accion, detalle: b.detalle,
-        fecha: fechaCorta(String(b.created_at).slice(0, 10)),
-        hora: f.toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit', hour12: false }),
+        fecha: fechaCorta(fechaDeBolivia(b.created_at)),
+        hora: horaDeBolivia(b.created_at),
       }
     }))
 

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { quedanDe } from '../../../lib/datos'
+import { quedanDe, pts } from '../../../lib/datos'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Pestaña «Recompensas» de la ficha de un complejo.
@@ -36,7 +36,7 @@ export default function TabRecompensas({ recompensas, puntosUsuario, empresa,
       <div style={{ background:'linear-gradient(135deg,rgba(139,0,0,0.25) 0%,rgba(245,158,11,0.1) 100%)', border:'1px solid rgba(139,0,0,0.3)', borderRadius:14, padding:'18px 24px', marginBottom:24, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
         <div>
           <p style={{ color:'#888', fontSize:'0.8rem', marginBottom:4 }}>Tus puntos disponibles</p>
-          <p style={{ fontFamily:'Bebas Neue', fontSize:'2.2rem', color:'#f59e0b', lineHeight:1 }}>{puntosUsuario} pts</p>
+          <p style={{ fontFamily:'Bebas Neue', fontSize:'2.2rem', color:'#f59e0b', lineHeight:1 }}>{pts(puntosUsuario)}</p>
           <p style={{ color:'#555', fontSize:'0.75rem', marginTop:4 }}>Ganas puntos reservando, en torneos y partidos</p>
         </div>
         <div style={{ textAlign:'right' }}>
@@ -71,12 +71,12 @@ export default function TabRecompensas({ recompensas, puntosUsuario, empresa,
                 <p style={{ fontSize:'0.8rem', color:'#888', lineHeight:1.5, marginBottom:14 }}>{r.descripcion}</p>
                 <div style={{ marginBottom:14 }}>
                   <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
-                    <span style={{ fontFamily:'Bebas Neue', fontSize:'1.3rem', color:puedesCanjear?'#f59e0b':'#555' }}>{r.puntos} pts</span>
+                    <span style={{ fontFamily:'Bebas Neue', fontSize:'1.3rem', color:puedesCanjear?'#f59e0b':'#555' }}>{pts(r.puntos)}</span>
                     {agotada
                       ? <span style={{ fontSize:'0.72rem', color:'#ef4444', fontWeight:600 }}>Ya no quedan</span>
                       : alcanzan
                         ? <span style={{ fontSize:'0.72rem', color:'#22c55e', fontWeight:600 }}>Puedes canjear</span>
-                        : <span style={{ fontSize:'0.72rem', color:'#555' }}>Te faltan {r.puntos-puntosUsuario} pts</span>}
+                        : <span style={{ fontSize:'0.72rem', color:'#555' }}>{r.puntos-puntosUsuario === 1 ? 'Te falta' : 'Te faltan'} {pts(r.puntos-puntosUsuario)}</span>}
                   </div>
                   <div style={{ height:5, background:'#2a2a2a', borderRadius:3, overflow:'hidden' }}>
                     <div style={{ height:'100%', width:Math.min((puntosUsuario/r.puntos)*100,100)+'%', background:puedesCanjear?'#f59e0b':'#8B0000', borderRadius:3 }} />
@@ -85,7 +85,7 @@ export default function TabRecompensas({ recompensas, puntosUsuario, empresa,
                 <button className={'btn w-full '+(puedesCanjear?'btn-primary':'btn-outline')}
                   style={{ justifyContent:'center', opacity:puedesCanjear?1:0.5 }}
                   disabled={!puedesCanjear} onClick={() => setPorConfirmar(r)}>
-                  {agotada ? 'Agotada' : alcanzan ? 'Canjear Recompensa' : 'Necesitas '+r.puntos+' pts'}
+                  {agotada ? 'Agotada' : alcanzan ? 'Canjear Recompensa' : 'Necesitas '+pts(r.puntos)}
                 </button>
               </div>
             )

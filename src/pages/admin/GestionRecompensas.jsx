@@ -3,7 +3,7 @@ import Layout from '../../components/layout/Layout'
 import AvisoFaltantes from '../../components/AvisoFaltantes'
 import { propsCampo, MensajeCampo, irAlPrimerError } from '../../components/Validacion'
 import { RECOMPENSAS_POR_EMPRESA, recompensasDeEmpresa,
-         CANJES, canjesDeEmpresa, SESION, USUARIO_ACTUAL,
+         CANJES, canjesDeEmpresa, SESION, USUARIO_ACTUAL, pts,
 } from '../../lib/datos'
 import {
   guardarRecompensa, cambiarEstadoRecompensa, borrarRecompensa,
@@ -43,7 +43,7 @@ const aHistorial = (c) => ({
 
 // Qué pasó con el código, para que el administrador tenga el registro:
 // quién entregó el premio y cuándo, o dónde se usó el descuento.
-const FECHA_Y_HORA = { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }
+const FECHA_Y_HORA = { timeZone: 'America/La_Paz', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }
 function queSeHizo(c) {
   if (c.estadoCodigo === 'entregado') {
     const cuando = c.entregadoEl ? new Date(c.entregadoEl).toLocaleString('es-BO', FECHA_Y_HORA) : ''
@@ -150,7 +150,7 @@ export default function GestionRecompensas() {
     registrarEnBitacora({
       tipo: 'recompensa',
       accion: editando ? 'Editó una recompensa' : 'Publicó una recompensa',
-      detalle: form.nombre + ' · ' + form.puntos + ' pts',
+      detalle: form.nombre + ' · ' + pts(form.puntos),
     })
     setErrorGuardar(null)
     setShowModal(false)
@@ -552,7 +552,7 @@ export default function GestionRecompensas() {
                     <span style={{ fontSize: '1.8rem' }}>{form.emoji}</span>
                     <div>
                       <p style={{ color: '#f5f5f5', fontWeight: 600, fontSize: '0.88rem' }}>{form.nombre}</p>
-                      <p style={{ color: '#f59e0b', fontFamily: 'Bebas Neue', fontSize: '1rem' }}>⭐ {form.puntos} pts</p>
+                      <p style={{ color: '#f59e0b', fontFamily: 'Bebas Neue', fontSize: '1rem' }}>⭐ {pts(form.puntos)}</p>
                       <span style={{ fontSize: '0.65rem', color: TIPO_INFO[form.tipo]?.color }}>
                         {TIPO_INFO[form.tipo]?.icon} {TIPO_INFO[form.tipo]?.label}
                       </span>

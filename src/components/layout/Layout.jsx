@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { identidadDeRol } from '../../lib/datos'
+import { identidadDeRol, pts } from '../../lib/datos'
 import { useAuth } from '../../lib/auth'
 import Notificaciones from '../Notificaciones'
 import Avatar from '../Avatar'
@@ -66,7 +66,7 @@ export default function Layout({ children, role = 'user' }) {
   // demostracion, para que la pantalla no quede en blanco un instante.
   const quien = perfil
     ? { nombre: perfil.nombre,
-        detalle: perfil.rol === 'cliente' ? perfil.puntos + ' pts' : (perfil.empresaNombre || '') }
+        detalle: perfil.rol === 'cliente' ? pts(perfil.puntos) : (perfil.empresaNombre || '') }
     : identidadDeRol(role)
   const roleColor = role === 'superadmin' ? '#f59e0b'
                   : role === 'admin'      ? '#00BCD4'

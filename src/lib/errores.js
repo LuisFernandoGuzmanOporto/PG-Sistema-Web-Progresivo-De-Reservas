@@ -32,6 +32,7 @@ const MENSAJES_DE_LA_BASE = [
   [/el torneo ya tiene sus (\d+) equipos aprobados/, (_, n) => `El torneo ya completó sus ${n} equipos. No quedan cupos.`],
   [/este torneo todav[ií]a no recibe inscripciones/, () => 'Este torneo aún no recibe inscripciones: el complejo todavía no aprobó la cancha.'],
   [/este torneo ya no recibe inscripciones/, () => 'Las inscripciones de este torneo ya cerraron.'],
+  [/ya inscribiste un equipo en este torneo/, () => 'Ya inscribiste un equipo en este torneo. Lo ves en Torneos › Mis participaciones.'],
   [/el partido ya est[aá] completo \((\d+) jugadores\)/, (_, n) => `El partido ya está completo (${n} jugadores).`],
   [/ese partido ya no est[aá] abierto/, () => 'Este partido ya no acepta jugadores.'],
   [/ese partido ya se jug[oó]/, () => 'Ese partido ya se jugó. Busca otro o crea el tuyo.'],

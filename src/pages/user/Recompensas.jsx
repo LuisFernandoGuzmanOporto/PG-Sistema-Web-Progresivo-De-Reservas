@@ -3,7 +3,7 @@ import Layout from '../../components/layout/Layout'
 import { catalogoRecompensas, NIVELES as NIVELES_BASE, nivelDe,
          FORMAS_DE_GANAR_PUNTOS, USUARIO_ACTUAL, canjesDeCliente,
          registrarCanje, empresaPorId, TIPO_RECOMPENSA,
-         PUNTOS_HISTORIAL, quedanDe, comoUsarCanje } from '../../lib/datos'
+         PUNTOS_HISTORIAL, quedanDe, comoUsarCanje, pts } from '../../lib/datos'
 import { guardarCanje } from '../../lib/guardar'
 import { useAuth } from '../../lib/auth'
 
@@ -25,7 +25,7 @@ const NIVELES = NIVELES_BASE.map((n, i) => ({
   color: COLOR_NIVEL[i],
 }))
 
-const COMO_GANAR = FORMAS_DE_GANAR_PUNTOS.map(f => ({ accion: f.accion, pts: f.puntos + ' pts' }))
+const COMO_GANAR = FORMAS_DE_GANAR_PUNTOS.map(f => ({ accion: f.accion, pts: pts(f.puntos) }))
 
 // ── Helpers visuales ───────────────────────────────────────────────────────
 const TIPO_LABEL = {
@@ -139,7 +139,7 @@ export default function Recompensas() {
               <div style={{ height: '100%', width: `${Math.min((puntos / 250) * 100, 100)}%`, background: nivelColor, borderRadius: 3, transition: 'width 0.5s' }} />
             </div>
             {puntosParaSig > 0 && (
-              <p style={{ textAlign: 'center', color: '#555', fontSize: '0.72rem', marginBottom: 16 }}>{puntosParaSig} pts más para el siguiente nivel</p>
+              <p style={{ textAlign: 'center', color: '#555', fontSize: '0.72rem', marginBottom: 16 }}>{pts(puntosParaSig)} más para el siguiente nivel</p>
             )}
 
             <div className="divider" />
@@ -215,7 +215,7 @@ export default function Recompensas() {
                   <div key={r.id} className="card" style={{ padding: 16, opacity: puedeComprar ? 1 : 0.5, position: 'relative', overflow: 'visible' }}>
                     {/* Badge puntos */}
                     <div style={{ position: 'absolute', top: -8, right: 10, background: '#f59e0b', color: '#000', fontSize: '0.68rem', fontWeight: 700, padding: '2px 8px', borderRadius: 100 }}>
-                      {r.puntos} pts
+                      {pts(r.puntos)}
                     </div>
 
                     <div style={{ fontSize: '2rem', marginBottom: 8 }}>{r.icon}</div>
@@ -235,7 +235,7 @@ export default function Recompensas() {
                       onClick={() => puedeComprar && setShowConfirm(r)}
                       disabled={!puedeComprar}
                     >
-                      {puedeComprar ? 'Canjear recompensa' : `Necesitas ${r.puntos - puntos} pts más`}
+                      {puedeComprar ? 'Canjear recompensa' : `Necesitas ${pts(r.puntos - puntos)} más`}
                     </button>
                   </div>
                 )
@@ -263,7 +263,7 @@ export default function Recompensas() {
                         <div>
                           <p style={{ fontSize: '0.9rem', fontWeight: 700, color: '#f5f5f5', marginBottom: 2 }}>{c.recompensa}</p>
                           <p style={{ fontSize: '0.72rem', color: '#00BCD4', fontWeight: 600, marginBottom: 2 }}>🏢 {c.empresa}</p>
-                          <p style={{ fontSize: '0.72rem', color: '#555', marginBottom: 6 }}>Canjeado el {c.fecha} · {c.puntosGastados} pts</p>
+                          <p style={{ fontSize: '0.72rem', color: '#555', marginBottom: 6 }}>Canjeado {c.fecha === 'Hoy' ? 'hoy' : 'el ' + c.fecha} · {pts(c.puntosGastados)}</p>
                           <span style={{ fontSize: '0.65rem', fontWeight: 600, padding: '2px 7px', borderRadius: 8, background: `${tipoInfo.color}18`, color: tipoInfo.color }}>
                             {tipoInfo.icon} {tipoInfo.label}
                           </span>

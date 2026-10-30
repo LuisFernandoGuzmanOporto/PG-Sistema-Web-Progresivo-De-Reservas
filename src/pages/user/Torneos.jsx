@@ -5,6 +5,7 @@ import { TORNEOS, ESTADO_TORNEO, estadoDeTorneo, conteoEquipos, torneosCreadosPo
          torneosDondeParticipa, miEquipoEn, solicitudesPendientes,
          SOLICITUD_BADGE, aceptaInscripciones, solicitudDe,
          ESTADO_SOLICITUD, empresasActivas } from '../../lib/datos'
+import { montoBs } from '../../lib/dinero'
 
 export default function Torneos() {
   const navigate = useNavigate()
@@ -250,7 +251,7 @@ export default function Torneos() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <p style={{ color: '#888', lineHeight: 1.6 }}>{showDetalle.desc}</p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                {[['Deporte', showDetalle.deporte], ['Empresa', showDetalle.empresa], ['Fechas', `${showDetalle.fechaInicio} - ${showDetalle.fechaFin}`], ['Equipos', conteoEquipos(showDetalle)], ['Inscripción hasta', showDetalle.inscripcionHasta], ['Precio', `Bs. ${showDetalle.precio}`]].map(([k, v]) => (
+                {[['Deporte', showDetalle.deporte], ['Empresa', showDetalle.empresa], ['Fechas', `${showDetalle.fechaInicio} - ${showDetalle.fechaFin}`], ['Equipos', conteoEquipos(showDetalle)], ['Inscripción hasta', showDetalle.inscripcionHasta], ['Precio', `Bs. ${montoBs(showDetalle.precio)}`]].map(([k, v]) => (
                   <div key={k} style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: 8 }}>
                     <p style={{ fontSize: '0.72rem', color: '#666', marginBottom: 2 }}>{k}</p>
                     <p style={{ fontSize: '0.88rem', color: '#f5f5f5', fontWeight: 600 }}>{v}</p>

@@ -6,10 +6,12 @@ import NoEncontrado from '../../components/NoEncontrado'
 import AvisoFaltantes from '../../components/AvisoFaltantes'
 import { propsCampo, MensajeCampo, irAlPrimerError } from '../../components/Validacion'
 import { validarDorsales } from '../../lib/torneo'
-import { torneoPorId, aceptaInscripciones, inscripcionVencida, USUARIO_ACTUAL } from '../../lib/datos'
+import { torneoPorId, aceptaInscripciones, inscripcionVencida, USUARIO_ACTUAL,
+         yaInscritoEn } from '../../lib/datos'
 import { guardarEquipo, guardarComprobanteEquipo, revisarCodigoCanje } from '../../lib/guardar'
 import { subirComprobante, subirPublico, urlPublica,
          revisarArchivo, TIPOS_IMAGEN } from '../../lib/archivos'
+import { montoBs } from '../../lib/dinero'
 
 // Lo unico que de verdad depende del deporte: que posiciones existen.
 //
@@ -126,6 +128,29 @@ export default function InscribirEquipo() {
     )
   }
 
+  // Ya tiene un equipo pendiente o aprobado en este torneo: no se inscribe
+  // dos veces. Pasaba al volver atrás o al entrar otra vez por el enlace.
+  const yaInscrito = yaInscritoEn(torneo)
+  if (yaInscrito && !submitted) {
+    return (
+      <Layout role="user">
+        <div className="empty-state" style={{ padding: '48px 20px' }}>
+          <div className="empty-state-icon">👥</div>
+          <h3 style={{ marginBottom: 8 }}>Ya inscribiste un equipo en este torneo</h3>
+          <p style={{ color: '#888', fontSize: '0.85rem', lineHeight: 1.6, maxWidth: 380, margin: '0 auto' }}>
+            <strong style={{ color: '#f5f5f5' }}>{yaInscrito.nombre}</strong>
+            {yaInscrito.estado === 'pendiente'
+              ? ' está por aprobar: el organizador revisa la inscripción.'
+              : ' ya está aprobado en el torneo.'}
+          </p>
+          <button className="btn btn-primary" style={{ marginTop: 20 }} onClick={() => navigate('/app/torneos/' + torneo.id)}>
+            Ver el torneo
+          </button>
+        </div>
+      </Layout>
+    )
+  }
+
   const updateJugador = (lista, setLista, index, field, value) => {
     setLista(prev => prev.map((j, i) => i === index ? { ...j, [field]: value } : j))
   }
@@ -233,7 +258,16 @@ export default function InscribirEquipo() {
     setEnviando(false)
     if (g.error) { setErrorEnvio(g.error); return }
 
-    setEquipoId(g.equipo?.id || null)
+    // Se suma a los datos que ya están en memoria: así el torneo y «Mis
+    // participaciones» lo muestran como pendiente sin recargar la página.
+    const e = g.equipo
+    torneo.equipos.push({
+      id: e.id, nombre: e.nombre, capitan: e.capitan_nombre, estado: e.estado,
+      comprobante: e.comprobante_url, capitan_id: e.capitan_id, integrantes_ids: [e.capitan_id],
+      escudo: e.escudo_url || null, codigoCanje: e.codigo_canje || null,
+      jugadores: g.jugadores,
+    })
+    setEquipoId(e.id)
     setSubmitted(true)
   }
 
@@ -257,6 +291,9 @@ export default function InscribirEquipo() {
     const g = await guardarComprobanteEquipo({ equipoId, comprobante: r.ruta })
     setSubiendoComp(false)
     if (g.error) { setErrorComp(g.error); setComprobante(null); return }
+
+    const enMemoria = torneo.equipos.find(e => e.id === equipoId)
+    if (enMemoria) enMemoria.comprobante = r.ruta
 
     setCompRuta(r.ruta)
   }
@@ -290,7 +327,7 @@ export default function InscribirEquipo() {
             <p style={{ color: '#00BCD4', fontWeight: 700, fontSize: '0.88rem', marginBottom: 12 }}>💳 Siguiente paso — Pago con QR</p>
             <p style={{ color: '#888', fontSize: '0.82rem', lineHeight: 1.6, marginBottom: 12 }}>
               Para confirmar tu inscripción, realiza el pago de{' '}
-              <strong style={{ color: '#f59e0b', fontFamily: 'Bebas Neue', fontSize: '1rem' }}>Bs. {torneo.precio}</strong>{' '}
+              <strong style={{ color: '#f59e0b', fontFamily: 'Bebas Neue', fontSize: '1rem' }}>Bs. {montoBs(torneo.precio)}</strong>{' '}
               al organizador mediante código QR y sube el comprobante.
             </p>
             {/* El QR que cargó el organizador. Sobre blanco, que es como lo
@@ -389,7 +426,7 @@ export default function InscribirEquipo() {
             {torneo.deporteKey} • {config.infoComposicion}
           </p>
         </div>
-        <span style={{ fontFamily: 'Bebas Neue', fontSize: '1.3rem', color: '#f59e0b' }}>Bs. {torneo.precio}</span>
+        <span style={{ fontFamily: 'Bebas Neue', fontSize: '1.3rem', color: '#f59e0b' }}>Bs. {montoBs(torneo.precio)}</span>
       </div>
 
       <div style={{ maxWidth: 720, display: 'flex', flexDirection: 'column', gap: 20 }}>

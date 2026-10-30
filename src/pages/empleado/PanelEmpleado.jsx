@@ -8,7 +8,7 @@ import { propsCampo, MensajeCampo, irAlPrimerError } from '../../components/Vali
 import {
   EMPLEADO_ACTUAL, PERMISOS_EMPLEADO, puede, empresaPorId, BITACORA,
   reservasDeEmpresa, canjesDeEmpresa, canchasDeEmpresa, CANJES, RESERVAS_EMPRESA,
-  entrenamientosDeEmpresa, torneosDeEmpresa,
+  entrenamientosDeEmpresa, torneosDeEmpresa, pts,
 } from '../../lib/datos'
 import { agendaDelDia, franjaDeCancha, horasLibres, hoyISO, fechaLegible,
          finDeFranja } from '../../lib/agenda'
@@ -19,6 +19,7 @@ import {
 } from '../../lib/guardar'
 import { subirComprobante, urlPublica } from '../../lib/archivos'
 import { recargarHorarios } from '../../lib/carga'
+import { montoBs } from '../../lib/dinero'
 
 const ESTADO_RESERVA = {
   pendiente:  { label: 'Pendiente',  color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
@@ -28,7 +29,7 @@ const ESTADO_RESERVA = {
   vencida:    { label: 'Pago fuera de tiempo', color: '#a855f7', bg: 'rgba(168,85,247,0.12)' },
 }
 
-const hora = () => new Date().toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit', hour12: false })
+const hora = () => new Date().toLocaleTimeString('es-BO', { timeZone: 'America/La_Paz', hour: '2-digit', minute: '2-digit', hour12: false })
 
 export default function PanelEmpleado() {
   const navigate = useNavigate()
@@ -139,7 +140,7 @@ export default function PanelEmpleado() {
       id: Date.now(), empresa_id: empleado.empresa_id,
       empleado_id: empleado.id, empleado: empleado.nombre,
       tipo, accion, detalle,
-      fecha: new Date().toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' }),
+      fecha: new Date().toLocaleDateString('es-BO', { timeZone: 'America/La_Paz', day: '2-digit', month: 'short', year: 'numeric' }),
       hora: ahora,
     })
     registrarEnBitacora({ tipo, accion, detalle })
@@ -179,7 +180,7 @@ export default function PanelEmpleado() {
     const real = CANJES.find(x => x.id === c.id)
     if (real) Object.assign(real, entrega)
     setCanjes(prev => prev.map(x => x.id === c.id ? { ...x, ...entrega } : x))
-    registrar('recompensa', 'Entregó una recompensa', `${c.codigo} · ${c.recompensa} (${c.puntos} pts) · ${c.cliente}`)
+    registrar('recompensa', 'Entregó una recompensa', `${c.codigo} · ${c.recompensa} (${pts(c.puntos)}) · ${c.cliente}`)
   }
 
   const alternarCancha = async (cancha, motivo) => {
@@ -203,7 +204,7 @@ export default function PanelEmpleado() {
       erroresReserva.telefono = `El teléfono debe tener 7 u 8 dígitos (tiene ${digitos.length}). Déjalo vacío si el cliente no lo da.`
     if (pago === 'qr' && !compRuta) erroresReserva.comprobante = 'Falta la foto del comprobante de la transferencia. Tómala o cambia el pago a efectivo.'
     if (pago === 'efectivo' && recibido !== '' && (!Number.isFinite(recibidoNum) || recibidoNum < montoPresencial))
-      erroresReserva.recibido = `El cliente entrega menos de lo que cuesta: faltan Bs. ${Math.max(0, montoPresencial - (recibidoNum || 0))}. Déjalo vacío si paga justo.`
+      erroresReserva.recibido = `El cliente entrega menos de lo que cuesta: faltan Bs. ${montoBs(Math.max(0, montoPresencial - (recibidoNum || 0)))}. Déjalo vacío si paga justo.`
   }
   const ORDEN_RESERVA = ['cliente', 'telefono', 'recibido', 'comprobante']
 
@@ -259,7 +260,7 @@ export default function PanelEmpleado() {
     setReservas(prev => [nueva, ...prev])
     registrar('reserva', 'Registro una reserva presencial',
       nueva.nro + ' · ' + nueva.cliente + ' · ' + nueva.cancha + ' ' +
-      horaInicio + '-' + horaFin + ' · Bs. ' + monto +
+      horaInicio + '-' + horaFin + ' · Bs. ' + montoBs(monto) +
       (pago === 'qr' ? ' por QR, con comprobante' : ' en efectivo'))
     setConstancia({
       nro: nueva.nro, cliente: nueva.cliente.trim(), telefono: form.telefono.trim(),
@@ -380,7 +381,7 @@ export default function PanelEmpleado() {
                         <td style={{ color: '#888', fontSize: '0.85rem' }}>{r.cancha}</td>
                         <td style={{ color: '#888', fontSize: '0.85rem' }}>{r.horaInicio} - {r.horaFin}</td>
                         <td style={{ color: '#f59e0b', fontWeight: 700 }}>
-                        Bs. {r.monto}
+                        Bs. {montoBs(r.monto)}
                         {/* De donde sale el precio mas bajo */}
                         {r.codigoDescuento && (
                           <p style={{ color: '#22c55e', fontSize: '0.66rem', fontWeight: 600, marginTop: 2 }}>
@@ -445,7 +446,7 @@ export default function PanelEmpleado() {
                         background: activa ? 'rgba(0,188,212,0.15)' : '#1a1a1a',
                         border: '1px solid ' + (activa ? '#00BCD4' : '#2a2a2a') }}>
                       <span style={{ display: 'block', fontWeight: 700, fontSize: '0.8rem', color: activa ? '#00BCD4' : '#ccc' }}>{c.nombre}</span>
-                      <span style={{ display: 'block', fontSize: '0.7rem', color: activa ? '#00BCD4' : '#777' }}>Bs. {c.precio}/hora</span>
+                      <span style={{ display: 'block', fontSize: '0.7rem', color: activa ? '#00BCD4' : '#777' }}>Bs. {montoBs(c.precio)}/hora</span>
                     </button>
                   )
                 })}
@@ -516,7 +517,7 @@ export default function PanelEmpleado() {
                               )}
                             </span>
                             {libre && !elegido && (
-                              <span style={{ fontSize: '0.74rem', color: '#555' }}>Bs. {canchaPresencial.precio}</span>
+                              <span style={{ fontSize: '0.74rem', color: '#555' }}>Bs. {montoBs(canchaPresencial.precio)}</span>
                             )}
                           </span>
                         </button>
@@ -571,7 +572,7 @@ export default function PanelEmpleado() {
                       <span>{slotsElegidos.length} hora{slotsElegidos.length > 1 ? 's' : ''}</span>
                     </div>
                     <p style={{ color: '#f59e0b', fontSize: '0.95rem', fontWeight: 700 }}>
-                      A cobrar: Bs. {slotsElegidos.length * (canchaPresencial?.precio ?? 0)}
+                      A cobrar: Bs. {montoBs(slotsElegidos.length * (canchaPresencial?.precio ?? 0))}
                     </p>
                   </div>
 
@@ -603,12 +604,12 @@ export default function PanelEmpleado() {
                       <MensajeCampo nombre="recibido" error={erroresReserva.recibido} mostrar={intentoReserva} />
                       {vuelto !== null && vuelto >= 0 && (
                         <p style={{ marginTop: 6, fontSize: '0.9rem', fontWeight: 700, color: '#22c55e' }}>
-                          {vuelto === 0 ? 'Paga justo, sin vuelto.' : 'Vuelto a entregar: Bs. ' + vuelto}
+                          {vuelto === 0 ? 'Paga justo, sin vuelto.' : 'Vuelto a entregar: Bs. ' + montoBs(vuelto)}
                         </p>
                       )}
                       {vuelto !== null && vuelto < 0 && !intentoReserva && (
                         <p style={{ marginTop: 6, fontSize: '0.82rem', fontWeight: 600, color: '#f59e0b' }}>
-                          Faltan Bs. {-vuelto} para cubrir el total.
+                          Faltan Bs. {montoBs(-vuelto)} para cubrir el total.
                         </p>
                       )}
                     </div>
@@ -682,8 +683,8 @@ export default function PanelEmpleado() {
                     ['Cliente', constancia.cliente + (constancia.telefono ? ' · ' + constancia.telefono : '')],
                     ['Cancha', constancia.cancha],
                     ['Día y hora', `${constancia.fecha}, ${constancia.horaInicio} – ${constancia.horaFin} (${constancia.horas} h)`],
-                    ['Cobrado', `Bs. ${constancia.monto} · ${constancia.pago === 'qr' ? 'QR, con comprobante' : 'efectivo'}`],
-                    ...(constancia.vuelto != null ? [['Recibido / vuelto', `Bs. ${constancia.recibido} / Bs. ${constancia.vuelto}`]] : []),
+                    ['Cobrado', `Bs. ${montoBs(constancia.monto)} · ${constancia.pago === 'qr' ? 'QR, con comprobante' : 'efectivo'}`],
+                    ...(constancia.vuelto != null ? [['Recibido / vuelto', `Bs. ${montoBs(constancia.recibido)} / Bs. ${montoBs(constancia.vuelto)}`]] : []),
                     ['Atendió', constancia.atendio],
                   ].map(([k, v]) => (
                     <div key={k} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: '0.8rem',
@@ -704,7 +705,7 @@ export default function PanelEmpleado() {
                 onClick={guardarPresencial}>
                 {slotsElegidos.length === 0     ? 'Elige las horas en la lista'
                   : subiendoComp                ? 'Subiendo el comprobante…'
-                  : 'Registrar y cobrar Bs. ' + montoPresencial}
+                  : 'Registrar y cobrar Bs. ' + montoBs(montoPresencial)}
               </button>
             </div>
           )}
@@ -783,7 +784,7 @@ export default function PanelEmpleado() {
                   <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'rgba(255,255,255,0.02)', border: '1px solid #2a2a2a', borderRadius: 10, flexWrap: 'wrap' }}>
                     <div>
                       <p style={{ color: '#f5f5f5', fontWeight: 600, fontSize: '0.9rem' }}>{c.nombre}</p>
-                      <p style={{ color: '#666', fontSize: '0.78rem' }}>{c.deporte} · Bs. {c.precio} la hora</p>
+                      <p style={{ color: '#666', fontSize: '0.78rem' }}>{c.deporte} · Bs. {montoBs(c.precio)} la hora</p>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <span className="badge" style={{
@@ -902,7 +903,7 @@ export default function PanelEmpleado() {
             <VisorComprobante ruta={comprobante.comprobante} />
             <div style={{ textAlign: 'center', marginBottom: 14 }}>
               <p style={{ fontSize: '0.72rem', color: '#666' }}>El cliente dice haber pagado</p>
-              <p style={{ color: '#f59e0b', fontFamily: 'Bebas Neue', fontSize: '1.6rem' }}>Bs. {comprobante.monto}</p>
+              <p style={{ color: '#f59e0b', fontFamily: 'Bebas Neue', fontSize: '1.6rem' }}>Bs. {montoBs(comprobante.monto)}</p>
             </div>
             <p style={{ color: '#666', fontSize: '0.8rem', marginBottom: 14 }}>
               {comprobante.cancha} · {comprobante.horaInicio} - {comprobante.horaFin}

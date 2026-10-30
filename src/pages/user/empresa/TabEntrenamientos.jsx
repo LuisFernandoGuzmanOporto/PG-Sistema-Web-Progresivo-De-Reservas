@@ -1,5 +1,6 @@
 import { NIVEL_COLORES } from './colores'
 import { DIAS_SEMANA, MESES } from './calendario'
+import { montoBs } from '../../../lib/dinero'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Pestaña «Entrenamientos» de la ficha de un complejo.
@@ -115,7 +116,7 @@ export default function TabEntrenamientos({ empresa, entrenamientosBase, celdasE
                         <span style={{ fontSize:'0.72rem', color:'#888' }}>{ent.horaInicio} - {ent.horaFin}</span>
                       </div>
                       {ent.precio != null && ent.precio !== '' && (
-                        <p style={{ fontSize:'0.78rem', color:'#f59e0b' }}>Bs. {ent.precio} - se paga en el complejo</p>
+                        <p style={{ fontSize:'0.78rem', color:'#f59e0b' }}>Bs. {montoBs(ent.precio)} - se paga en el complejo</p>
                       )}
                     </div>
                   </div>

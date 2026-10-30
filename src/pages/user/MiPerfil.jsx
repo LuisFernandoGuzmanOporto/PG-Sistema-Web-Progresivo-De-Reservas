@@ -8,11 +8,12 @@ import { calcularTabla } from '../../lib/torneo'
 import { USUARIO_ACTUAL, ESTADO_TORNEO, torneosCreadosPor, torneosDondeParticipa,
          miEquipoEn, equiposAprobados, solicitudesPendientes,
          equiposPorGrupo, misReservas, canjesDeCliente, PARTIDOS_ESPONTANEOS,
-         FORMAS_DE_GANAR_PUNTOS, canchasDeEmpresa, DEPORTES } from '../../lib/datos'
+         FORMAS_DE_GANAR_PUNTOS, canchasDeEmpresa, DEPORTES, pts } from '../../lib/datos'
 import { guardarPerfil as guardarPerfilEnBase } from '../../lib/guardar'
 import FotoDePerfil from '../../components/FotoDePerfil'
 import { EMOJI_DEPORTE } from '../../lib/preferencias'
 import { useAuth } from '../../lib/auth'
+import { montoBs } from '../../lib/dinero'
 
 // Las reservas del cliente son las mismas filas que ve el complejo:
 // si el administrador confirma una, aqui aparece confirmada.
@@ -392,7 +393,7 @@ export default function MiPerfil() {
     <!-- Monto -->
     <div class="monto-box">
       <span class="monto-label">Monto pagado</span>
-      <span class="monto-value">Bs. ${esc(r.monto)}</span>
+      <span class="monto-value">Bs. ${esc(montoBs(r.monto))}</span>
     </div>
 
     <!-- Footer del comprobante -->
@@ -610,7 +611,7 @@ export default function MiPerfil() {
                         </div>
                         <div>
                           <p style={{ fontSize: '0.7rem', color: '#555', fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>Monto</p>
-                          <p style={{ fontSize: '0.88rem', color: '#f59e0b', fontWeight: 700 }}>Bs. {r.monto}</p>
+                          <p style={{ fontSize: '0.88rem', color: '#f59e0b', fontWeight: 700 }}>Bs. {montoBs(r.monto)}</p>
                           {/* Que se vea que el precio bajo por el canje y no
                               por un error del complejo */}
                           {r.codigoDescuento && (
@@ -785,7 +786,7 @@ export default function MiPerfil() {
           <div style={{ background: 'linear-gradient(135deg, rgba(139,0,0,0.25) 0%, rgba(245,158,11,0.1) 100%)', border: '1px solid rgba(139,0,0,0.3)', borderRadius: 14, padding: '28px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
             <div>
               <p style={{ color: '#888', fontSize: '0.8rem', marginBottom: 4 }}>Tus puntos totales</p>
-              <p style={{ fontFamily: 'Bebas Neue', fontSize: '3.5rem', color: '#f59e0b', lineHeight: 1 }}>{puntos} pts</p>
+              <p style={{ fontFamily: 'Bebas Neue', fontSize: '3.5rem', color: '#f59e0b', lineHeight: 1 }}>{pts(puntos)}</p>
               <p style={{ color: '#555', fontSize: '0.75rem', marginTop: 6 }}>
                 Nivel: <span style={{ color: '#22c55e', fontWeight: 700 }}>{puntos >= 251 ? 'Experto' : puntos >= 101 ? 'Intermedio' : 'Principiante'}</span>
               </p>
@@ -798,7 +799,7 @@ export default function MiPerfil() {
                 </p>
                 {puntos < 251 && (
                   <p style={{ color: '#555', fontSize: '0.72rem' }}>
-                    Necesitas {puntos >= 101 ? 251 - puntos : 101 - puntos} pts más
+                    Necesitas {pts(puntos >= 101 ? 251 - puntos : 101 - puntos)} más
                   </p>
                 )}
               </div>
@@ -843,7 +844,7 @@ export default function MiPerfil() {
                           {c.categoria}
                           <span style={{ color: '#555', marginLeft: 6, fontSize: '0.72rem' }}>({c.cantidad} {c.cantidad === 1 ? 'vez' : 'veces'})</span>
                         </p>
-                        <p style={{ fontSize: '0.82rem', color: c.color, fontWeight: 700 }}>+{c.pts} pts</p>
+                        <p style={{ fontSize: '0.82rem', color: c.color, fontWeight: 700 }}>+{pts(c.pts)}</p>
                       </div>
                       <div style={{ height: 5, background: '#1a1a1a', borderRadius: 4, overflow: 'hidden' }}>
                         <div style={{ height: '100%', width: pct + '%', background: c.color, borderRadius: 4 }} />
@@ -953,7 +954,7 @@ export default function MiPerfil() {
               {/* Monto */}
               <div style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 10, padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '0.85rem', color: '#888' }}>Monto pagado</span>
-                <span style={{ fontFamily: 'Bebas Neue', fontSize: '1.6rem', color: '#f59e0b' }}>Bs. {comprobante.monto}</span>
+                <span style={{ fontFamily: 'Bebas Neue', fontSize: '1.6rem', color: '#f59e0b' }}>Bs. {montoBs(comprobante.monto)}</span>
               </div>
 
               {/* Confirmado por */}

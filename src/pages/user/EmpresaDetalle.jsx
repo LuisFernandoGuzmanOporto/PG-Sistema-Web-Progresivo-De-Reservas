@@ -9,7 +9,7 @@ import { empresasActivas, USUARIO_ACTUAL, torneosDeEmpresa, partidosDeEmpresa,
          CALIFICACIONES_POR_EMPRESA, promedioEstrellas,
          aceptaInscripciones, reservasDeEmpresa, reservaEnFranja, mismo,
          registrarReserva, registrarCanje, PARTIDOS_ESPONTANEOS, RESERVAS_EMPRESA,
-         hiloDeComentarios, SESION, ocupaLaCancha } from '../../lib/datos'
+         hiloDeComentarios, SESION, ocupaLaCancha, pts } from '../../lib/datos'
 import { apartarHora, enviarComprobanteReserva, soltarApartado,
          revisarCodigoCanje, descuentoDeCanje, guardarCanje, guardarCalificacion,
          guardarPartidoEspontaneo, unirseAPartido, salirDePartido } from '../../lib/guardar'
@@ -28,6 +28,7 @@ import { DIAS_SEMANA, DIA_INDICE, MESES, formatFecha,
 
 // Las imágenes del marcador del mapa (ver lib/iconoMapa.js)
 import '../../lib/iconoMapa'
+import { montoBs } from '../../lib/dinero'
 
 const DEPORTE_COLORES = {
   'Futbol': '#ef4444', 'Futbol 5': '#ef4444', 'Wally': '#00BCD4',
@@ -132,7 +133,7 @@ export default function EmpresaDetalle() {
       usuario: nombre,
       avatar: nombre.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase(),
       estrellas,
-      fecha: new Date().toLocaleDateString('es-BO', { day:'numeric', month:'short', year:'numeric' }),
+      fecha: new Date().toLocaleDateString('es-BO', { timeZone: 'America/La_Paz', day:'numeric', month:'short', year:'numeric' }),
     }
     // Reemplaza el voto propio si ya existia: nunca hay dos del mismo cliente
     setCalificaciones(prev => {
@@ -731,7 +732,7 @@ export default function EmpresaDetalle() {
                         {e.horaInicio} - {e.horaFin}
                       </p>
                       {e.precio != null && e.precio !== '' && (
-                        <p style={{ fontSize:'0.72rem', color:'#f59e0b' }}>Bs. {e.precio}</p>
+                        <p style={{ fontSize:'0.72rem', color:'#f59e0b' }}>Bs. {montoBs(e.precio)}</p>
                       )}
                     </div>
                   </div>
@@ -782,7 +783,7 @@ export default function EmpresaDetalle() {
                     color: activa ? '#00BCD4' : '#888', opacity: c.disponible ? 1 : 0.5 }}>
                   {c.nombre}
                   <span style={{ display:'block', fontSize:'0.68rem', fontWeight:500, opacity:0.75 }}>
-                    Bs. {c.precio}/hora
+                    Bs. {montoBs(c.precio)}/hora
                   </span>
                 </button>
               )
@@ -855,7 +856,7 @@ export default function EmpresaDetalle() {
 
                       {sePuede && !isSel && (
                         <span style={{ fontSize:'0.76rem', color:'#555', whiteSpace:'nowrap' }}>
-                          Bs. {canchaVista.precio}
+                          Bs. {montoBs(canchaVista.precio)}
                         </span>
                       )}
                       {f.estado === 'entrenamiento' && (
@@ -927,7 +928,7 @@ export default function EmpresaDetalle() {
                     color: elegidos.length ? '#fff' : '#444' }}>
                   {elegidos.length === 0
                     ? 'Elige un horario para reservar'
-                    : 'Reservar ' + elegidos.length + ' hora' + (elegidos.length>1?'s':'') + ' · Bs. ' + total}
+                    : 'Reservar ' + elegidos.length + ' hora' + (elegidos.length>1?'s':'') + ' · Bs. ' + montoBs(total)}
                 </button>
               </div>
             )
@@ -1087,7 +1088,7 @@ export default function EmpresaDetalle() {
                 <h3 style={{ color:'#22c55e', fontFamily:'Bebas Neue', fontSize:'1.4rem', marginBottom:8 }}>¡Reserva enviada!</h3>
                 <p style={{ color:'#f59e0b', fontFamily:'Bebas Neue', fontSize:'1.2rem', letterSpacing:1, marginBottom:6 }}>{reservaExitosa.nro}</p>
                 <p style={{ color:'#888', fontSize:'0.85rem', marginBottom:20 }}>
-                  {reservaExitosa.cancha} · {reservaExitosa.horaInicio} - {reservaExitosa.horaFin} · Bs. {reservaExitosa.monto}<br />
+                  {reservaExitosa.cancha} · {reservaExitosa.horaInicio} - {reservaExitosa.horaFin} · Bs. {montoBs(reservaExitosa.monto)}<br />
                   El complejo revisa tu comprobante y te confirma. Puedes seguirla en Mi Perfil.
                 </p>
                 <button className="btn btn-primary w-full" style={{ justifyContent:'center' }} onClick={limpiarReserva}>Entendido</button>
@@ -1162,21 +1163,21 @@ export default function EmpresaDetalle() {
                     return (
                       <>
                         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                          <p style={{ fontSize:'0.75rem', color:'#888' }}>{horas} hora(s) x Bs. {showReservaModal.precio}</p>
+                          <p style={{ fontSize:'0.75rem', color:'#888' }}>{horas} hora(s) x Bs. {montoBs(showReservaModal.precio)}</p>
                           <span style={{ fontSize:'0.9rem', color: desc > 0 ? '#666' : '#f59e0b',
                             textDecoration: desc > 0 ? 'line-through' : 'none' }}>
-                            Bs. {horas * showReservaModal.precio}
+                            Bs. {montoBs(horas * showReservaModal.precio)}
                           </span>
                         </div>
                         {desc > 0 && (
                           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:4 }}>
                             <p style={{ fontSize:'0.75rem', color:'#22c55e' }}>{canjeAplicado.recompensa}</p>
-                            <span style={{ fontSize:'0.9rem', color:'#22c55e' }}>{'\u2212'} Bs. {desc}</span>
+                            <span style={{ fontSize:'0.9rem', color:'#22c55e' }}>{'\u2212'} Bs. {montoBs(desc)}</span>
                           </div>
                         )}
                         <div style={{ display:'flex', justifyContent:'flex-end', marginTop: desc > 0 ? 8 : 4, paddingTop: desc > 0 ? 8 : 0, borderTop: desc > 0 ? '1px solid rgba(245,158,11,0.2)' : 'none' }}>
                           <span style={{ fontFamily:'Bebas Neue', fontSize:'1.5rem', color:'#f59e0b' }}>
-                            Total: Bs. {totalConDescuento(showReservaModal, horas)}
+                            Total: Bs. {montoBs(totalConDescuento(showReservaModal, horas))}
                           </span>
                         </div>
                       </>
@@ -1249,7 +1250,7 @@ export default function EmpresaDetalle() {
                   <div style={{ padding:'8px 24px', background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.25)', borderRadius:10, textAlign:'center' }}>
                     <p style={{ fontSize:'0.72rem', color:'#888', marginBottom:2 }}>Monto a pagar</p>
                     <p style={{ fontFamily:'Bebas Neue', fontSize:'1.8rem', color:'#f59e0b' }}>
-                      Bs. {totalConDescuento(showReservaModal, (selectedSlots[showReservaModal.id]||[]).length)}
+                      Bs. {montoBs(totalConDescuento(showReservaModal, (selectedSlots[showReservaModal.id]||[]).length))}
                     </p>
                     {canjeAplicado && (
                       <p style={{ fontSize:'0.7rem', color:'#22c55e', marginTop:2 }}>
@@ -1306,8 +1307,8 @@ export default function EmpresaDetalle() {
               {comoUsarCanje(canjeHecho.tipo, empresa?.nombre)}
             </p>
             <p style={{ color: '#666', fontSize: '0.8rem', marginBottom: 16 }}>
-              Se descontaron <strong style={{ color: '#f59e0b' }}>{canjeHecho.puntos} pts</strong>.
-              Te quedan <strong style={{ color: '#f5f5f5' }}>{puntosUsuario} pts</strong>.
+              {canjeHecho.puntos === 1 ? 'Se descontó' : 'Se descontaron'} <strong style={{ color: '#f59e0b' }}>{pts(canjeHecho.puntos)}</strong>.
+              {puntosUsuario === 1 ? ' Te queda' : ' Te quedan'} <strong style={{ color: '#f5f5f5' }}>{pts(puntosUsuario)}</strong>.
             </p>
             <button className="btn btn-primary w-full" style={{ justifyContent: 'center' }} onClick={() => setCanjeHecho(null)}>Entendido</button>
           </div>

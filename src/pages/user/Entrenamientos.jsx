@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Layout from '../../components/layout/Layout'
 import { empresasActivas, entrenamientosDeEmpresa } from '../../lib/datos'
+import { montoBs } from '../../lib/dinero'
 
 const DEPORTE_COLORES = {
   'Fútbol': '#ef4444', 'Wally': '#00BCD4', 'Básquetbol': '#f59e0b',
@@ -145,7 +146,7 @@ export default function Entrenamientos() {
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, paddingTop: 12, borderTop: '1px solid #2a2a2a' }}>
                   <span style={{ fontFamily: 'Bebas Neue', fontSize: '1.2rem', color: '#f59e0b' }}>
-                    {e.precio ? 'Bs. ' + e.precio : 'Gratuito'}
+                    {e.precio ? 'Bs. ' + montoBs(e.precio) : 'Gratuito'}
                     {e.precio ? <span style={{ fontSize: '0.7rem', color: '#666', fontFamily: 'Outfit' }}> / mes</span> : null}
                   </span>
                   <button className="btn btn-outline btn-sm" onClick={() => navigate('/app/empresa/' + e.empresa_id + '?tab=entrenamientos')}>

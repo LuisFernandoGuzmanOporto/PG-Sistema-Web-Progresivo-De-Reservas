@@ -536,8 +536,23 @@ export const ESTADO_SOLICITUD = {
 export const torneosCreadosPor = (usuarioId = USUARIO_ACTUAL.id) =>
   TORNEOS.filter(t => t.creador_tipo === 'cliente' && mismo(t.creador_id, usuarioId))
 
-export const miEquipoEn = (t, usuarioId = USUARIO_ACTUAL.id) =>
-  (t?.equipos || []).find(e => (e.integrantes_ids || []).some(x => mismo(x, usuarioId))) || null
+/**
+ * El equipo del usuario en ese torneo. Si le rechazaron uno y volvio a
+ * inscribirse, cuenta el nuevo: el rechazado solo se devuelve si no hay otro.
+ */
+export const miEquipoEn = (t, usuarioId = USUARIO_ACTUAL.id) => {
+  const mios = (t?.equipos || []).filter(e => (e.integrantes_ids || []).some(x => mismo(x, usuarioId)))
+  return mios.find(e => e.estado !== 'rechazado') || mios[0] || null
+}
+
+/**
+ * Ya tiene un equipo pendiente o aprobado en el torneo: no puede inscribir otro.
+ * Uno rechazado no cuenta, puede corregir lo que faltaba y volver a intentar.
+ */
+export const yaInscritoEn = (t, usuarioId = USUARIO_ACTUAL.id) => {
+  const eq = miEquipoEn(t, usuarioId)
+  return eq && eq.estado !== 'rechazado' ? eq : null
+}
 
 export const torneosDondeParticipa = (usuarioId = USUARIO_ACTUAL.id) =>
   TORNEOS.filter(t => miEquipoEn(t, usuarioId))
@@ -934,6 +949,9 @@ export const NIVELES = [
 export const nivelDe = (puntos) =>
   NIVELES.find(n => puntos >= n.desde && puntos <= n.hasta) || NIVELES[0]
 
+/** «1 pt», «2 pts»: un solo punto no va en plural («Se descontaron 1 pts»). */
+export const pts = (n) => n + (Math.abs(Number(n)) === 1 ? ' pt' : ' pts')
+
 export const FORMAS_DE_GANAR_PUNTOS = [
   { accion: 'Reservar una cancha',        puntos: 5  },
   { accion: 'Completar la reserva',       puntos: 5  },
@@ -1268,5 +1286,5 @@ export const identidadDeRol = (rol) => {
   if (rol === 'empleado') {
     return { nombre: EMPLEADO_ACTUAL.nombre, detalle: empresaPorId(EMPLEADO_ACTUAL.empresa_id)?.nombre || '' }
   }
-  return { nombre: USUARIO_ACTUAL.nombre, detalle: USUARIO_ACTUAL.puntos + ' pts' }
+  return { nombre: USUARIO_ACTUAL.nombre, detalle: pts(USUARIO_ACTUAL.puntos) }
 }

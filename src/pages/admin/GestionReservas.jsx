@@ -7,6 +7,7 @@ import {
 } from '../../lib/datos'
 import { resolverReserva, registrarEnBitacora } from '../../lib/guardar'
 import { hoyBolivia } from '../../lib/fecha'
+import { montoBs } from '../../lib/dinero'
 
 
 const ESTADO = {
@@ -19,8 +20,8 @@ const ESTADO = {
   pasada:     { label: 'Sin revisar · ya pasó', color: '#888', bg: 'rgba(255,255,255,0.06)' },
 }
 
-const ahora = () => new Date().toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit', hour12: false })
-const hoy   = () => new Date().toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' })
+const ahora = () => new Date().toLocaleTimeString('es-BO', { timeZone: 'America/La_Paz', hour: '2-digit', minute: '2-digit', hour12: false })
+const hoy   = () => new Date().toLocaleDateString('es-BO', { timeZone: 'America/La_Paz', day: '2-digit', month: 'short', year: 'numeric' })
 
 export function GestionReservas() {
   // Las mismas reservas que atiende el empleado en su panel
@@ -127,7 +128,7 @@ export function GestionReservas() {
           { label: 'Por revisar',       value: pendientes.length,          icon: '⏳' },
           { label: 'Confirmadas hoy',   value: confirmadasHoy.length,      icon: '✅' },
           { label: 'Rechazadas',        value: rechazadas.length,          icon: '✕'  },
-          { label: 'Ingreso de hoy',    value: 'Bs. ' + ingresoConfirmado, icon: '💰' },
+          { label: 'Ingreso de hoy',    value: 'Bs. ' + montoBs(ingresoConfirmado), icon: '💰' },
         ].map(s => (
           <div key={s.label} className="stat-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -191,7 +192,7 @@ export function GestionReservas() {
                     {/* La hora de torneo no se cobra: poner un monto ahi hacia
                         pensar que era plata cobrada */}
                     <td style={{ color: r.torneo ? '#555' : '#f59e0b', fontWeight: 700 }}>
-                      {r.torneo ? '—' : 'Bs. ' + r.monto}
+                      {r.torneo ? '—' : 'Bs. ' + montoBs(r.monto)}
                       {/* Sin esto el complejo veia una reserva mas barata que
                           las demas y no sabia por que */}
                       {r.codigoDescuento && (
@@ -257,12 +258,12 @@ export function GestionReservas() {
             <VisorComprobante ruta={comprobante.comprobante} />
             <div style={{ textAlign: 'center', marginBottom: 14 }}>
               <p style={{ fontSize: '0.72rem', color: '#666' }}>El cliente dice haber pagado</p>
-              <p style={{ color: '#f59e0b', fontFamily: 'Bebas Neue', fontSize: '1.6rem' }}>Bs. {comprobante.monto}</p>
+              <p style={{ color: '#f59e0b', fontFamily: 'Bebas Neue', fontSize: '1.6rem' }}>Bs. {montoBs(comprobante.monto)}</p>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
               {[
                 ['Cancha', comprobante.cancha],
-                ['Precio de lista', 'Bs. ' + (canchas.find(c => c.nombre === comprobante.cancha)?.precio ?? '—')],
+                ['Precio de lista', 'Bs. ' + montoBs(canchas.find(c => c.nombre === comprobante.cancha)?.precio)],
                 ['Fecha', comprobante.fecha],
                 ['Horario', comprobante.horaInicio + ' - ' + comprobante.horaFin],
               ].map(([k, v]) => (

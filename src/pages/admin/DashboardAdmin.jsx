@@ -5,6 +5,7 @@ import { estadisticasDe, pico, reservasDeEmpresa, BITACORA, SESION, USUARIO_ACTU
          empresaPorId, canchasDeEmpresa, torneosDeEmpresa,
          entrenadoresDeEmpresa } from '../../lib/datos'
 import { resolverReserva, registrarEnBitacora } from '../../lib/guardar'
+import { montoBs } from '../../lib/dinero'
 
 
 // Mientras no exista el login real, el admin ve su propio complejo
@@ -54,7 +55,7 @@ export default function DashboardAdmin() {
     { label: 'Reservas Hoy', value: String(RESERVAS_HOY.length),
       change: RESERVAS_HOY.filter(r => r.estado === 'confirmada').length + ' confirmadas',
       up: null, icon: '📅' },
-    { label: 'Ingresos registrados', value: 'Bs. ' + EST.ingresoMes,
+    { label: 'Ingresos registrados', value: 'Bs. ' + montoBs(EST.ingresoMes),
       change: EST.totalReservas + ' reservas en total'
         + (EST.horasDeTorneo ? ' · ' + EST.horasDeTorneo + ' jornadas de torneo' : ''),
       up: null, icon: '💰' },
@@ -86,8 +87,8 @@ export default function DashboardAdmin() {
       tipo: 'reserva',
       accion: estado === 'confirmada' ? 'Confirmó una reserva' : 'Rechazó una reserva',
       detalle: r.nro + ' · ' + r.cliente + ' · ' + r.cancha + ' ' + r.horaInicio,
-      fecha: new Date().toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' }),
-      hora: new Date().toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit', hour12: false }),
+      fecha: new Date().toLocaleDateString('es-BO', { timeZone: 'America/La_Paz', day: '2-digit', month: 'short', year: 'numeric' }),
+      hora: new Date().toLocaleTimeString('es-BO', { timeZone: 'America/La_Paz', hour: '2-digit', minute: '2-digit', hour12: false }),
     })
   }
 
@@ -279,7 +280,7 @@ export default function DashboardAdmin() {
                     <td style={{ color: '#f5f5f5', fontWeight: 500 }}>{r.cliente}</td>
                     <td style={{ color: '#888', fontSize: '0.85rem' }}>{r.cancha}</td>
                     <td style={{ color: '#00BCD4', fontSize: '0.85rem' }}>{r.horaInicio}-{r.horaFin}</td>
-                    <td style={{ color: '#f59e0b', fontFamily: 'Bebas Neue', fontSize: '1rem' }}>Bs. {r.monto}</td>
+                    <td style={{ color: '#f59e0b', fontFamily: 'Bebas Neue', fontSize: '1rem' }}>Bs. {montoBs(r.monto)}</td>
                     <td><span className={`badge ${r.estado === 'confirmada' ? 'badge-success' : 'badge-warning'}`}>{r.estado}</span></td>
                     <td>
                       {r.estado === 'pendiente' && (
@@ -321,7 +322,7 @@ export default function DashboardAdmin() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {[
                 ['Total Reservas', String(EST.totalReservas)],
-                ['Ingresos', 'Bs. ' + EST.ingresoMes],
+                ['Ingresos', 'Bs. ' + montoBs(EST.ingresoMes)],
                 ['Torneos Activos', String(torneos.filter(t => t.estado !== 'finalizado').length)],
                 ['Entrenadores', String(entrenadoresDeEmpresa(EMPRESA_ID).length)],
               ].map(([k, v]) => (

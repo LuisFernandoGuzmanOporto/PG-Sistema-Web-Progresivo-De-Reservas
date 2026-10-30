@@ -14,6 +14,7 @@ import { jornadasDelTorneo, DIAS_SEMANA, costoDelTorneo } from '../../lib/jornad
 import { hoyBolivia } from '../../lib/fecha'
 import { subirPublico, revisarArchivo, TIPOS_IMAGEN, urlPublica } from '../../lib/archivos'
 import { DEPORTE_CONFIG } from '../../lib/deportes'
+import { montoBs } from '../../lib/dinero'
 
 
 export default function GestionTorneos() {
@@ -58,7 +59,7 @@ export default function GestionTorneos() {
     }))
   }
 
-  const hoy = () => new Date().toLocaleDateString('es-BO', { day: '2-digit', month: 'short' })
+  const hoy = () => new Date().toLocaleDateString('es-BO', { timeZone: 'America/La_Paz', day: '2-digit', month: 'short' })
 
   /**
    * Escribe en el torneo real: recién ahi los equipos pueden inscribirse.
@@ -405,7 +406,7 @@ export default function GestionTorneos() {
                           fechaFin: t.fechaFinISO || t.fechaFin,
                           dias: sol.dias,
                         }).length || '—'],
-                        ['Costo de la cancha', sol.costoTotal != null ? 'Bs. ' + sol.costoTotal : '—'],
+                        ['Costo de la cancha', sol.costoTotal != null ? 'Bs. ' + montoBs(sol.costoTotal) : '—'],
                         ['Equipos', t.maxEquipos + ' máximo'],
                       ].map(([k, v]) => (
                         <div key={k} style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: 8 }}>
@@ -689,7 +690,7 @@ export default function GestionTorneos() {
                         {costo.horasPorJornada} h en {form.cancha}. Como el torneo es tuyo no se
                         te cobra, pero la cancha te queda ocupada{' '}
                         <strong style={{ color: '#f5f5f5' }}>{costo.jornadas * costo.horasPorJornada} horas</strong>{' '}
-                        (equivalen a Bs. {costo.total} que no vas a poder alquilar).
+                        (equivalen a Bs. {montoBs(costo.total)} que no vas a poder alquilar).
                       </p>
                     )
                   })()}

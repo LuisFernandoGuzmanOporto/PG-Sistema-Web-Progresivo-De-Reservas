@@ -9,6 +9,7 @@ import { CANCHAS_POR_EMPRESA, canchasDeEmpresa, reservasDeEmpresa,
 } from '../../lib/datos'
 import { guardarCancha, cambiarEstadoCancha, registrarEnBitacora } from '../../lib/guardar'
 import { urlPublica } from '../../lib/archivos'
+import { montoBs } from '../../lib/dinero'
 
 
 const EMOJI_DEPORTE = {
@@ -126,7 +127,7 @@ export function GestionCanchas() {
     registrarEnBitacora({
       tipo: 'cancha',
       accion: editando ? 'Editó una cancha' : 'Publicó una cancha nueva',
-      detalle: datos.nombre + ' · ' + datos.deporte + ' · Bs. ' + datos.precio + '/h',
+      detalle: datos.nombre + ' · ' + datos.deporte + ' · Bs. ' + montoBs(datos.precio) + '/h',
     })
     setShowModal(false)
     setTimeout(() => setAviso(null), 3500)
@@ -160,7 +161,7 @@ export function GestionCanchas() {
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
               <span style={{ fontSize: '0.82rem', color: '#666' }}>{c.deporte}</span>
-              <span style={{ fontFamily: 'Bebas Neue', fontSize: '1rem', color: '#f59e0b' }}>Bs. {c.precio}/hr</span>
+              <span style={{ fontFamily: 'Bebas Neue', fontSize: '1rem', color: '#f59e0b' }}>Bs. {montoBs(c.precio)}/hr</span>
             </div>
             <p style={{ fontSize: '0.78rem', color: '#00BCD4', marginBottom: 12 }}>📅 {reservasHoy(c.nombre)} reservas hoy</p>
             <div style={{ display: 'flex', gap: 8 }}>

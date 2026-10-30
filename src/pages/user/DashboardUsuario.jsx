@@ -230,7 +230,7 @@ export default function DashboardUsuario() {
               <span style={{ fontFamily: 'Bebas Neue', fontSize: '1.8rem', color: '#f5f5f5' }}>{USUARIO_ACTUAL.puntos}</span>
             </div>
             <p style={{ color: '#666', fontSize: '0.8rem', marginBottom: 16 }}>
-              {faltanParaNivel > 0 ? `${faltanParaNivel} puntos más para el siguiente nivel` : `Nivel ${nivel.nombre}: el más alto`}
+              {faltanParaNivel > 0 ? `${faltanParaNivel} ${faltanParaNivel === 1 ? 'punto' : 'puntos'} más para el siguiente nivel` : `Nivel ${nivel.nombre}: el más alto`}
             </p>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

@@ -99,7 +99,7 @@ export default function GestionEmpleados() {
       id: g.empleado.id, empresa_id: SESION.empresaId,
       nombre: form.nombre.trim(), usuario: form.usuario.trim(), telefono: form.telefono,
       turno: form.turno, activo: true, permisos: form.permisos,
-      creado: new Date().toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' }),
+      creado: new Date().toLocaleDateString('es-BO', { timeZone: 'America/La_Paz', day: '2-digit', month: 'short', year: 'numeric' }),
     }
     setEmpleados(prev => [...prev, nuevo])
     setForm(FORM_INIT)

@@ -16,7 +16,9 @@ import { sortearGrupos, gruposSugeridos, nombreRonda, generarFixture,
 
 import { TORNEOS, USUARIO_ACTUAL, estadoDeTorneo,
          SOLICITUD_BADGE, equiposPorGrupo, solicitudDe,
-         ESTADO_SOLICITUD, aceptaInscripciones, mismo } from '../../lib/datos'
+         ESTADO_SOLICITUD, aceptaInscripciones, mismo,
+         miEquipoEn, yaInscritoEn } from '../../lib/datos'
+import { montoBs } from '../../lib/dinero'
 
 export default function TorneoDetalle() {
   const { id } = useParams()
@@ -36,6 +38,7 @@ export default function TorneoDetalle() {
   }
 
   const soyCreador = torneoData.creador_id === USUARIO_ACTUAL.id
+  const miEquipo   = miEquipoEn(torneoData)
   const enCurso    = torneoData.estado === 'en_curso'
   // Pasada la fecha límite dice «Inscripciones cerradas», no «Abierto»
   const esBadge    = estadoDeTorneo(torneoData)
@@ -124,7 +127,7 @@ export default function TorneoDetalle() {
     // Al sortear, el torneo deja de recibir inscripciones y pasa a estar en curso
     setTorneoData(t => ({ ...t, estado: 'en_curso' }))
     setErrorTorneo(null)
-    setFechaSorteo(new Date().toLocaleString('es-BO', {
+    setFechaSorteo(new Date().toLocaleString('es-BO', { timeZone: 'America/La_Paz',
       day: '2-digit', month: '2-digit', year: 'numeric',
       hour: '2-digit', minute: '2-digit' }))
   }
@@ -283,10 +286,34 @@ export default function TorneoDetalle() {
                 </p>
               </div>
             )}
+            {/* Su equipo en este torneo, en el estado que esté. Antes la
+                inscripción pendiente no aparecía por ningún lado y el botón
+                seguía ofreciendo inscribirse otra vez. */}
+            {miEquipo && (
+              <div style={{ padding: '12px 16px', borderRadius: 10, marginBottom: 12,
+                background: SOLICITUD_BADGE[miEquipo.estado].color + '14',
+                border: '1px solid ' + SOLICITUD_BADGE[miEquipo.estado].color + '44' }}>
+                <p style={{ fontWeight: 700, fontSize: '0.84rem', marginBottom: 4, color: SOLICITUD_BADGE[miEquipo.estado].color }}>
+                  {miEquipo.estado === 'pendiente' ? '⏳ Tu equipo está por aprobar'
+                    : miEquipo.estado === 'aprobado' ? '✓ Tu equipo está inscrito'
+                    : '✕ El organizador rechazó tu inscripción'}
+                </p>
+                <p style={{ color: '#888', fontSize: '0.8rem', lineHeight: 1.5 }}>
+                  <strong style={{ color: '#f5f5f5' }}>{miEquipo.nombre}</strong>
+                  {miEquipo.estado === 'pendiente'
+                    ? (miEquipo.comprobante || miEquipo.codigoCanje
+                        ? ' · El organizador está revisando tu inscripción.'
+                        : ' · Falta el comprobante de pago: súbelo para que el organizador pueda aprobarte.')
+                    : miEquipo.estado === 'aprobado'
+                      ? ' · Ya tienes tu lugar en el torneo.'
+                      : ' · Puedes volver a inscribirlo mientras las inscripciones sigan abiertas.'}
+                </p>
+              </div>
+            )}
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              {aceptaInscripciones(torneoData) && (
+              {aceptaInscripciones(torneoData) && !yaInscritoEn(torneoData) && (
                 <button className="btn btn-primary" onClick={() => navigate(`/app/torneos/${torneoData.id}/inscribir`)}>
-                  👥 Inscribir mi Equipo — Bs. {torneoData.precio}
+                  👥 Inscribir mi Equipo — Bs. {montoBs(torneoData.precio)}
                 </button>
               )}
               {enCurso && (

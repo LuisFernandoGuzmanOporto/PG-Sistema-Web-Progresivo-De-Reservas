@@ -521,15 +521,18 @@ export async function guardarEquipo({ torneoId, nombre, capitanNombre, capitanTe
       posicion: j.posicion || null,
     }))
 
+  let anotados = []
   if (plantel.length) {
-    const { error: errorPlantel } = await supabase.from('equipo_jugadores').insert(plantel)
+    const { data, error: errorPlantel } = await supabase.from('equipo_jugadores')
+      .insert(plantel).select('id, dorsal, nombre, posicion, habilitado')
     if (errorPlantel) {
       await supabase.from('equipos').delete().eq('id', equipo.id)
       return fallo(errorPlantel)
     }
+    anotados = data || []
   }
 
-  return { equipo }
+  return { equipo, jugadores: anotados }
 }
 
 /** El organizador aprueba o rechaza la inscripcion de un equipo. */

@@ -7,7 +7,7 @@ import {
   partidoTercerPuesto, campeonDelTorneo, rankingJugadores, ganadorDeLlave, presentacionDeporte,
   etiquetasDeTabla,
 } from '../../lib/torneo'
-import { TORNEOS, torneoPorId, equiposPorGrupo } from '../../lib/datos'
+import { TORNEOS, torneoPorId, equiposPorGrupo, pts } from '../../lib/datos'
 import { recargarPartidosDeTorneo } from '../../lib/carga'
 import NoEncontrado from '../../components/NoEncontrado'
 import EventosPartido from './torneo/EventosPartido'
@@ -396,9 +396,9 @@ export default function TorneoEnVivo() {
               Cómo se arma la tabla
             </p>
             <p style={{ fontSize: '0.78rem', color: '#888', marginBottom: 8 }}>
-              Victoria: {puntaje.victoria} pts
-              {puntaje.admiteEmpate ? ` · Empate: ${puntaje.empate} pt` : ' · Sin empates en este deporte'}
-              {' '}· Derrota: {puntaje.derrota} pts
+              Victoria: {pts(puntaje.victoria)}
+              {puntaje.admiteEmpate ? ` · Empate: ${pts(puntaje.empate)}` : ' · Sin empates en este deporte'}
+              {' '}· Derrota: {pts(puntaje.derrota)}
             </p>
             <p style={{ fontSize: '0.72rem', color: '#555', marginBottom: 4 }}>Criterios de desempate, en orden:</p>
             <ol style={{ margin: 0, paddingLeft: 18 }}>

@@ -11,6 +11,7 @@ import { DEPORTE_CONFIG } from '../../lib/deportes'
 import { DIAS_SEMANA, jornadasDelTorneo, costoDelTorneo } from '../../lib/jornadas'
 import { hoyBolivia } from '../../lib/fecha'
 import { choquesEnFranja } from '../../lib/datos'
+import { montoBs } from '../../lib/dinero'
 
 // Pasos del formulario
 const PASOS = ['Deporte y Cancha', 'Formato y Fechas', 'Reglas y Equipos', 'Inscripción y QR', 'Confirmar']
@@ -459,7 +460,7 @@ export default function CrearTorneo() {
                     <option value="">Selecciona una cancha de {empresa?.nombre}</option>
                     {canchasEmpresa
                       .filter(c => !form.deporte || c.deporte === form.deporte)
-                      .map(c => <option key={c.id} value={c.nombre}>{c.nombre} — Bs. {c.precio}/hora</option>)}
+                      .map(c => <option key={c.id} value={c.nombre}>{c.nombre} — Bs. {montoBs(c.precio)}/hora</option>)}
                   </select>
                   {mc('cancha')}
                 </div>
@@ -600,10 +601,10 @@ export default function CrearTorneo() {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: 8, borderTop: '1px solid #2a2a2a' }}>
                     <span style={{ fontSize: '0.8rem', color: '#888' }}>
-                      Bs. {canchaElegida?.precio || 0} por hora
+                      Bs. {montoBs(canchaElegida?.precio || 0)} por hora
                     </span>
                     <span style={{ fontFamily: 'Bebas Neue', fontSize: '1.5rem', color: '#f59e0b' }}>
-                      Total: Bs. {plan.total}
+                      Total: Bs. {montoBs(plan.total)}
                     </span>
                   </div>
                 </div>
@@ -889,7 +890,7 @@ export default function CrearTorneo() {
                   <p style={{ fontFamily: 'Bebas Neue', fontSize: '1.3rem', color: '#f5f5f5' }}>{form.nombre}</p>
                   <p style={{ fontSize: '0.78rem', color: '#666' }}>{cfg?.emoji} {form.deporte} • {empresa?.nombre}</p>
                 </div>
-                <span style={{ fontFamily: 'Bebas Neue', fontSize: '1.5rem', color: '#f59e0b' }}>Bs. {form.precio}</span>
+                <span style={{ fontFamily: 'Bebas Neue', fontSize: '1.5rem', color: '#f59e0b' }}>Bs. {montoBs(form.precio)}</span>
               </div>
               <div style={{ padding: 20, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                 {[

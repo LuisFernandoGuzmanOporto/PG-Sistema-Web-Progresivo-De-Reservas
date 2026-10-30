@@ -15,5 +15,19 @@ const FORMATO = new Intl.DateTimeFormat('en-CA', {
   timeZone: 'America/La_Paz', year: 'numeric', month: '2-digit', day: '2-digit',
 })
 
+const FORMATO_HORA = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'America/La_Paz', hour: '2-digit', minute: '2-digit', hour12: false,
+})
+
 /** Hoy en Bolivia, como 'AAAA-MM-DD'. */
 export const hoyBolivia = () => FORMATO.format(new Date())
+
+/**
+ * El día en Bolivia de un instante que guardó la base, como 'AAAA-MM-DD'.
+ * Supabase devuelve created_at en UTC: cortar sus primeros 10 caracteres daba
+ * el día siguiente para todo lo hecho después de las 20:00.
+ */
+export const fechaDeBolivia = (instante) => instante ? FORMATO.format(new Date(instante)) : ''
+
+/** La hora en Bolivia de ese mismo instante, como 'HH:MM'. */
+export const horaDeBolivia = (instante) => instante ? FORMATO_HORA.format(new Date(instante)) : ''
