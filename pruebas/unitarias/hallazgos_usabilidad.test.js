@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { hoyBolivia, fechaDeBolivia, horaDeBolivia, fechaCorta, diaDeReserva, diasLegibles } from '../../src/lib/fecha.js'
+import { hoyBolivia, fechaDeBolivia, horaDeBolivia, fechaCorta, diaDeReserva, diasLegibles, conTildes } from '../../src/lib/fecha.js'
 import { quedanDe, comoUsarCanje, miEquipoEn, yaInscritoEn, pts, estadoDeTorneo, torneoActivo,
-         porRevisar, reservasQueChocan, RESERVAS_EMPRESA } from '../../src/lib/datos.js'
+         porRevisar, reservasQueChocan, RESERVAS_EMPRESA, reservaTerminada, estadoDeMiReserva,
+         ordenarReservas } from '../../src/lib/datos.js'
 import { montoBs, miles } from '../../src/lib/dinero.js'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -23,6 +24,10 @@ import { montoBs, miles } from '../../src/lib/dinero.js'
 // PU-42 · El Dashboard decía «4 pagos pendientes» y Reservas «Por revisar: 0».
 // PU-43 · Un entrenamiento se publicó encima de una reserva pagada.
 // PU-44 · Fechas «Mañana - 2026-10-31», «17-sept», «Mie», «2,590».
+// PU-45 · A la 1:43 p. m. «Próximas reservas» mostraba las de las 10:00 y las
+//         11:00; Mis Reservas estaba desordenada y decía «Pendiente» en
+//         reservas que ya habían pasado sin que nadie las revisara.
+// PU-46 · El horario de un torneo decía «Sab, Dom».
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('Hallazgos de las pruebas de usabilidad', () => {
@@ -170,5 +175,37 @@ describe('Hallazgos de las pruebas de usabilidad', () => {
     expect(fechaCorta('2026-09-17')).toBe('17 Sep')
     expect(diasLegibles(['Lun', 'Mie', 'Sab'])).toBe('Lun, Mié, Sáb')
     expect(miles(2590)).toBe('2.590')
+  })
+
+  it('PU-45 · a la 1:43 p. m. ya terminaron las reservas de las 10:00 y las 11:00, y la pendiente vieja dice que ya pasó', () => {
+    // Arrange: viernes 30 de octubre, 13:43 en Bolivia
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-30T17:43:00Z'))
+    const deLas10   = { fechaISO: '2026-10-30', horaInicio: '10:00', horaFin: '11:00', estado: 'pendiente' }
+    const deLas11   = { fechaISO: '2026-10-30', horaInicio: '11:00', horaFin: '12:00', estado: 'confirmada' }
+    const deLaTarde = { fechaISO: '2026-10-30', horaInicio: '18:00', horaFin: '19:00', estado: 'pendiente' }
+    const manana    = { fechaISO: '2026-10-31', horaInicio: '09:00', horaFin: '10:00', estado: 'confirmada' }
+    const deMayo    = { fechaISO: '2026-05-28', horaInicio: '16:00', horaFin: '17:00', estado: 'pendiente' }
+    const hastaMedianoche = { fechaISO: '2026-10-30', horaInicio: '23:00', horaFin: '00:00', estado: 'confirmada' }
+
+    // Act
+    const terminadas = [deLas10, deLas11, deLaTarde, manana, deMayo, hastaMedianoche].filter(reservaTerminada)
+    const orden = ordenarReservas([deMayo, manana, deLas10, deLaTarde, deLas11])
+
+    // Assert
+    expect(terminadas).toEqual([deLas10, deLas11, deMayo])
+    expect(estadoDeMiReserva(deMayo)).toBe('pasada')
+    expect(estadoDeMiReserva(deLas10)).toBe('pasada')
+    expect(estadoDeMiReserva(deLaTarde)).toBe('pendiente')
+    // Lo que viene primero (lo más cercano antes); después lo pasado, lo último primero
+    expect(orden).toEqual([deLaTarde, manana, deLas11, deLas10, deMayo])
+  })
+
+  it('PU-46 · los días dentro del horario de un torneo llevan tilde', () => {
+    // Act y Assert
+    expect(conTildes('Sab, Dom: 14:00 a 18:00')).toBe('Sáb, Dom: 14:00 a 18:00')
+    expect(conTildes('Lun, Mie, Vie: 19:00 a 21:00')).toBe('Lun, Mié, Vie: 19:00 a 21:00')
+    expect(conTildes('Sábados y domingos')).toBe('Sábados y domingos')
+    expect(conTildes(null)).toBe('')
   })
 })

@@ -8,7 +8,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { yaSeJugo } from './horaDelPartido.js'
-import { hoyBolivia } from './fecha.js'
+import { hoyBolivia, ahoraBolivia } from './fecha.js'
 
 /**
  * Compara dos identificadores sin importar si son numero o texto.
@@ -89,6 +89,14 @@ export const EMPRESAS = [
  * suspende una empresa, el cambio se refleja de inmediato.
  */
 export const empresasActivas = () => EMPRESAS.filter(e => e.estado === 'activo')
+
+/**
+ * Los complejos que se le ofrecen a un cliente para reservar: aprobados y con
+ * al menos una cancha habilitada. Uno sin canchas aparecía en la lista y no
+ * tenía nada que reservar.
+ */
+export const empresasConCanchas = () =>
+  empresasActivas().filter(e => (CANCHAS_POR_EMPRESA[e.id] || []).some(c => c.disponible))
 
 export const empresaPorId = (id) => EMPRESAS.find(e => mismo(e.id, id)) || null
 
@@ -831,6 +839,33 @@ export const porRevisar = (r) =>
   r.estado === 'pendiente' && r.origen !== 'torneo' && (r.fechaISO || '') >= hoyLocal()
 
 /**
+ * Si la hora de la reserva ya terminó. A la 1:43 p. m., «Próximas reservas»
+ * seguía mostrando las de las 10:00 y las 11:00 de ese día, y una cancha no se
+ * podía desactivar por una reserva de la mañana que ya se había jugado.
+ */
+export const reservaTerminada = (r) => {
+  if (!r?.fechaISO) return false
+  const fin = r.horaFin && r.horaFin !== '00:00' ? r.horaFin : '24:00'
+  return r.fechaISO + ' ' + fin <= ahoraBolivia()
+}
+
+/**
+ * El estado que ve el cliente: una pendiente cuya hora ya pasó no dice
+ * «Pendiente» como si todavía la fueran a revisar.
+ */
+export const estadoDeMiReserva = (r) =>
+  r.estado === 'pendiente' && reservaTerminada(r) ? 'pasada' : r.estado
+
+/** Primero lo que viene, de lo más cercano a lo más lejano; después lo pasado, lo último primero. */
+export const ordenarReservas = (lista) => [...lista].sort((a, b) => {
+  const pa = reservaTerminada(a), pb = reservaTerminada(b)
+  if (pa !== pb) return pa ? 1 : -1
+  const ka = (a.fechaISO || '') + (a.horaInicio || '')
+  const kb = (b.fechaISO || '') + (b.horaInicio || '')
+  return pa ? kb.localeCompare(ka) : ka.localeCompare(kb)
+})
+
+/**
  * Las reservas que pisaría un entrenamiento fijo: las que todavía ocupan esa
  * cancha, desde hoy, en alguno de sus días y a una hora que se cruza.
  * Antes un entrenamiento de 11:00 a 23:00 se publicaba encima de una
@@ -838,9 +873,8 @@ export const porRevisar = (r) =>
  */
 export const reservasQueChocan = ({ empresaId, cancha, dias, horaInicio, horaFin }) => {
   const indices = (dias || []).map(d => ({ Dom: 0, Lun: 1, Mar: 2, Mie: 3, Jue: 4, Vie: 5, Sab: 6 })[d])
-  const hoy = hoyLocal()
   return reservasDeEmpresa(empresaId)
-    .filter(r => r.cancha === cancha && ocupaLaCancha(r) && (r.fechaISO || '') >= hoy)
+    .filter(r => r.cancha === cancha && ocupaLaCancha(r) && !reservaTerminada(r))
     .filter(r => {
       const [a, m, d] = r.fechaISO.split('-').map(Number)
       return indices.includes(new Date(a, m - 1, d).getDay())
@@ -1239,6 +1273,7 @@ export const registrarCanje = (recompensa, guardado = null, cliente = USUARIO_AC
     cliente_id: cliente.id, cliente: cliente.nombre,
     recompensa: recompensa.nombre, tipo: recompensa.tipo, puntos: recompensa.puntos,
     codigo: guardado?.codigo ?? generarCodigoCanje(), estado: 'disponible', fecha: 'Hoy',
+    creadoEl: new Date().toISOString(),
   }
   CANJES.unshift(nuevo)
   // La recompensa canjeada queda con una menos disponible
@@ -1320,6 +1355,7 @@ export const choquesEnFranja = (empresaId, cancha, fechas, horaInicio, horaFin) 
 /** Registra una reserva nueva y la devuelve. La ven el admin y el empleado. */
 export const registrarReserva = (datos) => {
   const nueva = {
+    creadoEl: new Date().toISOString(),
     id: Date.now(),
     nro: 'RSV-' + String(Date.now()).slice(-8),
     estado: 'pendiente', comprobante: false, asistencia: null,

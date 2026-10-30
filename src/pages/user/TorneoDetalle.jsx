@@ -614,7 +614,7 @@ export default function TorneoDetalle() {
                                   color: p.estado === 'programado' ? '#666' : '#ef4444',
                                 }}>{p.estado === 'programado' ? '🕐 Programado' : '🔴 En Vivo'}</span>
                               </div>
-                              <p style={{ fontSize: '0.75rem', color: '#555' }}>🕐 {p.hora} • 📍 {p.cancha}</p>
+                              <p style={{ fontSize: '0.75rem', color: '#555' }}>🕐 {p.hora}{p.cancha && <> • 📍 {p.cancha}</>}</p>
                               <div style={{ display: 'flex', gap: 16, marginTop: 6 }}>
                                 <span style={{ fontSize: '0.72rem', color: hab1 === tot1 && tot1 > 0 ? '#22c55e' : '#f59e0b' }}>
                                   {p.equipo1}: {hab1}/{tot1} habilitados

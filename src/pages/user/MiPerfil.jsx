@@ -5,15 +5,17 @@ import Layout from '../../components/layout/Layout'
 import AvisoFaltantes from '../../components/AvisoFaltantes'
 import { propsCampo, MensajeCampo, irAlPrimerError } from '../../components/Validacion'
 import { calcularTabla } from '../../lib/torneo'
-import { USUARIO_ACTUAL, ESTADO_TORNEO, torneosCreadosPor, torneosDondeParticipa,
+import { USUARIO_ACTUAL, torneosCreadosPor, torneosDondeParticipa,
          miEquipoEn, equiposAprobados, solicitudesPendientes,
          equiposPorGrupo, misReservas, canjesDeCliente, PARTIDOS_ESPONTANEOS,
-         FORMAS_DE_GANAR_PUNTOS, canchasDeEmpresa, DEPORTES, pts } from '../../lib/datos'
+         FORMAS_DE_GANAR_PUNTOS, canchasDeEmpresa, DEPORTES, pts,
+         estadoDeTorneo, estadoDeMiReserva, ordenarReservas } from '../../lib/datos'
 import { guardarPerfil as guardarPerfilEnBase } from '../../lib/guardar'
 import FotoDePerfil from '../../components/FotoDePerfil'
 import { EMOJI_DEPORTE } from '../../lib/preferencias'
 import { useAuth } from '../../lib/auth'
 import { montoBs } from '../../lib/dinero'
+import { fechaCortaDeBolivia, hoyBolivia, fechaDeBolivia } from '../../lib/fecha'
 
 // Las reservas del cliente son las mismas filas que ve el complejo:
 // si el administrador confirma una, aqui aparece confirmada.
@@ -29,11 +31,19 @@ const RESERVA_ESTADO = {
   rechazada:  { label: 'Rechazada',  color: '#ef4444', bg: 'rgba(239,68,68,0.12)'  },
   // Pagó cuando ya se le había pasado el tiempo y otra persona tomó la hora
   vencida:    { label: 'Pago fuera de tiempo', color: '#a855f7', bg: 'rgba(168,85,247,0.12)' },
+  // Quedó pendiente y su hora ya pasó: el complejo no la revisó a tiempo.
+  // Antes seguía diciendo «Pendiente», como si todavía se fuera a jugar.
+  pasada:     { label: 'Sin revisar · ya pasó', color: '#888', bg: 'rgba(255,255,255,0.06)' },
+  cancelada:  { label: 'Anulada',    color: '#888', bg: 'rgba(255,255,255,0.06)' },
 }
 
-// Mismo estado que el resto de la app, con la etiqueta corta
-const ESTADO_BADGE = Object.fromEntries(
-  Object.entries(ESTADO_TORNEO).map(([k, v]) => [k, { ...v, label: v.corto }]))
+// Mismo estado que el resto de la app, con la etiqueta corta. Se mira también
+// la fecha: «Torneo de Pádel Abierto» decía «Abierto» aquí y «No se jugó» en Torneos.
+const badgeDeTorneo = (t) => ({ ...estadoDeTorneo(t), label: estadoDeTorneo(t).corto })
+
+// Cuándo hizo algo: 'Hoy' o '29 Oct'
+const cuandoFue = (instante) =>
+  !instante ? '' : fechaDeBolivia(instante) === hoyBolivia() ? 'Hoy' : fechaCortaDeBolivia(instante)
 
 const INSCRIPCION_BADGE = {
   aprobado:  { label: 'Aprobado',  color: '#22c55e' },
@@ -125,6 +135,7 @@ export default function MiPerfil() {
       ...t,
       miEquipo: eq.nombre,
       estadoInscripcion: eq.estado,
+      inscritoEl: eq.creadoEl,
       posicion: t.estado === 'en_curso' && fila ? fila.pos : null,
       proximoPartido: prox
         ? { rival: prox.equipo1_id === eq.id ? prox.equipo2 : prox.equipo1, hora: prox.hora, cancha: prox.cancha }
@@ -190,7 +201,8 @@ export default function MiPerfil() {
   const usuario = datos
 
   // Reservas y canjes reales de este cliente
-  const MIS_RESERVAS = misReservas().map(conDeporte)
+  // Ordenadas: lo que viene primero, después lo que ya pasó
+  const MIS_RESERVAS = ordenarReservas(misReservas().map(conDeporte))
   const MIS_CANJES   = canjesDeCliente()
 
   // Los partidos abiertos se apuntan por nombre, igual que en la pantalla de
@@ -201,22 +213,28 @@ export default function MiPerfil() {
 
   // La actividad sale de lo que el usuario hizo, no de una lista escrita a
   // mano: antes todos veian las mismas cuatro lineas inventadas.
+  // Con la fecha en que lo hizo, lo último primero. Antes salía desordenada y
+  // con la fecha del partido o del torneo: «Te inscribiste en Copa… 7 Nov»
+  // cuando la inscripción fue el 29 de octubre.
   const MI_ACTIVIDAD = [
     ...MIS_RESERVAS.map(r => ({
       icon: '📅',
-      texto: 'Reservaste ' + r.cancha + (r.empresa ? ' en ' + r.empresa : ''),
-      tiempo: r.fecha,
+      texto: 'Reservaste ' + r.cancha + (r.empresa ? ' en ' + r.empresa : '') + (r.fecha === 'Hoy' ? ' para hoy' : ' para el ' + r.fecha),
+      cuando: r.creadoEl,
     })),
     ...MIS_TORNEOS_INSCRITO.map(t => ({
-      icon: '🏆', texto: 'Te inscribiste en ' + t.nombre, tiempo: t.fechaInicio || '',
+      icon: '🏆', texto: 'Inscribiste a ' + t.miEquipo + ' en ' + t.nombre, cuando: t.inscritoEl,
     })),
     ...MIS_TORNEOS_CREADOS.map(t => ({
-      icon: '🏆', texto: 'Creaste el torneo ' + t.nombre, tiempo: t.fechaInicio || '',
+      icon: '🏆', texto: 'Creaste el torneo ' + t.nombre, cuando: t.creadoEl,
     })),
     ...MIS_CANJES.map(c => ({
-      icon: '🎁', texto: 'Canjeaste ' + (c.recompensa || 'una recompensa'), tiempo: c.fecha || '',
+      icon: '🎁', texto: 'Canjeaste ' + (c.recompensa || 'una recompensa'), cuando: c.creadoEl,
     })),
-  ].slice(0, 8)
+  ]
+    .sort((a, b) => String(b.cuando || '').localeCompare(String(a.cuando || '')))
+    .slice(0, 8)
+    .map(a => ({ ...a, tiempo: cuandoFue(a.cuando) }))
 
   const descargarComprobante = (r) => {
     const html = `<!DOCTYPE html>
@@ -593,7 +611,7 @@ export default function MiPerfil() {
             </div>
           ) : (
             MIS_RESERVAS.map(r => {
-              const badge = RESERVA_ESTADO[r.estado]
+              const badge = RESERVA_ESTADO[estadoDeMiReserva(r)] || RESERVA_ESTADO.cancelada
               return (
                 <div key={r.id} className="card" style={{ padding: 18 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 10 }}>
@@ -668,10 +686,10 @@ export default function MiPerfil() {
       {tab === 'torneos' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
 
-          {/* Torneos que cree */}
+          {/* Torneos que creé */}
           <div>
             <h3 style={{ fontFamily: 'Bebas Neue', fontSize: '1.2rem', color: '#f5f5f5', marginBottom: 14 }}>
-              Torneos que cree ({MIS_TORNEOS_CREADOS.length})
+              Torneos que creé ({MIS_TORNEOS_CREADOS.length})
             </h3>
             {MIS_TORNEOS_CREADOS.length === 0 ? (
               <div className="empty-state" style={{ minHeight: 120 }}>
@@ -680,7 +698,7 @@ export default function MiPerfil() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {MIS_TORNEOS_CREADOS.map(t => {
-                  const badge = ESTADO_BADGE[t.estado]
+                  const badge = badgeDeTorneo(t)
                   return (
                     <div key={t.id} className="card" style={{ padding: 18, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                       <div style={{ flex: 1 }}>
@@ -732,7 +750,7 @@ export default function MiPerfil() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {MIS_TORNEOS_INSCRITO.map(t => {
-                  const estadoBadge = ESTADO_BADGE[t.estado]
+                  const estadoBadge = badgeDeTorneo(t)
                   const inscBadge = INSCRIPCION_BADGE[t.estadoInscripcion]
                   return (
                     <div key={t.id} className="card" style={{ padding: 18 }}>

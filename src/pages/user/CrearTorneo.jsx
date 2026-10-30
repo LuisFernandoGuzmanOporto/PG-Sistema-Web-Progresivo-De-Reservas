@@ -298,6 +298,7 @@ export default function CrearTorneo() {
       horarios: form.horarios || emp?.horario || '',
       grupos: null, equipos: [], partidos: [],
     }
+    nuevo.creadoEl = new Date().toISOString()
     TORNEOS.push(nuevo)
     setTorneoCreado(nuevo)
     setCreado(true)

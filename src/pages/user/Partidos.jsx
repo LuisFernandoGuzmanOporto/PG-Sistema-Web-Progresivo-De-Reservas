@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Layout from '../../components/layout/Layout'
-import { PARTIDOS_ESPONTANEOS, partidosVigentes, empresasActivas, USUARIO_ACTUAL,
-         empresaPorId } from '../../lib/datos'
+import { PARTIDOS_ESPONTANEOS, partidosVigentes, USUARIO_ACTUAL, empresaPorId, empresasConCanchas } from '../../lib/datos'
 import { unirseAPartido, salirDePartido } from '../../lib/guardar'
 import { horaDelPartido, yaSeJugo } from '../../lib/horaDelPartido'
 
@@ -130,7 +129,7 @@ export default function Partidos() {
                   style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', marginBottom: 4 }}>
                   <p style={{ fontSize: '0.82rem', color: '#00BCD4', fontWeight: 600 }}>{empresa?.emoji} {empresa?.nombre}</p>
                 </button>
-                <p style={{ fontSize: '0.78rem', color: '#666', marginBottom: 12 }}>📍 {p.cancha}</p>
+                {p.cancha && <p style={{ fontSize: '0.78rem', color: '#666', marginBottom: 12 }}>📍 {p.cancha}</p>}
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                   <span style={{ fontSize: '0.78rem', color: '#666' }}>Jugadores confirmados</span>
@@ -229,7 +228,7 @@ export default function Partidos() {
               <button className="btn btn-ghost btn-sm" onClick={() => setSede(false)}>✕</button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {empresasActivas().map(e => (
+              {empresasConCanchas().map(e => (
                 <button key={e.id} onClick={() => navigate('/app/empresa/' + e.id + '?tab=partidos')}
                   style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'rgba(255,255,255,0.03)', border: '1px solid #2a2a2a', borderRadius: 10, cursor: 'pointer', textAlign: 'left' }}>
                   <span style={{ fontSize: '1.6rem' }}>{e.emoji}</span>

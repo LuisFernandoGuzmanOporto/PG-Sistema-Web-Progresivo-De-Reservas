@@ -220,7 +220,7 @@ export default function DashboardAdmin() {
           </div>
           <p style={{ color: '#888', fontSize: '0.78rem', marginTop: 14, paddingTop: 12, borderTop: '1px solid #2a2a2a' }}>
             {!SIN_DATOS && HORA_PICO ? <>
-              La franja pico es <strong style={{ color: '#00BCD4' }}>{HORA_PICO.hora}</strong> con {HORA_PICO.reservas} reservas.
+              La franja pico es <strong style={{ color: '#00BCD4' }}>{HORA_PICO.hora}</strong> con {HORA_PICO.reservas === 1 ? '1 hora vendida' : HORA_PICO.reservas + ' horas vendidas'} este mes.
               Entre 12:00 y 14:00 casi no hay movimiento: ahí conviene promoción.
             </> : 'Cuando tengas reservas vas a ver aquí en qué horarios se concentran.'}
           </p>

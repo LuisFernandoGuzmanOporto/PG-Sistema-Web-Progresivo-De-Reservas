@@ -19,7 +19,7 @@ const ESTADO = {
   // Quedó pendiente y su día ya pasó: nadie la revisó a tiempo
   pasada:     { label: 'Sin revisar · ya pasó', color: '#888', bg: 'rgba(255,255,255,0.06)' },
   // Se anuló después de pedirla, o era la jornada de un torneo que ya terminó
-  cancelada:  { label: 'Cancelada',  color: '#888', bg: 'rgba(255,255,255,0.06)' },
+  cancelada:  { label: 'Anulada',    color: '#888', bg: 'rgba(255,255,255,0.06)' },
 }
 
 export function GestionReservas() {
@@ -149,7 +149,7 @@ export function GestionReservas() {
           ['rechazada',  `Rechazadas (${rechazadas.length})`],
           ...(fueraDeTiempo.length ? [['vencida', `Pagos fuera de tiempo (${fueraDeTiempo.length})`]] : []),
           ...(pasadas.length ? [['pasada', `Sin revisar, ya pasadas (${pasadas.length})`]] : []),
-          ...(canceladas.length ? [['cancelada', `Canceladas (${canceladas.length})`]] : []),
+          ['cancelada',  `Anuladas (${canceladas.length})`],
           ['torneos',    `🏆 Horas de torneo (${deTorneos.length})`],
         ].map(([k, label]) => (
           <button key={k} className={`tab ${filtro === k ? 'active' : ''}`} onClick={() => setFiltro(k)}>{label}</button>
@@ -158,7 +158,17 @@ export function GestionReservas() {
 
       <div className="card">
         {visibles.length === 0 ? (
-          <div className="empty-state"><p>No hay reservas en esta vista</p></div>
+          <div className="empty-state">
+            <p>No hay reservas en esta vista</p>
+            {/* Una reserva confirmada no se borra desde la aplicación: se anula y
+                queda aquí. Las que la bitácora marca como eliminadas las borraron
+                las pruebas automáticas del sistema. */}
+            {filtro === 'cancelada' && (
+              <p style={{ color: '#555', fontSize: '0.8rem', marginTop: 6, maxWidth: 440, lineHeight: 1.5 }}>
+                Aquí aparecen las reservas anuladas y las jornadas de torneos que terminaron antes de lo previsto.
+              </p>
+            )}
+          </div>
         ) : (
           <div className="table-container">
             <table>

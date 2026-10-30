@@ -2,6 +2,7 @@ import { supabase } from './supabase'
 import * as D from './datos'
 import { jornadasDelTorneo, costoDelTorneo } from './jornadas'
 import { traducirError } from './errores'
+import { diasLegibles } from './fecha'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GUARDAR EN LA BASE
@@ -415,7 +416,7 @@ export async function guardarTorneo({ empresaId, canchaId, creadorTipo, nombre, 
     premio_tercero: premios?.tercero || null,
     reglas: reglas || [],
     horarios: dias?.length && horaInicio
-      ? dias.join(', ') + ': ' + horaInicio + ' a ' + horaFin
+      ? diasLegibles(dias) + ': ' + horaInicio + ' a ' + horaFin
       : null,
     fecha_inicio: fechaInicio || null,
     fecha_fin: fechaFin || null,

@@ -6,17 +6,39 @@ import AvisoFaltantes from '../../components/AvisoFaltantes'
 import Confirmar from '../../components/Confirmar'
 import { propsCampo, MensajeCampo, irAlPrimerError } from '../../components/Validacion'
 import { CANCHAS_POR_EMPRESA, canchasDeEmpresa, reservasDeEmpresa,
-         EMPRESAS, SESION, DEPORTES, ocupaLaCancha,
+         EMPRESAS, SESION, DEPORTES, ocupaLaCancha, reservaTerminada,
 } from '../../lib/datos'
 import { guardarCancha, cambiarEstadoCancha, registrarEnBitacora } from '../../lib/guardar'
 import { urlPublica } from '../../lib/archivos'
 import { montoBs } from '../../lib/dinero'
-import { hoyBolivia, diaConFecha } from '../../lib/fecha'
+import { diaConFecha } from '../../lib/fecha'
 
 
 const EMOJI_DEPORTE = {
   'Fútbol': '⚽', 'Wally': '🎾', 'Básquetbol': '🏀',
   'Voleibol': '🏐', 'Pádel': '🏓', 'Tenis': '🎾',
+}
+
+/**
+ * Por qué no se puede desactivar: cuántas reservas le quedan y cuál es la
+ * próxima. Las jornadas de un torneo se nombran como tales; antes el aviso
+ * hablaba de «esos clientes» aunque la cancha la tuviera tomada un torneo.
+ */
+function detalleDeBloqueo(pendientes) {
+  const deTorneo  = pendientes.filter(r => r.origen === 'torneo')
+  const deCliente = pendientes.filter(r => r.origen !== 'torneo')
+  const partes = []
+  if (deCliente.length) partes.push(deCliente.length === 1 ? 'una reserva de un cliente' : deCliente.length + ' reservas de clientes')
+  if (deTorneo.length) partes.push(deTorneo.length === 1 ? 'una jornada de torneo' : deTorneo.length + ' jornadas de torneo')
+  const p = pendientes[0]
+  const proxima = p.origen === 'torneo'
+    ? `la jornada de ${p.torneo || 'un torneo'}`
+    : `la reserva ${p.nro}`
+  const queHacer = deCliente.length
+    ? 'Esos clientes ya cuentan con la cancha: espera a que pasen o resuélvelas en Reservas.'
+    : 'El torneo cuenta con esa cancha hasta que termine.'
+  return `Todavía tiene ${partes.join(' y ')}. La próxima es ${proxima} ` +
+    `(${diaConFecha(p.fechaISO)}, ${p.horaInicio}). ${queHacer}`
 }
 
 export function GestionCanchas() {
@@ -37,11 +59,11 @@ export function GestionCanchas() {
   const reservasHoy = (nombre) =>
     reservas.filter(r => r.cancha === nombre && r.fecha === 'Hoy' && ocupaLaCancha(r)).length
 
-  // Las reservas que todavía ocupan la cancha desde hoy, de clientes o de un torneo
+  // Las reservas que todavía ocupan la cancha, de clientes o de un torneo. Una
+  // de esta mañana que ya se jugó no cuenta: bloqueaba la Wally 1 a la tarde.
   const reservasPorVenir = (nombre) => {
-    const hoy = hoyBolivia()
     return reservas
-      .filter(r => r.cancha === nombre && ocupaLaCancha(r) && (r.fechaISO || '') >= hoy)
+      .filter(r => r.cancha === nombre && ocupaLaCancha(r) && !reservaTerminada(r))
       .sort((a, b) => (a.fechaISO + a.horaInicio).localeCompare(b.fechaISO + b.horaInicio))
   }
 
@@ -209,14 +231,12 @@ export function GestionCanchas() {
 
       {porDesactivar && (porDesactivar.pendientes.length ? (
         <Confirmar abierto titulo={'No se puede desactivar ' + porDesactivar.cancha.nombre}
-          detalle={`Tiene ${porDesactivar.pendientes.length === 1 ? 'una reserva' : porDesactivar.pendientes.length + ' reservas'} desde hoy, ` +
-            `la próxima ${porDesactivar.pendientes[0].nro || 'de un torneo'} (${diaConFecha(porDesactivar.pendientes[0].fechaISO)}, ` +
-            `${porDesactivar.pendientes[0].horaInicio}). Esos clientes ya cuentan con la cancha: espera a que pasen o resuélvelas en Reservas.`}
+          detalle={detalleDeBloqueo(porDesactivar.pendientes)}
           textoNo="Entendido" textoSi="Ir a Reservas"
           onNo={() => setPorDesactivar(null)} onSi={() => navigate('/admin/reservas')} />
       ) : (
         <Confirmar abierto titulo={'¿Desactivar ' + porDesactivar.cancha.nombre + '?'}
-          detalle="Los clientes dejan de verla y no se puede reservar hasta que la vuelvas a activar. No tiene reservas desde hoy."
+          detalle="Los clientes dejan de verla y no se puede reservar hasta que la vuelvas a activar. No tiene reservas por jugarse."
           textoSi="Sí, desactivar" trabajando={trabajando}
           onNo={() => setPorDesactivar(null)} onSi={() => alternar(porDesactivar.cancha.id)} />
       ))}

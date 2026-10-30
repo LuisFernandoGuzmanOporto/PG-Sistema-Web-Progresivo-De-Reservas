@@ -1,14 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Layout from '../../components/layout/Layout'
-import { empresasActivas, canchasDeEmpresa, torneosDeEmpresa,
-         entrenamientosDeEmpresa, USUARIO_ACTUAL } from '../../lib/datos'
+import { canchasDeEmpresa, torneosDeEmpresa, entrenamientosDeEmpresa, USUARIO_ACTUAL, empresasConCanchas } from '../../lib/datos'
 import { urlPublica } from '../../lib/archivos'
 import { primeroMiDeporte, esMiDeporte } from '../../lib/preferencias'
 
 // Los complejos y sus contadores salen de la fuente unica (src/lib/datos.js):
 // canchas, torneos y entrenamientos se cuentan, no se escriben a mano.
-const listaEmpresas = () => empresasActivas().map(e => ({
+const listaEmpresas = () => empresasConCanchas().map(e => ({
   ...e,
   totalCanchas:   canchasDeEmpresa(e.id).length,
   torneos:        torneosDeEmpresa(e.id).length,

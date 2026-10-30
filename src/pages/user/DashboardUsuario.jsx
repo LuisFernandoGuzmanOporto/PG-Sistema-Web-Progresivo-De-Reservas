@@ -2,8 +2,9 @@ import { useNavigate } from 'react-router-dom'
 import Layout from '../../components/layout/Layout'
 import { TORNEOS as TODOS_LOS_TORNEOS, partidosVigentes,
          ESTADO_TORNEO, conteoEquipos, USUARIO_ACTUAL, aceptaInscripciones,
-         misReservas, empresasActivas, canchasDeEmpresa,
-         FORMAS_DE_GANAR_PUNTOS, nivelDe, torneosCreadosPor } from '../../lib/datos'
+         misReservas, canchasDeEmpresa,
+         FORMAS_DE_GANAR_PUNTOS, nivelDe, torneosCreadosPor, reservaTerminada,
+         empresasConCanchas } from '../../lib/datos'
 import { hoyISO } from '../../lib/agenda'
 import { horaDelPartido } from '../../lib/horaDelPartido'
 import { primeroMiDeporte, esMiDeporte, EMOJI_DEPORTE as EMOJI } from '../../lib/preferencias'
@@ -46,7 +47,8 @@ export default function DashboardUsuario() {
   // Si ya reservó antes, el aviso no le dice que nunca reservó
   const YA_RESERVO = misReservas().length > 0
   const PROXIMAS_RESERVAS = misReservas()
-    .filter(r => (r.estado === 'pendiente' || r.estado === 'confirmada') && (r.fechaISO || '') >= hoy)
+    // Y que no hayan terminado: a la 1:43 p. m. seguían las de las 10:00 y las 11:00
+    .filter(r => (r.estado === 'pendiente' || r.estado === 'confirmada') && (r.fechaISO || '') >= hoy && !reservaTerminada(r))
     .sort((a, b) => (a.fechaISO + a.horaInicio).localeCompare(b.fechaISO + b.horaInicio))
     .slice(0, 3)
     .map(r => ({
@@ -81,7 +83,7 @@ export default function DashboardUsuario() {
   }
 
   // Canchas habilitadas ahora mismo, de los complejos activos
-  const CANCHAS_DISPONIBLES = primeroMiDeporte(empresasActivas()
+  const CANCHAS_DISPONIBLES = primeroMiDeporte(empresasConCanchas()
     .flatMap(e => canchasDeEmpresa(e.id)
       .filter(c => c.disponible)
       .map(c => ({ nombre: c.nombre, empresa: e.nombre, deporte: EMOJI_DEPORTE[c.deporte] || '🏟️',

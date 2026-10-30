@@ -4,7 +4,7 @@ import Layout from '../../components/layout/Layout'
 import { TORNEOS, ESTADO_TORNEO, estadoDeTorneo, conteoEquipos, torneosCreadosPor,
          torneosDondeParticipa, miEquipoEn, solicitudesPendientes,
          SOLICITUD_BADGE, aceptaInscripciones, solicitudDe,
-         ESTADO_SOLICITUD, empresasActivas, yaInscritoEn, puedeInscribirseEn } from '../../lib/datos'
+         ESTADO_SOLICITUD, yaInscritoEn, puedeInscribirseEn, empresasConCanchas } from '../../lib/datos'
 import { montoBs } from '../../lib/dinero'
 
 export default function Torneos() {
@@ -284,7 +284,7 @@ export default function Torneos() {
               <button className="btn btn-ghost btn-sm" onClick={() => setShowCrear(false)}>✕</button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {empresasActivas().map(e => (
+              {empresasConCanchas().map(e => (
                 <button key={e.id} onClick={() => navigate('/app/empresa/' + e.id + '/crear-torneo')}
                   style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'rgba(255,255,255,0.03)', border: '1px solid #2a2a2a', borderRadius: 10, cursor: 'pointer', textAlign: 'left' }}>
                   <span style={{ fontSize: '1.6rem' }}>{e.emoji}</span>

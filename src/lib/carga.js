@@ -261,6 +261,8 @@ export async function cargarDatos({ forzar = false } = {}) {
       entregadoPor: c.entregado_por ? (nombrePorPerfil.get(c.entregado_por) || null) : null,
       entregadoEl: c.entregado_at || null,
       fecha: fechaReserva(fechaDeBolivia(c.created_at)),
+      // Cuándo lo hizo, para el historial de actividad
+      creadoEl: c.created_at,
     })))
 
     // ── Calificaciones ───────────────────────────────────────────────────
@@ -313,7 +315,7 @@ export async function cargarDatos({ forzar = false } = {}) {
       // reserva quede invisible en el calendario por una diferencia de formato.
       fecha: fechaReserva(r.fecha), fechaISO: r.fecha,
       horaInicio: hora(r.hora_inicio), horaFin: hora(r.hora_fin),
-      monto: Number(r.monto_total), estado: r.estado,
+      monto: Number(r.monto_total), estado: r.estado, creadoEl: r.created_at,
       // Hasta cuando dura el apartado, con la hora del servidor (migraciones/038)
       apartaHasta: r.aparta_hasta || null,
       // Antes aqui iba un true/false, y por eso el complejo solo podia saber
@@ -392,7 +394,7 @@ export async function cargarDatos({ forzar = false } = {}) {
 
       return {
         id: t.id, empresa_id: t.empresa_id, creador_id: t.creador_id,
-        creador_tipo: t.creador_tipo,
+        creador_tipo: t.creador_tipo, creadoEl: t.created_at,
         creador: nombrePorPerfil.get(t.creador_id) || '—',
         nombre: t.nombre, emoji: t.emoji || '🏆',
         deporte: t.deporte, deporteKey: t.deporte,
@@ -440,7 +442,7 @@ export async function cargarDatos({ forzar = false } = {}) {
 
         equipos: misEquipos.map(e => ({
           id: e.id, nombre: e.nombre, capitan: e.capitan_nombre, estado: e.estado,
-          comprobante: e.comprobante_url, capitan_id: e.capitan_id,
+          comprobante: e.comprobante_url, capitan_id: e.capitan_id, creadoEl: e.created_at,
           telefono: telefonoDeEquipo.get(e.id) || null,
           // Quienes con cuenta son parte del equipo: el capitan que lo inscribio
           // y los jugadores que tengan cuenta. Antes quedaba vacio, y el cliente

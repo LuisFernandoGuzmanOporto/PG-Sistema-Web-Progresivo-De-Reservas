@@ -9,6 +9,8 @@
 // espectador mas cuatro del organizador metidas en el mismo archivo.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { conTildes } from '../../../lib/fecha'
+
 export default function TabInfo({ torneoData }) {
   return (
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
@@ -39,7 +41,7 @@ export default function TabInfo({ torneoData }) {
           {torneoData.horarios && (
             <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid #222' }}>
               <p style={{ fontSize: '0.78rem', color: '#00BCD4', fontWeight: 600, marginBottom: 4 }}>🗓️ Se juega</p>
-              <p style={{ fontSize: '0.85rem', color: '#bbb' }}>{torneoData.horarios}</p>
+              <p style={{ fontSize: '0.85rem', color: '#bbb' }}>{conTildes(torneoData.horarios)}</p>
             </div>
           )}
         </div>

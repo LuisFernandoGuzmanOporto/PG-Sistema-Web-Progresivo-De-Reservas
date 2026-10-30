@@ -83,3 +83,14 @@ export const nombreDia = (d) => CON_TILDE[d] || d
 
 /** ['Lun', 'Mie'] → 'Lun, Mié'. */
 export const diasLegibles = (dias) => (dias || []).map(nombreDia).join(', ')
+
+/**
+ * Los días dentro de un texto ya armado, con tilde: 'Sab, Dom: 14:00 a 18:00'
+ * → 'Sáb, Dom: 14:00 a 18:00'. Los horarios de los torneos se guardaron así.
+ */
+export const conTildes = (texto) =>
+  String(texto || '').replace(/\bMie\b/g, 'Mié').replace(/\bSab\b/g, 'Sáb')
+
+/** Ahora mismo en Bolivia, como 'AAAA-MM-DD HH:MM', para comparar con una reserva. */
+export const ahoraBolivia = () => hoyBolivia() + ' ' + horaDeBolivia(new Date())
+

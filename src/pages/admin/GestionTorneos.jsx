@@ -276,6 +276,7 @@ export default function GestionTorneos() {
                    costoTotal: g.costo?.total ?? 0 },
       grupos: null, equipos: [], partidos: [],
     }
+    nuevo.creadoEl = new Date().toISOString()
     TORNEOS.push(nuevo)
     setMis(torneosDelComplejo(SESION.empresaId))
     setShowModal(false)
@@ -337,7 +338,7 @@ export default function GestionTorneos() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 12 }}>
                     <p style={{ color: '#666', fontSize: '0.78rem' }}>📅 {t.fechaInicio} — {t.fechaFin}</p>
                     <p style={{ color: '#666', fontSize: '0.78rem' }}>👥 {conteoEquipos(t)} equipos aprobados</p>
-                    <p style={{ color: '#666', fontSize: '0.78rem' }}>📍 {t.cancha}</p>
+                    {t.cancha && <p style={{ color: '#666', fontSize: '0.78rem' }}>📍 {t.cancha}</p>}
                   </div>
 
                   {pend > 0 && (

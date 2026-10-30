@@ -31,7 +31,7 @@ export default function TabEnVivo({ torneoData, navigate }) {
                 <span style={{ fontSize: '0.72rem', color: '#ef4444', fontWeight: 700 }}>
                   🔴 EN VIVO{pres.tieneMinuto && p.minuto != null ? ` • ${p.minuto}'` : ''}
                 </span>
-                <span style={{ fontSize: '0.72rem', color: '#555' }}>📍 {p.cancha}</span>
+                {p.cancha && <span style={{ fontSize: '0.72rem', color: '#555' }}>📍 {p.cancha}</span>}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 10, alignItems: 'center', textAlign: 'center' }}>
                 <p style={{ fontFamily: 'Bebas Neue', fontSize: '1rem', color: '#f5f5f5' }}>{p.equipo1}</p>
@@ -51,7 +51,7 @@ export default function TabEnVivo({ torneoData, navigate }) {
                 <span style={{ fontSize: '0.85rem', color: '#f5f5f5' }}>{p.equipo1} vs {p.equipo2}</span>
                 <div style={{ textAlign: 'right' }}>
                   <p style={{ fontSize: '0.78rem', color: '#888' }}>🕐 {p.hora}</p>
-                  <p style={{ fontSize: '0.72rem', color: '#555' }}>📍 {p.cancha}</p>
+                  {p.cancha && <p style={{ fontSize: '0.72rem', color: '#555' }}>📍 {p.cancha}</p>}
                 </div>
               </div>
             ))}

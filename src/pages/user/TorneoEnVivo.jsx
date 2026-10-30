@@ -293,7 +293,7 @@ export default function TorneoEnVivo() {
                   </div>
                   <div style={{ textAlign: 'center' }}>
                     <p style={{ fontFamily: 'Bebas Neue', fontSize: '2rem', color: '#444' }}>VS</p>
-                    <p style={{ fontSize: '0.72rem', color: '#555', marginTop: 4 }}>📍 {p.cancha}</p>
+                    {p.cancha && <p style={{ fontSize: '0.72rem', color: '#555', marginTop: 4 }}>📍 {p.cancha}</p>}
                   </div>
                   <div style={{ textAlign: 'center' }}>
                     <p style={{ fontFamily: 'Bebas Neue', fontSize: '1rem', color: '#f5f5f5', marginBottom: 6 }}>{p.equipo2}</p>
@@ -611,7 +611,7 @@ export default function TorneoEnVivo() {
                     </div>
                     <div>
                       <p style={{ fontWeight: 700, color: '#f5f5f5', fontSize: '0.88rem' }}>{p.equipo2}</p>
-                      <p style={{ fontSize: '0.7rem', color: '#555' }}>📍 {p.cancha}</p>
+                      {p.cancha && <p style={{ fontSize: '0.7rem', color: '#555' }}>📍 {p.cancha}</p>}
                     </div>
                     {p.estado !== 'programado' ? (
                       <button onClick={() => compartirWhatsApp(p)}

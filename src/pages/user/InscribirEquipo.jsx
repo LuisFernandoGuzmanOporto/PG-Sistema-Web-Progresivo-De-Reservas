@@ -287,6 +287,7 @@ export default function InscribirEquipo() {
     torneo.equipos.push({
       id: e.id, nombre: e.nombre, capitan: e.capitan_nombre, estado: e.estado,
       comprobante: e.comprobante_url, capitan_id: e.capitan_id, integrantes_ids: [e.capitan_id],
+      creadoEl: e.created_at,
       escudo: e.escudo_url || null, codigoCanje: e.codigo_canje || null,
       jugadores: g.jugadores,
     })
