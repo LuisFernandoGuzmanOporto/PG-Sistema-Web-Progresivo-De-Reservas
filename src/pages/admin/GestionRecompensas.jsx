@@ -5,6 +5,8 @@ import { propsCampo, MensajeCampo, irAlPrimerError } from '../../components/Vali
 import { RECOMPENSAS_POR_EMPRESA, recompensasDeEmpresa,
          CANJES, canjesDeEmpresa, SESION, USUARIO_ACTUAL, pts,
 } from '../../lib/datos'
+import { miles } from '../../lib/dinero'
+import { fechaCortaDeBolivia, horaDeBolivia } from '../../lib/fecha'
 import {
   guardarRecompensa, cambiarEstadoRecompensa, borrarRecompensa,
   entregarCanje, registrarEnBitacora,
@@ -43,10 +45,9 @@ const aHistorial = (c) => ({
 
 // Qué pasó con el código, para que el administrador tenga el registro:
 // quién entregó el premio y cuándo, o dónde se usó el descuento.
-const FECHA_Y_HORA = { timeZone: 'America/La_Paz', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }
 function queSeHizo(c) {
   if (c.estadoCodigo === 'entregado') {
-    const cuando = c.entregadoEl ? new Date(c.entregadoEl).toLocaleString('es-BO', FECHA_Y_HORA) : ''
+    const cuando = c.entregadoEl ? fechaCortaDeBolivia(c.entregadoEl) + ' ' + horaDeBolivia(c.entregadoEl) : ''
     return ['Entregó ' + (c.entregadoPor || 'el complejo'), cuando].filter(Boolean).join(' · ')
   }
   if (c.estadoCodigo === 'utilizado') {
@@ -211,7 +212,7 @@ export default function GestionRecompensas() {
         {[
           { label: 'Recompensas activas',  valor: activas,                       color: '#22c55e', emoji: '✅' },
           { label: 'Total canjeadas',       valor: totalCanjeados,                color: '#00BCD4', emoji: '🎁' },
-          { label: 'Puntos entregados',     valor: puntosEntregados.toLocaleString(), color: '#f59e0b', emoji: '⭐' },
+          { label: 'Puntos entregados',     valor: miles(puntosEntregados), color: '#f59e0b', emoji: '⭐' },
           { label: 'Códigos disponibles',   valor: codesActivos,                  color: '#a78bfa', emoji: '🎟️' },
           { label: 'Premios pendientes',    valor: pendientesEntrega,             color: '#ef4444', emoji: '⏳' },
         ].map(s => (

@@ -7,7 +7,7 @@ import AvisoFaltantes from '../../components/AvisoFaltantes'
 import { propsCampo, MensajeCampo, irAlPrimerError } from '../../components/Validacion'
 import { validarDorsales } from '../../lib/torneo'
 import { torneoPorId, aceptaInscripciones, inscripcionVencida, USUARIO_ACTUAL,
-         yaInscritoEn } from '../../lib/datos'
+         yaInscritoEn, SESION, mismo } from '../../lib/datos'
 import { guardarEquipo, guardarComprobanteEquipo, revisarCodigoCanje } from '../../lib/guardar'
 import { subirComprobante, subirPublico, urlPublica,
          revisarArchivo, TIPOS_IMAGEN } from '../../lib/archivos'
@@ -120,6 +120,29 @@ export default function InscribirEquipo() {
           <div className="empty-state-icon">🏆</div>
           <h3 style={{ marginBottom: 8 }}>Este torneo no está recibiendo inscripciones</h3>
           <p style={{ color: '#888', fontSize: '0.85rem', lineHeight: 1.6, maxWidth: 380, margin: '0 auto' }}>{motivo}</p>
+          <button className="btn btn-primary" style={{ marginTop: 20 }} onClick={() => navigate('/app/torneos/' + torneo.id)}>
+            Ver el torneo
+          </button>
+        </div>
+      </Layout>
+    )
+  }
+
+  // Los equipos los inscriben los clientes, y no en el torneo que organizan
+  const loOrganiza = mismo(torneo.creador_id, USUARIO_ACTUAL.id)
+  if ((SESION.rol !== 'cliente' || loOrganiza) && !submitted) {
+    return (
+      <Layout role="user">
+        <div className="empty-state" style={{ padding: '48px 20px' }}>
+          <div className="empty-state-icon">🏆</div>
+          <h3 style={{ marginBottom: 8 }}>
+            {loOrganiza ? 'Este torneo lo organizas tú' : 'Los equipos los inscriben los clientes'}
+          </h3>
+          <p style={{ color: '#888', fontSize: '0.85rem', lineHeight: 1.6, maxWidth: 380, margin: '0 auto' }}>
+            {loOrganiza
+              ? 'Desde el torneo apruebas o rechazas a los equipos que se inscriben.'
+              : 'Con una cuenta de complejo se revisan y aprueban las inscripciones, no se inscriben equipos.'}
+          </p>
           <button className="btn btn-primary" style={{ marginTop: 20 }} onClick={() => navigate('/app/torneos/' + torneo.id)}>
             Ver el torneo
           </button>

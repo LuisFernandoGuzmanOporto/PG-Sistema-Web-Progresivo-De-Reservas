@@ -5,8 +5,9 @@ import AvisoFaltantes from '../../components/AvisoFaltantes'
 import { propsCampo, MensajeCampo, irAlPrimerError } from '../../components/Validacion'
 import {
   PERMISOS_EMPLEADO, PERMISOS_POR_DEFECTO, RESTRICCIONES_EMPLEADO, TURNOS,
-  empleadosDeEmpresa, bitacoraDeEmpresa, TIPO_BITACORA, SESION,
+  empleadosDeEmpresa, bitacoraDeEmpresa, TIPO_BITACORA, SESION, reservasDeEmpresa,
 } from '../../lib/datos'
+import { fechaCorta, hoyBolivia } from '../../lib/fecha'
 import {
   guardarPermisos as guardarPermisosEnBase, cambiarEstadoEmpleado, registrarEnBitacora,
   crearCuentaEmpleado, cambiarClaveEmpleado,
@@ -99,7 +100,7 @@ export default function GestionEmpleados() {
       id: g.empleado.id, empresa_id: SESION.empresaId,
       nombre: form.nombre.trim(), usuario: form.usuario.trim(), telefono: form.telefono,
       turno: form.turno, activo: true, permisos: form.permisos,
-      creado: new Date().toLocaleDateString('es-BO', { timeZone: 'America/La_Paz', day: '2-digit', month: 'short', year: 'numeric' }),
+      creado: fechaCorta(hoyBolivia()),
     }
     setEmpleados(prev => [...prev, nuevo])
     setForm(FORM_INIT)
@@ -159,6 +160,7 @@ export default function GestionEmpleados() {
   const bitacoraVisible = filtroEmp === 'todos'
     ? bitacora
     : bitacora.filter(b => String(b.empleado_id) === String(filtroEmp))
+  const numerosDeReserva = new Set(reservasDeEmpresa(SESION.empresaId).map(r => r.nro))
 
   const activos = empleados.filter(e => e.activo)
 
@@ -283,6 +285,11 @@ export default function GestionEmpleados() {
             <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
               {bitacoraVisible.map(b => {
                 const t = TIPO_BITACORA[b.tipo] || TIPO_BITACORA.cuenta
+                // La bitácora guarda lo que se hizo aunque la reserva después se
+                // borre. Sin este aviso parecía una reserva perdida, que no
+                // estaba en ninguna pestaña de Reservas.
+                const nro = String(b.detalle || '').match(/RSV-[\w-]+/)?.[0]
+                const yaNoExiste = nro && !numerosDeReserva.has(nro)
                 return (
                   <div key={b.id} style={{ display: 'flex', gap: 12, padding: '12px 14px', background: 'rgba(255,255,255,0.02)', border: '1px solid #2a2a2a', borderRadius: 10, alignItems: 'flex-start' }}>
                     <span style={{ fontSize: '1.1rem', flexShrink: 0 }}>{t.icon}</span>
@@ -290,7 +297,10 @@ export default function GestionEmpleados() {
                       <p style={{ color: '#f5f5f5', fontWeight: 600, fontSize: '0.87rem' }}>
                         {b.accion} <span style={{ color: t.color, fontWeight: 700 }}>· {b.empleado}</span>
                       </p>
-                      <p style={{ color: '#666', fontSize: '0.78rem' }}>{b.detalle}</p>
+                      <p style={{ color: '#666', fontSize: '0.78rem' }}>
+                        {b.detalle}
+                        {yaNoExiste && <span style={{ color: '#555', fontStyle: 'italic' }}> · esta reserva ya fue eliminada</span>}
+                      </p>
                     </div>
                     <span style={{ color: '#555', fontSize: '0.75rem', flexShrink: 0, textAlign: 'right' }}>
                       {b.fecha}<br />{b.hora}

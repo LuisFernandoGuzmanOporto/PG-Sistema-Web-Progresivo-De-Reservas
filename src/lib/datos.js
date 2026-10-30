@@ -584,9 +584,37 @@ export const ESTADO_TORNEO = {
 // organizador todavía no lo haya empezado
 const INSCRIPCIONES_CERRADAS = { label: 'Inscripciones cerradas', corto: 'Cerrado', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' }
 
+// Ya pasó su última fecha y el organizador no lo cerró: no se puede seguir
+// diciendo «En curso». Uno que nunca arrancó tampoco está «Cerrado» esperando.
+const SIN_CERRAR = { label: 'Terminó sin cerrarse', corto: 'Sin cerrar', color: '#888', bg: 'rgba(255,255,255,0.06)' }
+const NO_SE_JUGO = { label: 'No se jugó', corto: 'No se jugó', color: '#888', bg: 'rgba(255,255,255,0.06)' }
+
+const yaTermino = (t) => !!t.fechaFinISO && t.fechaFinISO < hoyLocal()
+
 /** El estado que se muestra de un torneo. */
-export const estadoDeTorneo = (t) =>
-  inscripcionVencida(t) ? INSCRIPCIONES_CERRADAS : ESTADO_TORNEO[t.estado]
+export const estadoDeTorneo = (t) => {
+  if (t.estado === 'en_curso' && yaTermino(t)) return SIN_CERRAR
+  if (t.estado === 'inscripciones' && yaTermino(t)) return NO_SE_JUGO
+  return inscripcionVencida(t) ? INSCRIPCIONES_CERRADAS : ESTADO_TORNEO[t.estado]
+}
+
+/**
+ * Un torneo activo: se está jugando, o todavía recibe equipos. Antes contaba
+ * cualquiera que no estuviera finalizado, también los que ya cerraron
+ * inscripciones o terminaron hace meses.
+ */
+export const torneoActivo = (t) =>
+  (t.estado === 'en_curso' && !yaTermino(t)) ||
+  (t.estado === 'inscripciones' && !inscripcionVencida(t) && !yaTermino(t))
+
+/**
+ * Si al usuario se le ofrece inscribir un equipo en este torneo. Solo a un
+ * cliente que no lo organiza y que todavía no tiene un equipo en él: el
+ * administrador veía «Inscribir mi Equipo» en su propio torneo.
+ */
+export const puedeInscribirseEn = (t) =>
+  SESION.rol === 'cliente' && !mismo(t.creador_id, USUARIO_ACTUAL.id) &&
+  aceptaInscripciones(t) && !yaInscritoEn(t)
 
 export const SOLICITUD_BADGE = {
   aprobado:  { label: 'Aprobado',  color: '#22c55e' },
@@ -792,6 +820,34 @@ export const RESERVAS_EMPRESA = [
 
 export const reservasDeEmpresa = (empresaId) =>
   RESERVAS_EMPRESA.filter(r => mismo(r.empresa_id, empresaId))
+
+/**
+ * Una reserva que el complejo todavía tiene que revisar: la pidió un cliente,
+ * está pendiente y su día no pasó. El Dashboard decía «4 pagos pendientes»
+ * mientras Reservas decía «Por revisar: 0»: el panel contaba también las de
+ * días que ya pasaron. Ahora los dos usan esta.
+ */
+export const porRevisar = (r) =>
+  r.estado === 'pendiente' && r.origen !== 'torneo' && (r.fechaISO || '') >= hoyLocal()
+
+/**
+ * Las reservas que pisaría un entrenamiento fijo: las que todavía ocupan esa
+ * cancha, desde hoy, en alguno de sus días y a una hora que se cruza.
+ * Antes un entrenamiento de 11:00 a 23:00 se publicaba encima de una
+ * reserva ya pagada sin ningún aviso.
+ */
+export const reservasQueChocan = ({ empresaId, cancha, dias, horaInicio, horaFin }) => {
+  const indices = (dias || []).map(d => ({ Dom: 0, Lun: 1, Mar: 2, Mie: 3, Jue: 4, Vie: 5, Sab: 6 })[d])
+  const hoy = hoyLocal()
+  return reservasDeEmpresa(empresaId)
+    .filter(r => r.cancha === cancha && ocupaLaCancha(r) && (r.fechaISO || '') >= hoy)
+    .filter(r => {
+      const [a, m, d] = r.fechaISO.split('-').map(Number)
+      return indices.includes(new Date(a, m - 1, d).getDay())
+    })
+    .filter(r => r.horaInicio < horaFin && (r.horaFin || r.horaInicio) > horaInicio)
+    .sort((x, y) => (x.fechaISO + x.horaInicio).localeCompare(y.fechaISO + y.horaInicio))
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ESTADÍSTICAS DE GESTIÓN

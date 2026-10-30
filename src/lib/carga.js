@@ -1,7 +1,7 @@
 import { supabase } from './supabase'
 import * as D from './datos'
 import { traducirError } from './errores'
-import { hoyBolivia, fechaDeBolivia, horaDeBolivia } from './fecha'
+import { hoyBolivia, fechaDeBolivia, horaDeBolivia, fechaCorta } from './fecha'
 
 // Las columnas del plantel que usa la aplicación
 const COLUMNAS_JUGADOR = 'id, equipo_id, jugador_id, nombre, dorsal, posicion, habilitado'
@@ -39,13 +39,6 @@ const EMOJI_DEPORTE = {
 }
 
 const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
-
-/** '2026-02-14' → '14 Feb', que es como lo muestran las pantallas. */
-const fechaCorta = (iso) => {
-  if (!iso) return ''
-  const [, m, d] = iso.split('-')
-  return `${Number(d)} ${MESES[Number(m) - 1]}`
-}
 
 /** Las reservas de hoy se muestran como "Hoy", igual que antes. */
 const fechaReserva = (iso) => {
@@ -123,12 +116,17 @@ export async function cargarDatos({ forzar = false } = {}) {
   if (yaCargado && !forzar) return { ok: true }
 
   try {
-    const [
+    // El teléfono del capitán no viaja con el equipo: lo ven solo el capitán y
+    // quien organiza el torneo (migraciones/046). La consulta devuelve solo esos.
+    const [[
       perfiles, empresas, deportes, canchas, empleados, entrenadores,
       entrenamientos, recompensas, calificaciones, reservas, canjes,
       torneos, solicitudes, equipos, jugadores, partidos, eventos,
       espontaneos, unidos, bitacora, puntos, usuarios, comentarios, ocupados,
-    ] = await traerTodo()
+    ], contactos] = await Promise.all([
+      traerTodo(),
+      supabase.from('equipo_contactos').select('equipo_id, telefono'),
+    ])
 
     const fallo = [empresas, canchas, torneos].find(r => r.error)
     if (fallo) return { error: traducirError(fallo.error, 'No se pudieron traer los datos') }
@@ -155,6 +153,8 @@ export async function cargarDatos({ forzar = false } = {}) {
         // el calculo de las franjas porque parecia un horario valido.
         horario: e.horario_inicio && e.horario_fin
           ? `${hora(e.horario_inicio)} - ${hora(e.horario_fin)}` : '',
+        // Las mismas horas por separado, para revisar que algo quede adentro
+        apertura: hora(e.horario_inicio), cierre: hora(e.horario_fin),
         deportes: sus,
         lat: Number(e.lat), lng: Number(e.lng), referencia: e.referencia,
         // Rutas dentro del deposito de archivos, no direcciones completas:
@@ -233,7 +233,9 @@ export async function cargarDatos({ forzar = false } = {}) {
       D.RECOMPENSAS_POR_EMPRESA[empresaId] = filas.map(r => ({
         id: r.id, empresa_id: r.empresa_id, nombre: r.nombre, icono: r.emoji,
         tipo: r.tipo, descripcion: r.descripcion, puntos: r.puntos, stock: r.stock,
-        canjeados: canjesPorRecompensa.get(r.id) || 0, activa: r.activa,
+        // Los cuenta la base (migraciones/046): un cliente solo puede leer sus
+        // propios canjes, y contándolos aquí le quedaban más de los que hay.
+        canjeados: r.canjeados ?? canjesPorRecompensa.get(r.id) ?? 0, activa: r.activa,
         // Cuanto descuenta, para las de tipo descuento_reserva.
         // 'porcentaje' 20 = 20%; 'horas_gratis' 1 = una hora al precio de esa cancha.
         descuentoTipo: r.descuento_tipo || null,
@@ -380,6 +382,7 @@ export async function cargarDatos({ forzar = false } = {}) {
     const partidosPorTorneo  = agrupar(partidos.data || [], 'torneo_id')
     const eventosPorPartido  = agrupar(eventos.data || [], 'partido_id')
     const nombreEquipo = new Map((equipos.data || []).map(e => [e.id, e.nombre]))
+    const telefonoDeEquipo = new Map((contactos.data || []).map(c => [c.equipo_id, c.telefono]))
     const jugadorPorId = new Map((jugadores.data || []).map(j => [j.id, j]))
 
     reemplazar(D.TORNEOS, (torneos.data || []).map(t => {
@@ -438,6 +441,7 @@ export async function cargarDatos({ forzar = false } = {}) {
         equipos: misEquipos.map(e => ({
           id: e.id, nombre: e.nombre, capitan: e.capitan_nombre, estado: e.estado,
           comprobante: e.comprobante_url, capitan_id: e.capitan_id,
+          telefono: telefonoDeEquipo.get(e.id) || null,
           // Quienes con cuenta son parte del equipo: el capitan que lo inscribio
           // y los jugadores que tengan cuenta. Antes quedaba vacio, y el cliente
           // no encontraba su equipo ni en «Mis participaciones» ni en el torneo:
@@ -540,24 +544,52 @@ function calcularEstadisticas() {
     return new Date(a, m - 1, d).getDay()
   }
 
+  // Todo es del mes en curso y solo de lo confirmado: una pendiente todavía
+  // no se pagó, y una que nadie revisó a tiempo ya no se va a pagar. Antes se
+  // sumaba todo desde mayo, cada reserva contaba como una hora aunque durara
+  // dos, y la ocupación dividía todo eso por lo que da un solo día.
+  const hoy = hoyBolivia()
+  const mes = hoy.slice(0, 7)
+  const [anio, numeroMes] = mes.split('-').map(Number)
+  const diasDelMes = new Date(anio, numeroMes, 0).getDate()
+  const NOMBRE_MES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio',
+                      'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+
+  // '09:00' a '11:00' → 2. Un cierre a medianoche ('00:00') cuenta como 24:00.
+  const minutos = (hhmm) => {
+    const [h, m] = String(hhmm || '').split(':').map(Number)
+    return (h || 0) * 60 + (m || 0)
+  }
+  const horasEntre = (inicio, fin) => {
+    let d = minutos(fin) - minutos(inicio)
+    if (d <= 0) d += 24 * 60
+    return d / 60
+  }
+
   for (const e of D.EMPRESAS) {
-    const todas    = D.RESERVAS_EMPRESA.filter(r => r.empresa_id === e.id)
-    const reservas = todas.filter(r => r.origen !== 'torneo')
-    // Solo lo que el complejo tiene que atender: un apartado todavia no es
-    // una reserva y una vencida ya no lo es
-    const vivas    = reservas.filter(r => r.estado === 'pendiente' || r.estado === 'confirmada')
+    const delMes      = D.RESERVAS_EMPRESA.filter(r => r.empresa_id === e.id && (r.fechaISO || '').startsWith(mes))
+    const reservas    = delMes.filter(r => r.origen !== 'torneo')
+    const confirmadas = reservas.filter(r => r.estado === 'confirmada')
 
     const porDia = DIAS.map(d => ({ dia: d, reservas: 0 }))
     const porHora = Array.from({ length: 16 }, (_, i) => ({
       hora: String(6 + i).padStart(2, '0') + ':00', reservas: 0,
     }))
-    const porCancha = D.canchasDeEmpresa(e.id).map(c => ({ cancha: c.nombre, reservas: 0, ingreso: 0 }))
+    const porCancha = D.canchasDeEmpresa(e.id).map(c => ({ cancha: c.nombre, reservas: 0, horas: 0, ingreso: 0 }))
 
-    for (const r of vivas) {
-      const h = porHora.find(x => x.hora === r.horaInicio)
-      if (h) h.reservas++
+    let horasVendidas = 0
+    for (const r of confirmadas) {
+      const horas = r.horaFin ? horasEntre(r.horaInicio, r.horaFin) : 1
+      horasVendidas += horas
+      // Cada hora que ocupa cuenta en su franja: una de 09:00 a 11:00 suma en
+      // la de las 09 y en la de las 10
+      const desde = Math.floor(minutos(r.horaInicio) / 60)
+      for (let k = 0; k < Math.ceil(horas); k++) {
+        const f = porHora.find(x => x.hora === String(desde + k).padStart(2, '0') + ':00')
+        if (f) f.reservas++
+      }
       const c = porCancha.find(x => x.cancha === r.cancha)
-      if (c) { c.reservas++; c.ingreso += r.monto }
+      if (c) { c.reservas++; c.horas += horas; c.ingreso += Number(r.monto) || 0 }
       // El dia que corresponde, no el de hoy. Antes todas las reservas caian
       // en el dia en que se abria la pantalla, y el grafico de demanda mostraba
       // una sola barra que cambiaba de lugar segun cuando se mirara.
@@ -565,18 +597,24 @@ function calcularEstadisticas() {
       if (d != null) porDia[d].reservas++
     }
 
+    // Lo que el complejo puede vender en el mes: sus canchas activas, las
+    // horas que abre cada día y los días del mes
+    const horasAbierto = e.apertura && e.cierre ? horasEntre(e.apertura, e.cierre) : 16
+    const canchasActivas = D.canchasDeEmpresa(e.id).filter(c => c.disponible).length
+    const capacidad = canchasActivas * horasAbierto * diasDelMes
+
     D.ESTADISTICAS[e.id] = {
-      periodo: 'Reservas registradas',
-      totalReservas: vivas.length,
-      horasVendidas: vivas.length,
-      ocupacion: Math.min(100, Math.round((vivas.length / Math.max(1, porCancha.length * 16)) * 100)),
-      ingresoMes: vivas.filter(r => r.estado === 'confirmada').reduce((a, r) => a + r.monto, 0),
+      periodo: 'Reservas confirmadas de ' + NOMBRE_MES[numeroMes - 1],
+      totalReservas: confirmadas.length,
+      horasVendidas,
+      ocupacion: capacidad ? Math.min(100, Math.round((horasVendidas / capacidad) * 1000) / 10) : 0,
+      ingresoMes: confirmadas.reduce((a, r) => a + (Number(r.monto) || 0), 0),
       // Jornadas de torneo: ocupan la cancha pero no se cobran
-      horasDeTorneo: todas.filter(r => r.origen === 'torneo' && D.ocupaLaCancha(r)).length,
+      horasDeTorneo: delMes.filter(r => r.origen === 'torneo' && D.ocupaLaCancha(r)).length,
       porDia, porHora,
-      porCancha: porCancha.sort((a, b) => b.reservas - a.reservas),
-      noShow: reservas.filter(r => r.asistencia === 'ausente').length,
-      canceladas: reservas.filter(r => r.estado === 'rechazada').length,
+      porCancha: porCancha.sort((a, b) => b.horas - a.horas),
+      noShow: confirmadas.filter(r => r.asistencia === 'ausente').length,
+      canceladas: reservas.filter(r => r.estado === 'rechazada' || r.estado === 'cancelada').length,
     }
   }
 }

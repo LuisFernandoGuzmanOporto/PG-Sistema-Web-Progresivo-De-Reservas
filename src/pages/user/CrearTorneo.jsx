@@ -9,7 +9,7 @@ import { subirPublico, revisarArchivo, TIPOS_IMAGEN } from '../../lib/archivos'
 import NoEncontrado from '../../components/NoEncontrado'
 import { DEPORTE_CONFIG } from '../../lib/deportes'
 import { DIAS_SEMANA, jornadasDelTorneo, costoDelTorneo } from '../../lib/jornadas'
-import { hoyBolivia } from '../../lib/fecha'
+import { hoyBolivia, nombreDia } from '../../lib/fecha'
 import { choquesEnFranja } from '../../lib/datos'
 import { montoBs } from '../../lib/dinero'
 
@@ -564,7 +564,7 @@ export default function CrearTorneo() {
                           background: on ? 'rgba(0,188,212,0.18)' : '#1a1a1a',
                           border: '1px solid ' + (on ? '#00BCD4' : '#2a2a2a'),
                           color: on ? '#00BCD4' : '#777' }}>
-                        {d}
+                        {nombreDia(d)}
                       </button>
                     )
                   })}

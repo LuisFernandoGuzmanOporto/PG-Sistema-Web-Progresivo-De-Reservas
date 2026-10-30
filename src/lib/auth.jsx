@@ -270,6 +270,26 @@ export function AuthProvider({ children }) {
     return { ok: true }
   }
 
+  /**
+   * Cambia la contraseña desde Mi cuenta o Mi perfil. Pide la actual: antes
+   * cualquiera que encontrara la sesión abierta en una computadora del
+   * complejo podía cambiarla y quedarse con la cuenta. Se comprueba entrando
+   * con ella; es la misma persona, así que la sesión sigue igual.
+   * (Recuperar la contraseña con el código del correo sigue usando cambiarMiClave.)
+   */
+  const cambiarClaveConLaActual = async (actual, nueva) => {
+    const correo = sesion?.user?.email
+    if (!correo) return { error: 'No se pudo leer tu cuenta. Cierra sesión y vuelve a entrar.' }
+    const { error } = await supabase.auth.signInWithPassword({ email: correo, password: actual })
+    if (error) {
+      return /invalid login credentials/i.test(error.message || '')
+        ? { error: 'La contraseña actual no es correcta.', campo: 'claveActual' }
+        : { error: mensajeDeError(error) }
+    }
+    if (actual === nueva) return { error: 'La contraseña nueva tiene que ser distinta de la actual.', campo: 'claveNueva' }
+    return cambiarMiClave(nueva)
+  }
+
   const salir = async () => {
     olvidarPerfil()
     await supabase.auth.signOut()
@@ -283,7 +303,7 @@ export function AuthProvider({ children }) {
     cargando: cargando || !sesionLeida,
     autenticado: Boolean(sesion && perfil),
     rol: perfil?.rol ?? null,
-    entrar, registrarse, salir, recuperarClave, verificarCodigo, cambiarMiClave,
+    entrar, registrarse, salir, recuperarClave, verificarCodigo, cambiarMiClave, cambiarClaveConLaActual,
     recargarPerfil: () => cargarPerfil(sesion?.user?.id),
   }
 

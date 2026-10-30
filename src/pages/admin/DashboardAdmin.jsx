@@ -3,9 +3,15 @@ import { useNavigate } from 'react-router-dom'
 import Layout from '../../components/layout/Layout'
 import { estadisticasDe, pico, reservasDeEmpresa, BITACORA, SESION, USUARIO_ACTUAL,
          empresaPorId, canchasDeEmpresa, torneosDeEmpresa,
-         entrenadoresDeEmpresa } from '../../lib/datos'
+         entrenadoresDeEmpresa, porRevisar, torneoActivo } from '../../lib/datos'
 import { resolverReserva, registrarEnBitacora } from '../../lib/guardar'
 import { montoBs } from '../../lib/dinero'
+import { ahoraEnBolivia } from '../../lib/fecha'
+
+// 1 → '1 reserva', 3 → '3 reservas'
+const cuantas = (n, palabra) => n + ' ' + palabra + (n === 1 ? '' : 's')
+// 1.5 horas → '1,5'
+const horasTexto = (h) => Number.isInteger(h) ? String(h) : h.toFixed(1).replace('.', ',')
 
 
 // Mientras no exista el login real, el admin ve su propio complejo
@@ -22,7 +28,7 @@ export default function DashboardAdmin() {
   const EST         = estadisticasDe(EMPRESA_ID)
   const DIA_PICO    = pico(EST.porDia)
   const HORA_PICO   = pico(EST.porHora)
-  const CANCHA_PICO = pico(EST.porCancha)
+  const CANCHA_PICO = pico(EST.porCancha, 'horas')
   // Un complejo recién aprobado todavia no tiene nada que graficar
   const SIN_DATOS   = EST.totalReservas === 0
 
@@ -50,13 +56,14 @@ export default function DashboardAdmin() {
   // Las tarjetas de arriba salen de las reservas reales del complejo. Antes
   // estaban escritas a mano en el archivo, asi que cualquier administrador
   // veia los mismos numeros inventados: '12 reservas hoy', 'Bs. 3.240'.
-  const porConfirmar = reservas.filter(r => r.estado === 'pendiente')
+  // Lo mismo que «Por revisar» en Reservas: las de días que ya pasaron van aparte
+  const porConfirmar = reservas.filter(porRevisar)
   const STATS = [
     { label: 'Reservas Hoy', value: String(RESERVAS_HOY.length),
-      change: RESERVAS_HOY.filter(r => r.estado === 'confirmada').length + ' confirmadas',
+      change: (n => n + (n === 1 ? ' confirmada' : ' confirmadas'))(RESERVAS_HOY.filter(r => r.estado === 'confirmada').length),
       up: null, icon: '📅' },
-    { label: 'Ingresos registrados', value: 'Bs. ' + montoBs(EST.ingresoMes),
-      change: EST.totalReservas + ' reservas en total'
+    { label: 'Ingresos del mes', value: 'Bs. ' + montoBs(EST.ingresoMes),
+      change: cuantas(EST.totalReservas, 'reserva') + (EST.totalReservas === 1 ? ' confirmada' : ' confirmadas')
         + (EST.horasDeTorneo ? ' · ' + EST.horasDeTorneo + ' jornadas de torneo' : ''),
       up: null, icon: '💰' },
     { label: 'Canchas publicadas', value: String(canchas.length),
@@ -87,8 +94,7 @@ export default function DashboardAdmin() {
       tipo: 'reserva',
       accion: estado === 'confirmada' ? 'Confirmó una reserva' : 'Rechazó una reserva',
       detalle: r.nro + ' · ' + r.cliente + ' · ' + r.cancha + ' ' + r.horaInicio,
-      fecha: new Date().toLocaleDateString('es-BO', { timeZone: 'America/La_Paz', day: '2-digit', month: 'short', year: 'numeric' }),
-      hora: new Date().toLocaleTimeString('es-BO', { timeZone: 'America/La_Paz', hour: '2-digit', minute: '2-digit', hour12: false }),
+      ...ahoraEnBolivia(),
     })
   }
 
@@ -131,10 +137,11 @@ export default function DashboardAdmin() {
       <div className="stats-grid" style={{ marginBottom: 16 }}>
         {[
           { label: 'Día de mayor demanda', value: DIA_PICO ? DIA_PICO.dia : '—',
-            sub: DIA_PICO ? DIA_PICO.reservas + ' reservas en el mes' : 'sin reservas todavía', icon: '🔥' },
+            sub: DIA_PICO ? cuantas(DIA_PICO.reservas, 'reserva') + ' en el mes' : 'sin reservas todavía', icon: '🔥' },
           { label: 'Horario más usado', value: HORA_PICO ? HORA_PICO.hora : '—',
-            sub: HORA_PICO ? HORA_PICO.reservas + ' reservas en esa franja' : 'sin reservas todavía', icon: '⏰' },
-          { label: 'Ocupación de canchas', value: EST.ocupacion + '%', sub: EST.horasVendidas + ' horas vendidas', icon: '📊' },
+            sub: HORA_PICO ? (HORA_PICO.reservas === 1 ? '1 hora vendida' : HORA_PICO.reservas + ' horas vendidas') + ' en esa franja' : 'sin reservas todavía', icon: '⏰' },
+          { label: 'Ocupación de canchas', value: String(EST.ocupacion).replace('.', ',') + '%',
+            sub: horasTexto(EST.horasVendidas) + (EST.horasVendidas === 1 ? ' hora vendida' : ' horas vendidas') + ' este mes', icon: '📊' },
           { label: 'No se presentaron',    value: EST.noShow, sub: EST.canceladas + ' canceladas además', icon: '🚫' },
         ].map(s => (
           <div key={s.label} className="stat-card">
@@ -185,7 +192,7 @@ export default function DashboardAdmin() {
           <p style={{ color: '#888', fontSize: '0.78rem', marginTop: 14, paddingTop: 12, borderTop: '1px solid #2a2a2a' }}>
             {!SIN_DATOS && DIA_PICO ? <>
               El <strong style={{ color: '#f59e0b' }}>{DIA_PICO.dia}</strong> concentra la mayor demanda.
-              El fin de semana suma {FIN_SEMANA} de las {EST.totalReservas} reservas del mes.
+              El fin de semana suma {FIN_SEMANA} de {cuantas(EST.totalReservas, 'reserva')} del mes.
             </> : 'Cuando tengas reservas vas a ver aquí qué días se llenan más.'}
           </p>
         </div>
@@ -222,15 +229,15 @@ export default function DashboardAdmin() {
         {/* Uso por cancha */}
         <div className="card" style={{ padding: 20 }}>
           <h3 className="section-title" style={{ fontSize: '1rem', marginBottom: 4 }}>🏟️ Uso por cancha</h3>
-          <p style={{ color: '#666', fontSize: '0.78rem', marginBottom: 18 }}>Cuánto se usó cada una</p>
+          <p style={{ color: '#666', fontSize: '0.78rem', marginBottom: 18 }}>Horas vendidas de cada una este mes</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {EST.porCancha.map(c => {
-              const pct = CANCHA_PICO?.reservas ? Math.round((c.reservas / CANCHA_PICO.reservas) * 100) : 0
+              const pct = CANCHA_PICO?.horas ? Math.round((c.horas / CANCHA_PICO.horas) * 100) : 0
               return (
                 <div key={c.cancha}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
                     <span style={{ fontSize: '0.8rem', color: '#f5f5f5', fontWeight: 600 }}>{c.cancha}</span>
-                    <span style={{ fontSize: '0.8rem', color: '#666' }}>{c.reservas} h</span>
+                    <span style={{ fontSize: '0.8rem', color: '#666' }}>{horasTexto(c.horas)} h</span>
                   </div>
                   <div style={{ height: 8, background: '#2a2a2a', borderRadius: 4, overflow: 'hidden' }}>
                     <div style={{ height: '100%', width: pct + '%', borderRadius: 4, background: 'linear-gradient(90deg,#8B0000,#00BCD4)' }} />
@@ -323,7 +330,7 @@ export default function DashboardAdmin() {
               {[
                 ['Total Reservas', String(EST.totalReservas)],
                 ['Ingresos', 'Bs. ' + montoBs(EST.ingresoMes)],
-                ['Torneos Activos', String(torneos.filter(t => t.estado !== 'finalizado').length)],
+                ['Torneos Activos', String(torneos.filter(torneoActivo).length)],
                 ['Entrenadores', String(entrenadoresDeEmpresa(EMPRESA_ID).length)],
               ].map(([k, v]) => (
                 <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>

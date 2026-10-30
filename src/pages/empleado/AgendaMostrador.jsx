@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { agendaDelDia, hoyISO } from '../../lib/agenda'
 import { MESES, DIAS_SEMANA, formatFecha } from '../user/empresa/calendario'
+import { nombreDia } from '../../lib/fecha'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LA AGENDA DEL MOSTRADOR
@@ -70,7 +71,7 @@ export function CalendarioMostrador({ empresaId, canchas, fecha, onElegir }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 4 }}>
         {DIAS_SEMANA.map(d => (
           <span key={d} style={{ textAlign: 'center', fontSize: '0.66rem', color: '#555', fontWeight: 700 }}>
-            {d.toUpperCase()}
+            {nombreDia(d).toUpperCase()}
           </span>
         ))}
         {celdas.map((iso, i) => {

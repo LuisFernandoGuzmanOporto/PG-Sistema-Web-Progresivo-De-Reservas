@@ -3,10 +3,10 @@ import { useState } from 'react'
 import Layout from '../../components/layout/Layout'
 import VisorComprobante from '../../components/VisorComprobante'
 import {
-  reservasDeEmpresa, canchasDeEmpresa, EMPRESAS, BITACORA, SESION, USUARIO_ACTUAL,
+  reservasDeEmpresa, canchasDeEmpresa, EMPRESAS, BITACORA, SESION, USUARIO_ACTUAL, porRevisar,
 } from '../../lib/datos'
 import { resolverReserva, registrarEnBitacora } from '../../lib/guardar'
-import { hoyBolivia } from '../../lib/fecha'
+import { hoyBolivia, ahoraEnBolivia } from '../../lib/fecha'
 import { montoBs } from '../../lib/dinero'
 
 
@@ -18,10 +18,9 @@ const ESTADO = {
   vencida:    { label: 'Pago fuera de tiempo', color: '#a855f7', bg: 'rgba(168,85,247,0.12)' },
   // Quedó pendiente y su día ya pasó: nadie la revisó a tiempo
   pasada:     { label: 'Sin revisar · ya pasó', color: '#888', bg: 'rgba(255,255,255,0.06)' },
+  // Se anuló después de pedirla, o era la jornada de un torneo que ya terminó
+  cancelada:  { label: 'Cancelada',  color: '#888', bg: 'rgba(255,255,255,0.06)' },
 }
-
-const ahora = () => new Date().toLocaleTimeString('es-BO', { timeZone: 'America/La_Paz', hour: '2-digit', minute: '2-digit', hour12: false })
-const hoy   = () => new Date().toLocaleDateString('es-BO', { timeZone: 'America/La_Paz', day: '2-digit', month: 'short', year: 'numeric' })
 
 export function GestionReservas() {
   // Las mismas reservas que atiende el empleado en su panel
@@ -52,7 +51,7 @@ export function GestionReservas() {
       tipo: 'reserva',
       accion: nuevoEstado === 'confirmada' ? 'Confirmó una reserva' : 'Rechazó una reserva',
       detalle: `${r.nro} · ${r.cliente} · ${r.cancha} ${r.horaInicio}`,
-      fecha: hoy(), hora: ahora(),
+      ...ahoraEnBolivia(),
     })
     avisar(nuevoEstado === 'confirmada'
       ? `Reserva ${r.nro} confirmada. ${r.cliente} recibirá la notificación.`
@@ -75,11 +74,13 @@ export function GestionReservas() {
   const yaPaso = (r) => (r.fechaISO || '') < hoy
   const estadoDe = (r) => r.estado === 'pendiente' && yaPaso(r) ? 'pasada' : r.estado
 
-  const pendientes  = deClientes.filter(r => estadoDe(r) === 'pendiente')
+  // El mismo criterio que la tarjeta «Pagos pendientes» del Dashboard
+  const pendientes  = deClientes.filter(porRevisar)
   const pasadas     = deClientes.filter(r => estadoDe(r) === 'pasada')
   const confirmadas = deClientes.filter(r => r.estado === 'confirmada')
   const rechazadas  = deClientes.filter(r => r.estado === 'rechazada')
   const fueraDeTiempo = deClientes.filter(r => r.estado === 'vencida')
+  const canceladas  = deClientes.filter(r => r.estado === 'cancelada')
   // «Hoy» es la fecha de la reserva, no cuándo se confirmó: antes contaba las
   // confirmadas de cualquier mes
   const confirmadasHoy = confirmadas.filter(r => r.fechaISO === hoy)
@@ -148,6 +149,7 @@ export function GestionReservas() {
           ['rechazada',  `Rechazadas (${rechazadas.length})`],
           ...(fueraDeTiempo.length ? [['vencida', `Pagos fuera de tiempo (${fueraDeTiempo.length})`]] : []),
           ...(pasadas.length ? [['pasada', `Sin revisar, ya pasadas (${pasadas.length})`]] : []),
+          ...(canceladas.length ? [['cancelada', `Canceladas (${canceladas.length})`]] : []),
           ['torneos',    `🏆 Horas de torneo (${deTorneos.length})`],
         ].map(([k, label]) => (
           <button key={k} className={`tab ${filtro === k ? 'active' : ''}`} onClick={() => setFiltro(k)}>{label}</button>
@@ -213,8 +215,8 @@ export function GestionReservas() {
                             : <span style={{ color: '#ef4444', fontSize: '0.76rem' }}>Sin comprobante</span>}
                     </td>
                     <td>
-                      <span className="badge" style={{ background: ESTADO[estadoDe(r)].bg, color: ESTADO[estadoDe(r)].color }}>
-                        {ESTADO[estadoDe(r)].label}
+                      <span className="badge" style={{ background: (ESTADO[estadoDe(r)] || ESTADO.cancelada).bg, color: (ESTADO[estadoDe(r)] || ESTADO.cancelada).color }}>
+                        {(ESTADO[estadoDe(r)] || ESTADO.cancelada).label}
                       </span>
                     </td>
                     <td>

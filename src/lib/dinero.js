@@ -18,3 +18,6 @@ export const montoBs = (monto) => {
   const centavos = Math.round(n * 100)
   return (centavos % 100 === 0 ? SIN_CENTAVOS : CON_CENTAVOS).format(centavos / 100)
 }
+
+/** Un número entero con punto de miles, como los montos: 2590 → '2.590'. */
+export const miles = (n) => SIN_CENTAVOS.format(Number(n) || 0)

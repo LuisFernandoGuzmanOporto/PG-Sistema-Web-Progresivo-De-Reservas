@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { hoyBolivia, fechaDeBolivia, horaDeBolivia } from '../../src/lib/fecha.js'
-import { quedanDe, comoUsarCanje, miEquipoEn, yaInscritoEn, pts } from '../../src/lib/datos.js'
-import { montoBs } from '../../src/lib/dinero.js'
+import { hoyBolivia, fechaDeBolivia, horaDeBolivia, fechaCorta, diaDeReserva, diasLegibles } from '../../src/lib/fecha.js'
+import { quedanDe, comoUsarCanje, miEquipoEn, yaInscritoEn, pts, estadoDeTorneo, torneoActivo,
+         porRevisar, reservasQueChocan, RESERVAS_EMPRESA } from '../../src/lib/datos.js'
+import { montoBs, miles } from '../../src/lib/dinero.js'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Lo que encontraron las pruebas de usabilidad (migraciones/044)
@@ -17,6 +18,11 @@ import { montoBs } from '../../src/lib/dinero.js'
 //         decía «Se descontaron 1 pts».
 // PU-40 · El cliente no veía su equipo pendiente y el torneo le seguía
 //         ofreciendo inscribirse (migraciones/045).
+// PU-41 · La Copa Interna decía «En curso» dos meses después de terminar, y
+//         «Torneos activos» contaba uno con las inscripciones cerradas.
+// PU-42 · El Dashboard decía «4 pagos pendientes» y Reservas «Por revisar: 0».
+// PU-43 · Un entrenamiento se publicó encima de una reserva pagada.
+// PU-44 · Fechas «Mañana - 2026-10-31», «17-sept», «Mie», «2,590».
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('Hallazgos de las pruebas de usabilidad', () => {
@@ -101,5 +107,68 @@ describe('Hallazgos de las pruebas de usabilidad', () => {
     expect(yaInscritoEn(soloRechazado, yo)).toBeNull()
     expect(miEquipoEn(volvioAInscribirse, yo)).toBe(pendiente)
     expect(yaInscritoEn({ equipos: [ajeno] }, yo)).toBeNull()
+  })
+
+  it('PU-41 · un torneo cuya última fecha pasó no figura «En curso» ni cuenta como activo', () => {
+    // Arrange: hoy es 30 de octubre en Bolivia
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-30T15:00:00Z'))
+    const copaInterna = { estado: 'en_curso', fechaFinISO: '2026-09-06' }
+    const cerrado     = { estado: 'inscripciones', inscripcionHastaISO: '2026-10-15', fechaFinISO: '2026-11-20' }
+    const abierto     = { estado: 'inscripciones', inscripcionHastaISO: '2026-11-04', fechaFinISO: '2026-11-22' }
+    const jugandose   = { estado: 'en_curso', fechaFinISO: '2026-11-15' }
+
+    // Act y Assert
+    expect(estadoDeTorneo(copaInterna).corto).toBe('Sin cerrar')
+    expect(estadoDeTorneo(cerrado).corto).toBe('Cerrado')
+    expect([copaInterna, cerrado, abierto, jugandose].filter(torneoActivo)).toEqual([abierto, jugandose])
+  })
+
+  it('PU-42 · por revisar es la reserva pendiente de un cliente cuyo día todavía no pasó', () => {
+    // Arrange
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-30T15:00:00Z'))
+
+    // Act y Assert
+    expect(porRevisar({ estado: 'pendiente', origen: 'app', fechaISO: '2026-10-31' })).toBe(true)
+    expect(porRevisar({ estado: 'pendiente', origen: 'app', fechaISO: '2026-10-30' })).toBe(true)
+    expect(porRevisar({ estado: 'pendiente', origen: 'app', fechaISO: '2026-10-02' })).toBe(false)   // ya pasó
+    expect(porRevisar({ estado: 'pendiente', origen: 'torneo', fechaISO: '2026-11-07' })).toBe(false)
+    expect(porRevisar({ estado: 'confirmada', origen: 'app', fechaISO: '2026-10-31' })).toBe(false)
+  })
+
+  it('PU-43 · un entrenamiento de viernes 11:00 a 23:00 choca con la reserva del viernes a las 11:00', () => {
+    // Arrange: hoy viernes 30 de octubre; una reserva confirmada y otra rechazada
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-30T15:00:00Z'))
+    const base = { empresa_id: 'emp-prueba', cancha: 'Cancha de Wally 1', origen: 'app' }
+    const pagada    = { ...base, nro: 'RSV-2026-02937', estado: 'confirmada', fechaISO: '2026-10-30', horaInicio: '11:00', horaFin: '12:00' }
+    const rechazada = { ...base, nro: 'RSV-X', estado: 'rechazada', fechaISO: '2026-11-06', horaInicio: '15:00', horaFin: '16:00' }
+    const otroDia   = { ...base, nro: 'RSV-Y', estado: 'confirmada', fechaISO: '2026-10-31', horaInicio: '11:00', horaFin: '12:00' }
+    RESERVAS_EMPRESA.push(pagada, rechazada, otroDia)
+
+    try {
+      // Act
+      const choques = reservasQueChocan({ empresaId: 'emp-prueba', cancha: 'Cancha de Wally 1',
+        dias: ['Vie'], horaInicio: '11:00', horaFin: '23:00' })
+      const despues = reservasQueChocan({ empresaId: 'emp-prueba', cancha: 'Cancha de Wally 1',
+        dias: ['Vie'], horaInicio: '12:00', horaFin: '14:00' })
+
+      // Assert
+      expect(choques.map(r => r.nro)).toEqual(['RSV-2026-02937'])
+      expect(despues).toEqual([])
+    } finally {
+      for (const r of [pagada, rechazada, otroDia]) RESERVAS_EMPRESA.splice(RESERVAS_EMPRESA.indexOf(r), 1)
+    }
+  })
+
+  it('PU-44 · las fechas, los días y los números se escriben como en Bolivia', () => {
+    // Act y Assert
+    expect(diaDeReserva('2026-10-31', '2026-10-30')).toBe('Mañana, sáb 31 oct')
+    expect(diaDeReserva('2026-10-30', '2026-10-30')).toBe('Hoy, vie 30 oct')
+    expect(diaDeReserva('2026-11-03', '2026-10-30')).toBe('Mar 3 nov')
+    expect(fechaCorta('2026-09-17')).toBe('17 Sep')
+    expect(diasLegibles(['Lun', 'Mie', 'Sab'])).toBe('Lun, Mié, Sáb')
+    expect(miles(2590)).toBe('2.590')
   })
 })

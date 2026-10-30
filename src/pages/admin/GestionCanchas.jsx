@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Layout from '../../components/layout/Layout'
 import AvisoFaltantes from '../../components/AvisoFaltantes'
+import Confirmar from '../../components/Confirmar'
 import { propsCampo, MensajeCampo, irAlPrimerError } from '../../components/Validacion'
 import { CANCHAS_POR_EMPRESA, canchasDeEmpresa, reservasDeEmpresa,
          EMPRESAS, SESION, DEPORTES, ocupaLaCancha,
@@ -10,6 +11,7 @@ import { CANCHAS_POR_EMPRESA, canchasDeEmpresa, reservasDeEmpresa,
 import { guardarCancha, cambiarEstadoCancha, registrarEnBitacora } from '../../lib/guardar'
 import { urlPublica } from '../../lib/archivos'
 import { montoBs } from '../../lib/dinero'
+import { hoyBolivia, diaConFecha } from '../../lib/fecha'
 
 
 const EMOJI_DEPORTE = {
@@ -18,6 +20,7 @@ const EMOJI_DEPORTE = {
 }
 
 export function GestionCanchas() {
+  const navigate = useNavigate()
   const [showModal, setShowModal] = useState(false)
 
   // Las canchas son las mismas que ve el cliente en el perfil del complejo
@@ -34,10 +37,32 @@ export function GestionCanchas() {
   const reservasHoy = (nombre) =>
     reservas.filter(r => r.cancha === nombre && r.fecha === 'Hoy' && ocupaLaCancha(r)).length
 
+  // Las reservas que todavía ocupan la cancha desde hoy, de clientes o de un torneo
+  const reservasPorVenir = (nombre) => {
+    const hoy = hoyBolivia()
+    return reservas
+      .filter(r => r.cancha === nombre && ocupaLaCancha(r) && (r.fechaISO || '') >= hoy)
+      .sort((a, b) => (a.fechaISO + a.horaInicio).localeCompare(b.fechaISO + b.horaInicio))
+  }
+
+  // Desactivar pide confirmación y no deja a nadie con una reserva colgada.
+  // Antes se desactivaba con un clic aunque la cancha tuviera reservas pagadas
+  // para ese mismo día.
+  const [porDesactivar, setPorDesactivar] = useState(null)
+  const [trabajando, setTrabajando]       = useState(false)
+
+  const pedirAlternar = (cancha) => {
+    if (!cancha.disponible) { alternar(cancha.id); return }
+    setPorDesactivar({ cancha, pendientes: reservasPorVenir(cancha.nombre) })
+  }
+
   // Activar o desactivar escribe en la fuente unica: el cliente deja de verla
   const alternar = async (id) => {
     const cancha = canchas.find(c => c.id === id)
+    setTrabajando(true)
     const g = await cambiarEstadoCancha(id, !cancha.disponible)
+    setTrabajando(false)
+    setPorDesactivar(null)
     if (g.error) { setAvisoError(g.error); return }
 
     publicar(canchas.map(c => c.id === id ? { ...c, disponible: !c.disponible } : c))
@@ -163,10 +188,12 @@ export function GestionCanchas() {
               <span style={{ fontSize: '0.82rem', color: '#666' }}>{c.deporte}</span>
               <span style={{ fontFamily: 'Bebas Neue', fontSize: '1rem', color: '#f59e0b' }}>Bs. {montoBs(c.precio)}/hr</span>
             </div>
-            <p style={{ fontSize: '0.78rem', color: '#00BCD4', marginBottom: 12 }}>📅 {reservasHoy(c.nombre)} reservas hoy</p>
+            <p style={{ fontSize: '0.78rem', color: '#00BCD4', marginBottom: 12 }}>
+              📅 {reservasHoy(c.nombre)} {reservasHoy(c.nombre) === 1 ? 'reserva' : 'reservas'} hoy
+            </p>
             <div style={{ display: 'flex', gap: 8 }}>
               <button className="btn btn-outline btn-sm w-full" style={{ justifyContent: 'center' }} onClick={() => abrirEdicion(c)}>Editar</button>
-              <button className="btn btn-sm w-full" onClick={() => alternar(c.id)} style={{ justifyContent: 'center', background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8 }}>
+              <button className="btn btn-sm w-full" onClick={() => pedirAlternar(c)} style={{ justifyContent: 'center', background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8 }}>
                 {c.disponible ? 'Desactivar' : 'Activar'}
               </button>
             </div>
@@ -179,6 +206,20 @@ export function GestionCanchas() {
           <p style={{ color: '#555', fontSize: '0.9rem' }}>Agregar Cancha</p>
         </div>
       </div>
+
+      {porDesactivar && (porDesactivar.pendientes.length ? (
+        <Confirmar abierto titulo={'No se puede desactivar ' + porDesactivar.cancha.nombre}
+          detalle={`Tiene ${porDesactivar.pendientes.length === 1 ? 'una reserva' : porDesactivar.pendientes.length + ' reservas'} desde hoy, ` +
+            `la próxima ${porDesactivar.pendientes[0].nro || 'de un torneo'} (${diaConFecha(porDesactivar.pendientes[0].fechaISO)}, ` +
+            `${porDesactivar.pendientes[0].horaInicio}). Esos clientes ya cuentan con la cancha: espera a que pasen o resuélvelas en Reservas.`}
+          textoNo="Entendido" textoSi="Ir a Reservas"
+          onNo={() => setPorDesactivar(null)} onSi={() => navigate('/admin/reservas')} />
+      ) : (
+        <Confirmar abierto titulo={'¿Desactivar ' + porDesactivar.cancha.nombre + '?'}
+          detalle="Los clientes dejan de verla y no se puede reservar hasta que la vuelvas a activar. No tiene reservas desde hoy."
+          textoSi="Sí, desactivar" trabajando={trabajando}
+          onNo={() => setPorDesactivar(null)} onSi={() => alternar(porDesactivar.cancha.id)} />
+      ))}
 
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>

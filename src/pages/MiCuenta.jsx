@@ -81,7 +81,9 @@ const Imagen = ({ ruta, texto, ayuda, fondoBlanco, cargando, bloqueado, onElegir
 const LAYOUT_DE = { admin_empresa: 'admin', empleado: 'empleado', superadmin: 'superadmin' }
 
 export default function MiCuenta() {
-  const { perfil, cambiarMiClave } = useAuth()
+  const { perfil, sesion, cambiarMiClave, cambiarClaveConLaActual } = useAuth()
+  // Una cuenta que entró solo con Google no tiene contraseña que pedir
+  const tieneClave = (sesion?.user?.identities || []).some(i => i.provider === 'email')
   const rol = perfil?.rol
   const esAdmin = rol === 'admin_empresa'
   const esEmpleado = rol === 'empleado'
@@ -131,29 +133,30 @@ export default function MiCuenta() {
   }
 
   // ── Mi contraseña ──────────────────────────────────────────────────────
-  const [clave, setClave] = useState({ nueva: '', repetir: '' })
+  const [clave, setClave] = useState({ actual: '', nueva: '', repetir: '' })
   const [guardandoClave, setGuardandoClave] = useState(false)
   const [avisoClave, setAvisoClave] = useState(null)
   const [errorClave, setErrorClave] = useState(null)
 
   const [intentoClave, setIntentoClave] = useState(false)
   const errClave = {}
+  if (tieneClave && !clave.actual) errClave.claveActual = 'Escribe tu contraseña actual: así nadie más puede cambiarla.'
   if (!clave.nueva) errClave.claveNueva = 'Escribe la contraseña nueva.'
   else if (clave.nueva.length < 6) errClave.claveNueva = `La contraseña debe tener al menos 6 caracteres (tiene ${clave.nueva.length}).`
   if (!clave.repetir) errClave.claveRepetir = 'Repite la contraseña para confirmarla.'
   else if (clave.nueva !== clave.repetir) errClave.claveRepetir = 'Las contraseñas no coinciden. Escríbelas de nuevo.'
-  const vClave = validacion(errClave, ['claveNueva', 'claveRepetir'], intentoClave)
+  const vClave = validacion(errClave, ['claveActual', 'claveNueva', 'claveRepetir'], intentoClave)
   const faltaEnClave = vClave.faltantes
 
   const guardarClave = async () => {
     setAvisoClave(null); setErrorClave(null)
     setIntentoClave(true)
-    if (vClave.hay) { irAlPrimerError(errClave, ['claveNueva', 'claveRepetir']); return }
+    if (vClave.hay) { irAlPrimerError(errClave, ['claveActual', 'claveNueva', 'claveRepetir']); return }
     setGuardandoClave(true)
-    const r = await cambiarMiClave(clave.nueva)
+    const r = tieneClave ? await cambiarClaveConLaActual(clave.actual, clave.nueva) : await cambiarMiClave(clave.nueva)
     setGuardandoClave(false)
     if (r.error) { setErrorClave(r.error); return }
-    setClave({ nueva: '', repetir: '' })
+    setClave({ actual: '', nueva: '', repetir: '' })
     setIntentoClave(false)
     setAvisoClave('Contraseña actualizada. Úsala la próxima vez que inicies sesión.')
   }
@@ -294,7 +297,7 @@ export default function MiCuenta() {
 
         {/* ── Contraseña ── */}
         <Seccion titulo="Mi contraseña"
-          sub={esEmpleado ? undefined : 'Puedes cambiarla cuando quieras; no necesitas la contraseña anterior.'}>
+          sub={esEmpleado ? undefined : 'Para cambiarla escribe primero la que usas ahora.'}>
           {esEmpleado ? (
             <p style={{ color: '#888', fontSize: '0.84rem', lineHeight: 1.6 }}>
               Tu contraseña la administra el encargado de tu complejo: solicítale el cambio.
@@ -303,6 +306,14 @@ export default function MiCuenta() {
             </p>
           ) : (
             <>
+              {tieneClave && (
+                <div className="form-group">
+                  <label className="form-label">Contraseña actual</label>
+                  <input className="input" type="password" autoComplete="current-password" value={clave.actual} placeholder="La que usas para entrar"
+                    onChange={e => { setClave(c => ({ ...c, actual: e.target.value })); setAvisoClave(null); setErrorClave(null) }} {...vClave.props('claveActual')} />
+                  {vClave.mensaje('claveActual')}
+                </div>
+              )}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                 <div className="form-group">
                   <label className="form-label">Contraseña nueva</label>

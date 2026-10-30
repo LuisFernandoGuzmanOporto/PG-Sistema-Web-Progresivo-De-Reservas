@@ -20,6 +20,7 @@ import {
 import { subirComprobante, urlPublica } from '../../lib/archivos'
 import { recargarHorarios } from '../../lib/carga'
 import { montoBs } from '../../lib/dinero'
+import { fechaCorta, hoyBolivia, diasLegibles } from '../../lib/fecha'
 
 const ESTADO_RESERVA = {
   pendiente:  { label: 'Pendiente',  color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
@@ -140,7 +141,7 @@ export default function PanelEmpleado() {
       id: Date.now(), empresa_id: empleado.empresa_id,
       empleado_id: empleado.id, empleado: empleado.nombre,
       tipo, accion, detalle,
-      fecha: new Date().toLocaleDateString('es-BO', { timeZone: 'America/La_Paz', day: '2-digit', month: 'short', year: 'numeric' }),
+      fecha: fechaCorta(hoyBolivia()),
       hora: ahora,
     })
     registrarEnBitacora({ tipo, accion, detalle })
@@ -815,7 +816,7 @@ export default function PanelEmpleado() {
                   <div key={e.id} style={{ padding: '12px 14px', background: 'rgba(255,255,255,0.02)', border: '1px solid #2a2a2a', borderRadius: 10 }}>
                     <p style={{ color: '#f5f5f5', fontWeight: 600, fontSize: '0.9rem' }}>{e.nombre}</p>
                     <p style={{ color: '#666', fontSize: '0.78rem' }}>
-                      {e.entrenador} · {e.dias.join(', ')} · {e.horaInicio} - {e.horaFin}
+                      {e.entrenador} · {diasLegibles(e.dias)} · {e.horaInicio} - {e.horaFin}
                     </p>
                   </div>
                 ))}

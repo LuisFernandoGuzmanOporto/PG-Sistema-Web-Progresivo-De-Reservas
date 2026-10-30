@@ -16,8 +16,8 @@ import { sortearGrupos, gruposSugeridos, nombreRonda, generarFixture,
 
 import { TORNEOS, USUARIO_ACTUAL, estadoDeTorneo,
          SOLICITUD_BADGE, equiposPorGrupo, solicitudDe,
-         ESTADO_SOLICITUD, aceptaInscripciones, mismo,
-         miEquipoEn, yaInscritoEn } from '../../lib/datos'
+         ESTADO_SOLICITUD, mismo,
+         miEquipoEn, puedeInscribirseEn } from '../../lib/datos'
 import { montoBs } from '../../lib/dinero'
 
 export default function TorneoDetalle() {
@@ -311,7 +311,7 @@ export default function TorneoDetalle() {
               </div>
             )}
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              {aceptaInscripciones(torneoData) && !yaInscritoEn(torneoData) && (
+              {puedeInscribirseEn(torneoData) && (
                 <button className="btn btn-primary" onClick={() => navigate(`/app/torneos/${torneoData.id}/inscribir`)}>
                   👥 Inscribir mi Equipo — Bs. {montoBs(torneoData.precio)}
                 </button>
@@ -544,7 +544,12 @@ export default function TorneoDetalle() {
                               <p style={{ fontWeight: 700, color: '#f5f5f5', fontSize: '0.95rem' }}>{eq.nombre}</p>
                               <span style={{ padding: '2px 9px', borderRadius: 20, fontSize: '0.7rem', fontWeight: 700, color: badge.color, background: `${badge.color}18` }}>{badge.label}</span>
                             </div>
-                            <p style={{ fontSize: '0.75rem', color: '#666' }}>👤 Capitán: {eq.capitan} • {eq.jugadores.length} jugadores</p>
+                            <p style={{ fontSize: '0.75rem', color: '#666' }}>
+                              👤 Capitán: {eq.capitan}
+                              {/* Solo lo ve quien organiza: el teléfono ya no es público */}
+                              {eq.telefono && <> • 📞 <a href={'tel:' + eq.telefono} style={{ color: '#00BCD4' }}>{eq.telefono}</a></>}
+                              {' '}• {eq.jugadores.length} jugadores
+                            </p>
                             {/* Cubrio la inscripcion con puntos: no va a haber
                                 comprobante que revisar, y esta bien */}
                             {eq.codigoCanje && (

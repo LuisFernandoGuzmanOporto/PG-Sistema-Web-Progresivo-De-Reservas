@@ -61,23 +61,24 @@ export default function MiPerfil() {
   // El que entro con Google no tiene ninguna todavia: poner una aca le deja
   // entrar de las dos formas, y es su red de seguridad si alguna vez pierde
   // el acceso a esa cuenta de Google.
-  const { sesion, cambiarMiClave } = useAuth()
+  const { sesion, cambiarMiClave, cambiarClaveConLaActual } = useAuth()
   const entroConGoogle = (sesion?.user?.app_metadata?.provider || 'email') === 'google'
   const tieneClave = (sesion?.user?.identities || [])
     .some(i => i.provider === 'email')
 
-  const [clave, setClave] = useState({ nueva: '', repetir: '' })
+  const [clave, setClave] = useState({ actual: '', nueva: '', repetir: '' })
   const [guardandoClave, setGuardandoClave] = useState(false)
   const [avisoClave, setAvisoClave] = useState(null)
   const [errorClave, setErrorClave] = useState(null)
 
   const [intentoClave, setIntentoClave] = useState(false)
   const errClave = {}
+  if (tieneClave && !clave.actual) errClave.claveActual = 'Escribe tu contraseña actual: así nadie más puede cambiarla.'
   if (!clave.nueva) errClave.claveNueva = 'Escribe la contraseña nueva.'
   else if (clave.nueva.length < 6) errClave.claveNueva = `La contraseña debe tener al menos 6 caracteres (tiene ${clave.nueva.length}).`
   if (!clave.repetir) errClave.claveRepetir = 'Repite la contraseña para confirmarla.'
   else if (clave.nueva !== clave.repetir) errClave.claveRepetir = 'Las contraseñas no coinciden. Escríbelas de nuevo.'
-  const ORDEN_CLAVE = ['claveNueva', 'claveRepetir']
+  const ORDEN_CLAVE = ['claveActual', 'claveNueva', 'claveRepetir']
   const faltaEnClave = intentoClave
     ? ORDEN_CLAVE.filter(c => errClave[c]).map(c => ({ campo: c, texto: errClave[c] })) : []
 
@@ -86,10 +87,12 @@ export default function MiPerfil() {
     setIntentoClave(true)
     if (Object.keys(errClave).length) { irAlPrimerError(errClave, ORDEN_CLAVE); return }
     setGuardandoClave(true)
-    const r = await cambiarMiClave(clave.nueva)
+    // Quien ya tiene contraseña confirma la actual. Quien entró con Google
+    // todavía no tiene ninguna que confirmar: crea la primera.
+    const r = tieneClave ? await cambiarClaveConLaActual(clave.actual, clave.nueva) : await cambiarMiClave(clave.nueva)
     setGuardandoClave(false)
     if (r.error) { setErrorClave(r.error); return }
-    setClave({ nueva: '', repetir: '' })
+    setClave({ actual: '', nueva: '', repetir: '' })
     setIntentoClave(false)
     setAvisoClave(tieneClave
       ? 'Contraseña actualizada. Úsala la próxima vez que inicies sesión.'
@@ -508,10 +511,19 @@ export default function MiPerfil() {
               </h3>
               <p style={{ color: '#666', fontSize: '0.8rem', marginBottom: 16, lineHeight: 1.6 }}>
                 {tieneClave
-                  ? 'Puedes cambiarla cuando quieras; no necesitas la contraseña anterior.'
+                  ? 'Para cambiarla escribe primero la que usas ahora.'
                   : 'Iniciaste sesión con Google, así que aún no tienes contraseña. Si creas una, podrás entrar de las dos formas.'}
               </p>
 
+              {tieneClave && (
+                <div className="form-group">
+                  <label className="form-label">Contraseña actual</label>
+                  <input className="input" type="password" autoComplete="current-password" value={clave.actual} placeholder="La que usas para entrar"
+                    onChange={e => { setClave(c => ({ ...c, actual: e.target.value })); setAvisoClave(null); setErrorClave(null) }}
+                    {...propsCampo('claveActual', errClave.claveActual, intentoClave)} />
+                  <MensajeCampo nombre="claveActual" error={errClave.claveActual} mostrar={intentoClave} />
+                </div>
+              )}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                 <div className="form-group">
                   <label className="form-label">Contraseña nueva</label>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import Layout from '../../components/layout/Layout'
 import { empresasActivas, entrenamientosDeEmpresa } from '../../lib/datos'
 import { montoBs } from '../../lib/dinero'
+import { nombreDia } from '../../lib/fecha'
 
 const DEPORTE_COLORES = {
   'Fútbol': '#ef4444', 'Wally': '#00BCD4', 'Básquetbol': '#f59e0b',
@@ -121,7 +122,7 @@ export default function Entrenamientos() {
                         background: toca ? color + '22' : 'transparent',
                         border: '1px solid ' + (toca ? color + '55' : '#232323'),
                         color: toca ? color : '#3a3a3a',
-                      }}>{d}</span>
+                      }}>{nombreDia(d)}</span>
                     )
                   })}
                 </div>

@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import * as D from './datos'
+import { fechaCortaDeBolivia } from './fecha'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // NOTIFICACIONES
@@ -50,7 +51,7 @@ export function hace(iso) {
   if (dias === 1)     return 'ayer'
   if (dias < 7)       return 'hace ' + dias + ' días'
 
-  return new Date(iso).toLocaleDateString('es-BO', { timeZone: 'America/La_Paz', day: '2-digit', month: 'short' })
+  return fechaCortaDeBolivia(iso)
 }
 
 export const ICONO_NOTIFICACION = {

@@ -1,6 +1,7 @@
 import { NIVEL_COLORES } from './colores'
 import { DIAS_SEMANA, MESES } from './calendario'
 import { montoBs } from '../../../lib/dinero'
+import { nombreDia } from '../../../lib/fecha'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Pestaña «Entrenamientos» de la ficha de un complejo.
@@ -34,7 +35,7 @@ export default function TabEntrenamientos({ empresa, entrenamientosBase, celdasE
 
               <div style={{ display:'grid', gridTemplateColumns:'repeat(7, 1fr)', gap:6, marginBottom:6 }}>
                 {DIAS_SEMANA.map(d => (
-                  <div key={d} style={{ textAlign:'center', fontSize:'0.7rem', color:'#555', fontWeight:700, textTransform:'uppercase' }}>{d}</div>
+                  <div key={d} style={{ textAlign:'center', fontSize:'0.7rem', color:'#555', fontWeight:700, textTransform:'uppercase' }}>{nombreDia(d)}</div>
                 ))}
               </div>
 
@@ -111,7 +112,7 @@ export default function TabEntrenamientos({ empresa, entrenamientosBase, celdasE
                       <p style={{ fontSize:'0.8rem', color:'#666' }}>{ent.entrenador}</p>
                       <div style={{ display:'flex', gap:4, flexWrap:'wrap', alignItems:'center' }}>
                         {(ent.dias || []).map(d => (
-                          <span key={d} style={{ fontSize:'0.68rem', background:'rgba(0,188,212,0.1)', color:'#00BCD4', padding:'2px 8px', borderRadius:20, border:'1px solid rgba(0,188,212,0.2)' }}>{d}</span>
+                          <span key={d} style={{ fontSize:'0.68rem', background:'rgba(0,188,212,0.1)', color:'#00BCD4', padding:'2px 8px', borderRadius:20, border:'1px solid rgba(0,188,212,0.2)' }}>{nombreDia(d)}</span>
                         ))}
                         <span style={{ fontSize:'0.72rem', color:'#888' }}>{ent.horaInicio} - {ent.horaFin}</span>
                       </div>

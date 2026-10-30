@@ -3,7 +3,9 @@ import Layout from '../../components/layout/Layout'
 import AvisoFaltantes from '../../components/AvisoFaltantes'
 import { propsCampo, MensajeCampo, irAlPrimerError } from '../../components/Validacion'
 import { entrenadoresDeEmpresa, canchasDeEmpresa, ENTRENAMIENTOS_POR_EMPRESA, entrenamientosDeEmpresa, SESION,
+         empresaPorId, reservasQueChocan,
 } from '../../lib/datos'
+import { nombreDia, diasLegibles, diaConFecha } from '../../lib/fecha'
 import { guardarEntrenamiento as guardarEnBase, borrarEntrenamiento, registrarEnBitacora } from '../../lib/guardar'
 import { montoBs } from '../../lib/dinero'
 
@@ -18,7 +20,7 @@ const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto'
 
 function formatHorario(e) {
   if (!e.dias || e.dias.length === 0) return '-'
-  return e.dias.join(', ') + '  ' + (e.horaInicio || '') + ' - ' + (e.horaFin || '')
+  return diasLegibles(e.dias) + '  ' + (e.horaInicio || '') + ' - ' + (e.horaFin || '')
 }
 
 const iconDeporte = (d) => {
@@ -102,14 +104,44 @@ export default function GestionEntrenamientos() {
    * si no hay entrenadores cargados, el aviso manda a registrarlos primero.
    */
   const [intento, setIntento] = useState(false)
+
+  // Solo los entrenadores activos: se podía asignar uno dado de baja
+  const misEntrenadores = entrenadoresDeEmpresa(SESION.empresaId).filter(en => en.activo !== false)
+  const misCanchas      = canchasDeEmpresa(SESION.empresaId)
+  const empresa         = empresaPorId(SESION.empresaId)
+
   const errores = {}
   {
     const n = (v) => Number(v)
     if (!form.nombre.trim()) errores.nombre = 'Escribe el nombre del entrenamiento, por ejemplo «Fútbol infantil».'
     else if (form.nombre.trim().length < 4) errores.nombre = 'El nombre es muy corto: usa al menos 4 caracteres.'
     if (!form.entrenador.trim()) errores.entrenador = 'Elige el entrenador que dicta este entrenamiento.'
+    else if (!misEntrenadores.some(en => en.nombre === form.entrenador))
+      errores.entrenador = `${form.entrenador} ya no está activo en el complejo: elige otro entrenador.`
     if (!form.dias.length) errores.dias = 'Elige al menos un día de la semana.'
     if (form.horaFin <= form.horaInicio) errores.horaFin = `La hora de fin debe ser posterior a la de inicio (${form.horaInicio}).`
+    // Dentro del horario del complejo: se aceptaba de 11:00 a 23:00 en uno que cierra a las 22:00
+    else if (empresa?.apertura && empresa?.cierre) {
+      const atiende = `El complejo atiende de ${empresa.apertura} a ${empresa.cierre}.`
+      if (form.horaInicio < empresa.apertura) errores.horaInicio = atiende + ' Empieza desde las ' + empresa.apertura + '.'
+      else if (empresa.cierre !== '00:00' && form.horaFin > empresa.cierre) errores.horaFin = atiende + ' Termina hasta las ' + empresa.cierre + '.'
+    }
+    // Si ocupa una cancha, no puede pisar reservas que ya están tomadas ni otro
+    // entrenamiento. Antes se publicaba encima de una reserva pagada sin avisar.
+    if (form.cancha && form.dias.length && form.horaFin > form.horaInicio) {
+      const choques = reservasQueChocan({ empresaId: SESION.empresaId, cancha: form.cancha,
+        dias: form.dias, horaInicio: form.horaInicio, horaFin: form.horaFin })
+      const otro = entrenamientos.find(e => e.id !== editando && e.cancha === form.cancha &&
+        (e.dias || []).some(d => form.dias.includes(d)) &&
+        e.horaInicio < form.horaFin && e.horaFin > form.horaInicio)
+      if (choques.length) {
+        const r = choques[0]
+        errores.cancha = `Choca con ${choques.length === 1 ? 'una reserva' : choques.length + ' reservas'} de esa cancha, ` +
+          `por ejemplo ${r.nro} (${diaConFecha(r.fechaISO)}, ${r.horaInicio} a ${r.horaFin}). Elige otra cancha u otro horario.`
+      } else if (otro) {
+        errores.cancha = `Choca con «${otro.nombre}», que ya usa esa cancha ${diasLegibles(otro.dias)} de ${otro.horaInicio} a ${otro.horaFin}.`
+      }
+    }
     if (form.precio !== '' && (!Number.isFinite(n(form.precio)) || n(form.precio) < 0))
       errores.precio = 'El precio no puede ser negativo. Déjalo vacío si es gratis o se consulta en el complejo.'
     if (form.cupo !== '' && (!Number.isInteger(n(form.cupo)) || n(form.cupo) < 1))
@@ -123,15 +155,12 @@ export default function GestionEntrenamientos() {
         errores.edadMax = `La edad máxima no puede ser menor que la mínima (${form.edadMin}).`
     }
   }
-  const ORDEN = ['nombre', 'entrenador', 'dias', 'horaFin', 'precio', 'cupo', 'edadMin', 'edadMax']
+  const ORDEN = ['nombre', 'entrenador', 'cancha', 'dias', 'horaInicio', 'horaFin', 'precio', 'cupo', 'edadMin', 'edadMax']
   const faltantes = intento ? ORDEN.filter(c => errores[c]).map(c => ({ campo: c, texto: errores[c] })) : []
   const formValido = Object.keys(errores).length === 0
   const pc = (c) => propsCampo(c, errores[c], intento)
   const mc = (c) => <MensajeCampo nombre={c} error={errores[c]} mostrar={intento} />
 
-  // Los entrenadores del complejo: el horario se liga a su ficha por id
-  const misEntrenadores = entrenadoresDeEmpresa(SESION.empresaId)
-  const misCanchas      = canchasDeEmpresa(SESION.empresaId)
   const [errorGuardar, setErrorGuardar] = useState(null)
 
   const guardarEntrenamiento = async () => {
@@ -139,10 +168,11 @@ export default function GestionEntrenamientos() {
     if (!formValido) { irAlPrimerError(errores, ORDEN); return }
 
     const entrenador = misEntrenadores.find(en => en.nombre === form.entrenador)
+    const canchaId = misCanchas.find(c => c.nombre === form.cancha)?.id || null
     const g = await guardarEnBase({
       id: editando || undefined, empresaId: SESION.empresaId,
       entrenadorId: entrenador?.id,
-      canchaId: misCanchas.find(c => c.nombre === form.cancha)?.id,
+      canchaId,
       nombre: form.nombre, deporte: form.deporte,
       nivel: form.nivel, dias: form.dias,
       horaInicio: form.horaInicio, horaFin: form.horaFin,
@@ -151,16 +181,19 @@ export default function GestionEntrenamientos() {
     })
     if (g.error) { setErrorGuardar(g.error); return }
 
+    // Con el id de la cancha: es lo que mira el calendario del complejo para
+    // marcar esas horas. Sin él, el entrenamiento nuevo no aparecía hasta recargar.
+    const datos = { ...form, cancha: form.cancha || null, cancha_id: canchaId }
     if (editando) {
-      publicar(entrenamientos.map(e => e.id === editando ? { ...e, ...form } : e))
-      setVistaEnt(prev => prev && prev.id === editando ? { ...prev, ...form } : prev)
+      publicar(entrenamientos.map(e => e.id === editando ? { ...e, ...datos } : e))
+      setVistaEnt(prev => prev && prev.id === editando ? { ...prev, ...datos } : prev)
     } else {
-      publicar([...entrenamientos, { id: g.entrenamiento.id, ...form }])
+      publicar([...entrenamientos, { id: g.entrenamiento.id, ...datos }])
     }
     registrarEnBitacora({
       tipo: 'entrenamiento',
       accion: editando ? 'Editó un horario de entrenamiento' : 'Publicó un entrenamiento',
-      detalle: form.nombre + ' · ' + form.dias.join(', ') + ' ' + form.horaInicio,
+      detalle: form.nombre + ' · ' + diasLegibles(form.dias) + ' ' + form.horaInicio,
     })
     setErrorGuardar(null)
     setShowModal(false)
@@ -250,7 +283,7 @@ export default function GestionEntrenamientos() {
                 {/* Dias como chips */}
                 <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 6 }}>
                   {(e.dias || []).map(d => (
-                    <span key={d} style={{ fontSize: '0.68rem', background: 'rgba(0,188,212,0.1)', color: '#00BCD4', padding: '2px 8px', borderRadius: 20, border: '1px solid rgba(0,188,212,0.2)' }}>{d}</span>
+                    <span key={d} style={{ fontSize: '0.68rem', background: 'rgba(0,188,212,0.1)', color: '#00BCD4', padding: '2px 8px', borderRadius: 20, border: '1px solid rgba(0,188,212,0.2)' }}>{nombreDia(d)}</span>
                   ))}
                   {e.horaInicio && (
                     <span style={{ fontSize: '0.68rem', color: '#888', padding: '2px 0' }}>{e.horaInicio} - {e.horaFin}</span>
@@ -302,7 +335,7 @@ export default function GestionEntrenamientos() {
               {/* Cabecera de dias */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6, marginBottom: 6 }}>
                 {DIAS_SEMANA.map(d => (
-                  <div key={d} style={{ textAlign: 'center', fontSize: '0.7rem', color: '#555', fontWeight: 700, textTransform: 'uppercase' }}>{d}</div>
+                  <div key={d} style={{ textAlign: 'center', fontSize: '0.7rem', color: '#555', fontWeight: 700, textTransform: 'uppercase' }}>{nombreDia(d)}</div>
                 ))}
               </div>
 
@@ -336,7 +369,7 @@ export default function GestionEntrenamientos() {
                   {sesionesDelMes} sesion{sesionesDelMes === 1 ? '' : 'es'} en {MESES[mesCal]}
                 </p>
                 <p style={{ color: '#888', fontSize: '0.78rem' }}>
-                  {(vistaEnt.dias || []).join(', ')} de {vistaEnt.horaInicio} a {vistaEnt.horaFin}
+                  {diasLegibles(vistaEnt.dias)} de {vistaEnt.horaInicio} a {vistaEnt.horaFin}
                 </p>
               </div>
 
@@ -419,12 +452,13 @@ export default function GestionEntrenamientos() {
               <div className="form-group">
                 <label className="form-label">Cancha que ocupa</label>
                 <select className="input" value={form.cancha}
-                  onChange={e => setForm(p => ({ ...p, cancha: e.target.value }))}>
+                  onChange={e => setForm(p => ({ ...p, cancha: e.target.value }))} {...pc('cancha')}>
                   <option value="">Ninguna — solo se anuncia</option>
                   {misCanchas.map(c => (
                     <option key={c.id} value={c.nombre}>{c.nombre} · {c.deporte}</option>
                   ))}
                 </select>
+                {mc('cancha')}
                 <p style={{ fontSize: '0.72rem', color: '#666', marginTop: 4 }}>
                   Si eliges una, esas horas quedan bloqueadas para reservar y el
                   cliente ve por qué. Si no, el entrenamiento igual aparece en el
@@ -440,7 +474,7 @@ export default function GestionEntrenamientos() {
                     const sel = form.dias.includes(dia)
                     return (
                       <button key={dia} type="button" onClick={() => toggleDia(dia)} style={{ padding: '6px 14px', borderRadius: 20, border: sel ? '1px solid #00BCD4' : '1px solid #2a2a2a', background: sel ? 'rgba(0,188,212,0.15)' : 'rgba(255,255,255,0.03)', color: sel ? '#00BCD4' : '#888', fontSize: '0.82rem', cursor: 'pointer', fontFamily: 'Outfit', transition: 'all 0.15s' }}>
-                        {dia}
+                        {nombreDia(dia)}
                       </button>
                     )
                   })}
@@ -453,7 +487,8 @@ export default function GestionEntrenamientos() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div className="form-group">
                   <label className="form-label">Hora de inicio</label>
-                  <input className="input" type="time" value={form.horaInicio} onChange={e => setForm(p => ({...p, horaInicio: e.target.value}))} />
+                  <input className="input" type="time" value={form.horaInicio} onChange={e => setForm(p => ({...p, horaInicio: e.target.value}))} {...pc('horaInicio')} />
+                  {mc('horaInicio')}
                 </div>
                 <div className="form-group">
                   <label className="form-label">Hora de fin</label>

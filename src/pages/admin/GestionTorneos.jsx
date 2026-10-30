@@ -11,7 +11,7 @@ import {
 import { resolverSolicitudCancha, registrarEnBitacora, guardarTorneo,
          guardarQRTorneo } from '../../lib/guardar'
 import { jornadasDelTorneo, DIAS_SEMANA, costoDelTorneo } from '../../lib/jornadas'
-import { hoyBolivia } from '../../lib/fecha'
+import { hoyBolivia, fechaCorta, nombreDia, diasLegibles } from '../../lib/fecha'
 import { subirPublico, revisarArchivo, TIPOS_IMAGEN, urlPublica } from '../../lib/archivos'
 import { DEPORTE_CONFIG } from '../../lib/deportes'
 import { montoBs } from '../../lib/dinero'
@@ -59,7 +59,7 @@ export default function GestionTorneos() {
     }))
   }
 
-  const hoy = () => new Date().toLocaleDateString('es-BO', { timeZone: 'America/La_Paz', day: '2-digit', month: 'short' })
+  const hoy = () => fechaCorta(hoyBolivia())
 
   /**
    * Escribe en el torneo real: recién ahi los equipos pueden inscribirse.
@@ -266,7 +266,7 @@ export default function GestionTorneos() {
       tieneAmarillas: form.deporte === 'Fútbol', tieneRojas: form.deporte === 'Fútbol',
       tieneGoles: form.deporte === 'Fútbol',
       reglas: [], calendario: [],
-      horarios: form.dias.join(', ') + ': ' + form.horaInicio + ' a ' + form.horaFin,
+      horarios: diasLegibles(form.dias) + ': ' + form.horaInicio + ' a ' + form.horaFin,
       // Lo organiza el complejo, asi que no hay a quien pedirle la cancha:
       // la solicitud nace aprobada y las jornadas ya quedan ocupadas
       solicitud: { estado: 'aprobada', fecha: fechaLegible(hoyBolivia()),
@@ -399,7 +399,7 @@ export default function GestionTorneos() {
                       {[
                         ['Cancha pedida', sol.cancha || t.cancha || '—'],
                         ['Fechas', t.fechaInicio + ' — ' + t.fechaFin],
-                        ['Días que se juega', sol.dias?.length ? sol.dias.join(', ') : 'Todos los del rango'],
+                        ['Días que se juega', sol.dias?.length ? diasLegibles(sol.dias) : 'Todos los del rango'],
                         ['Horario', sol.horaInicio ? sol.horaInicio + ' a ' + sol.horaFin : '—'],
                         ['Jornadas', jornadasDelTorneo({
                           fechaInicio: t.fechaInicioISO || t.fechaInicio,
@@ -635,7 +635,7 @@ export default function GestionTorneos() {
                           background: on ? 'rgba(0,188,212,0.15)' : '#1a1a1a',
                           border: '1px solid ' + (on ? '#00BCD4' : '#2a2a2a'),
                           color: on ? '#00BCD4' : '#888' }}>
-                        {d}
+                        {nombreDia(d)}
                       </button>
                     )
                   })}

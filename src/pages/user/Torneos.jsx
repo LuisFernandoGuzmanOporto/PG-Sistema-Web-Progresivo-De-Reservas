@@ -4,7 +4,7 @@ import Layout from '../../components/layout/Layout'
 import { TORNEOS, ESTADO_TORNEO, estadoDeTorneo, conteoEquipos, torneosCreadosPor,
          torneosDondeParticipa, miEquipoEn, solicitudesPendientes,
          SOLICITUD_BADGE, aceptaInscripciones, solicitudDe,
-         ESTADO_SOLICITUD, empresasActivas } from '../../lib/datos'
+         ESTADO_SOLICITUD, empresasActivas, yaInscritoEn, puedeInscribirseEn } from '../../lib/datos'
 import { montoBs } from '../../lib/dinero'
 
 export default function Torneos() {
@@ -85,7 +85,7 @@ export default function Torneos() {
                   )}
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button className="btn btn-outline btn-sm w-full" style={{ justifyContent: 'center' }} onClick={() => navigate(`/app/torneos/${t.id}`)}>Ver Detalles</button>
-                    <button className="btn btn-primary btn-sm w-full" style={{ justifyContent: 'center' }} onClick={() => navigate(`/app/torneos/${t.id}/inscribir`)}>Inscribirse</button>
+                    <Inscripcion torneo={t} chico onInscribir={() => navigate(`/app/torneos/${t.id}/inscribir`)}>Inscribirse</Inscripcion>
                   </div>
                 </div>
               </div>
@@ -262,10 +262,9 @@ export default function Torneos() {
                 <p style={{ color: '#00BCD4', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>💳 Pago de Inscripción con QR</p>
                 <p style={{ color: '#666', fontSize: '0.78rem' }}>Tras inscribirte, recibirás el código QR del organizador para realizar el pago y subir tu comprobante.</p>
               </div>
-              <button className="btn btn-primary w-full" style={{ justifyContent: 'center', marginTop: 8 }}
-                onClick={() => navigate(`/app/torneos/${showDetalle.id}/inscribir`)}>
+              <Inscripcion torneo={showDetalle} onInscribir={() => navigate(`/app/torneos/${showDetalle.id}/inscribir`)}>
                 Inscribir mi Equipo
-              </button>
+              </Inscripcion>
             </div>
           </div>
         </div>
@@ -304,5 +303,34 @@ export default function Torneos() {
       )}
 
     </Layout>
+  )
+}
+
+/**
+ * El botón para inscribirse o, si ya inscribió un equipo, en qué quedó. La
+ * tarjeta seguía diciendo «Inscribirse» con el equipo esperando aprobación, y
+ * recién al tocarlo avisaba que ya estaba inscrito.
+ */
+function Inscripcion({ torneo, chico, onInscribir, children }) {
+  const equipo = yaInscritoEn(torneo)
+  const tamano = chico ? ' btn-sm' : ''
+  if (equipo) {
+    const pendiente = equipo.estado === 'pendiente'
+    const color = pendiente ? '#f59e0b' : '#22c55e'
+    return (
+      <div className={'w-full' + tamano} title={equipo.nombre}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8,
+          padding: chico ? '6px 10px' : '10px 14px', fontSize: chico ? '0.78rem' : '0.86rem', fontWeight: 700,
+          color, background: color + '18', border: '1px solid ' + color + '44', marginTop: chico ? 0 : 8 }}>
+        {pendiente ? '⏳ Por aprobar' : '✓ Inscrito'}
+      </div>
+    )
+  }
+  if (!puedeInscribirseEn(torneo)) return null
+  return (
+    <button className={'btn btn-primary w-full' + tamano} style={{ justifyContent: 'center', marginTop: chico ? 0 : 8 }}
+      onClick={onInscribir}>
+      {children}
+    </button>
   )
 }

@@ -29,6 +29,7 @@ import { DIAS_SEMANA, DIA_INDICE, MESES, formatFecha,
 // Las imágenes del marcador del mapa (ver lib/iconoMapa.js)
 import '../../lib/iconoMapa'
 import { montoBs } from '../../lib/dinero'
+import { diaDeReserva, nombreDia } from '../../lib/fecha'
 
 const DEPORTE_COLORES = {
   'Futbol': '#ef4444', 'Futbol 5': '#ef4444', 'Wally': '#00BCD4',
@@ -58,7 +59,7 @@ function labelDia(dateStr, hoyStr) {
   const diff = Math.round((d1 - d2) / 86400000)
   if (diff === 0) return 'Hoy'
   if (diff === 1) return 'Mañana'
-  const dias = ['Dom','Lun','Mar','Mie','Jue','Vie','Sab']
+  const dias = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb']
   return dias[d1.getDay()] + ' ' + d1.getDate()
 }
 function slotFin(slot) { return String(parseInt(slot) + 1).padStart(2,'0') + ':00' }
@@ -133,7 +134,7 @@ export default function EmpresaDetalle() {
       usuario: nombre,
       avatar: nombre.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase(),
       estrellas,
-      fecha: new Date().toLocaleDateString('es-BO', { timeZone: 'America/La_Paz', day:'numeric', month:'short', year:'numeric' }),
+      fecha: 'Hoy',
     }
     // Reemplaza el voto propio si ya existia: nunca hay dos del mismo cliente
     setCalificaciones(prev => {
@@ -654,7 +655,7 @@ export default function EmpresaDetalle() {
 
             <div style={{ display:'grid', gridTemplateColumns:'repeat(7, 1fr)', gap:6, marginBottom:6 }}>
               {DIAS_SEMANA.map(d => (
-                <div key={d} style={{ textAlign:'center', fontSize:'0.7rem', color:'#555', fontWeight:700, textTransform:'uppercase' }}>{d}</div>
+                <div key={d} style={{ textAlign:'center', fontSize:'0.7rem', color:'#555', fontWeight:700, textTransform:'uppercase' }}>{nombreDia(d)}</div>
               ))}
             </div>
 
@@ -1097,7 +1098,7 @@ export default function EmpresaDetalle() {
               <div>
                 <div style={{ background:'rgba(255,255,255,0.03)', borderRadius:12, padding:16, marginBottom:18 }}>
                   <p style={{ color:'#f5f5f5', fontWeight:700, marginBottom:8 }}>{showReservaModal.nombre}</p>
-                  <p style={{ fontSize:'0.82rem', color:'#666', marginBottom:10 }}>{labelDia(selectedFecha, hoy)} - {selectedFecha}</p>
+                  <p style={{ fontSize:'0.82rem', color:'#666', marginBottom:10 }}>{diaDeReserva(selectedFecha, hoy)}</p>
                   <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
                     {(selectedSlots[showReservaModal.id]||[]).sort().map(s => (
                       <span key={s} style={{ padding:'4px 10px', borderRadius:8, fontSize:'0.78rem', fontWeight:600,
