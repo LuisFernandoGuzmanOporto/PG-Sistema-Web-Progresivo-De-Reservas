@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { digitosDe, esTelefono, esUsuario, tieneNombreYApellido } from '../../lib/validaciones'
+import { errorEnTelefono, esUsuarioNuevo, errorEnNombre, errorEnClave } from '../../lib/validaciones'
 import Layout from '../../components/layout/Layout'
 import AvisoFaltantes from '../../components/AvisoFaltantes'
 import { propsCampo, MensajeCampo, irAlPrimerError } from '../../components/Validacion'
@@ -63,17 +63,16 @@ export default function GestionEmpleados() {
   const erroresEmp = {}
   {
     const usuario = form.usuario.trim()
-    const digitos = digitosDe(form.telefono)
     if (!form.nombre.trim()) erroresEmp.nombre = 'Escribe el nombre y apellido del empleado.'
-    else if (!tieneNombreYApellido(form.nombre)) erroresEmp.nombre = 'Falta el apellido: escribe nombre y apellido.'
-    if (form.telefono.trim() && !esTelefono(form.telefono))
-      erroresEmp.telefono = `El teléfono debe tener 7 u 8 dígitos (tiene ${digitos.length}). Déjalo vacío si no lo sabes.`
+    else if (errorEnNombre(form.nombre)) erroresEmp.nombre = errorEnNombre(form.nombre)
+    if (form.telefono.trim() && errorEnTelefono(form.telefono))
+      erroresEmp.telefono = errorEnTelefono(form.telefono) + ' Déjalo vacío si no lo sabes.'
     if (!usuario) erroresEmp.usuario = 'Escribe el usuario con el que va a entrar, por ejemplo rosa.v.'
-    else if (!esUsuario(usuario))
-      erroresEmp.usuario = 'El usuario solo puede tener letras sin tilde, números, punto o guion, y al menos 3 caracteres.'
+    else if (!esUsuarioNuevo(usuario))
+      erroresEmp.usuario = 'El usuario debe empezar con una letra y tener de 3 a 30 caracteres: letras sin tilde, números y, entre ellos, un punto o guion (por ejemplo rosa.v).'
     else if (usuarioRepetido) erroresEmp.usuario = `El usuario «${usuario}» ya existe en tu complejo. Prueba con otro, por ejemplo ${usuario}2.`
     if (!form.password) erroresEmp.password = 'Crea una contraseña para el empleado.'
-    else if (form.password.length < 6) erroresEmp.password = `La contraseña debe tener al menos 6 caracteres (tiene ${form.password.length}).`
+    else if (errorEnClave(form.password)) erroresEmp.password = errorEnClave(form.password)
     if (!form.password2) erroresEmp.password2 = 'Repite la contraseña para confirmarla.'
     else if (form.password !== form.password2) erroresEmp.password2 = 'Las contraseñas no coinciden. Escríbelas de nuevo.'
   }
@@ -139,7 +138,7 @@ export default function GestionEmpleados() {
   const [intentoClave, setIntentoClave] = useState(false)
   const erroresClave = {}
   if (!nuevaClave.a) erroresClave.claveA = 'Escribe la nueva contraseña.'
-  else if (nuevaClave.a.length < 6) erroresClave.claveA = `La contraseña debe tener al menos 6 caracteres (tiene ${nuevaClave.a.length}).`
+  else if (errorEnClave(nuevaClave.a)) erroresClave.claveA = errorEnClave(nuevaClave.a)
   if (!nuevaClave.b) erroresClave.claveB = 'Repite la contraseña para confirmarla.'
   else if (nuevaClave.a !== nuevaClave.b) erroresClave.claveB = 'Las contraseñas no coinciden. Escríbelas de nuevo.'
 

@@ -1,57 +1,36 @@
-import { irAlCampo } from './Validacion'
-
 // ─────────────────────────────────────────────────────────────────────────────
-// RESUMEN DE LO QUE FALTA PARA PODER CONTINUAR
+// AVISOS JUSTO ARRIBA DEL BOTÓN DE GUARDAR
 //
-// Va siempre justo arriba del botón, con todo lo pendiente junto, para que no
-// se pase nada por alto aunque el campo haya quedado fuera de la vista. Cada
-// punto puede indicar su campo ({ campo, texto }): entonces se puede tocar y
-// lleva a ese campo, que además está marcado en rojo con su mensaje debajo
-// (ver Validacion.jsx).
+// Lo que falta completar se dice UNA sola vez: debajo de su campo, que queda
+// marcado en rojo (ver Validacion.jsx), y la pantalla lleva sola al primero.
+// Antes, además, se repetía todo en un resumen amarillo arriba del botón; eran
+// dos validaciones para lo mismo y se quitó (pedido de Fernando, noviembre de
+// 2026). Por eso aquí ya no se muestra lo que tiene su propio campo.
 //
-// Lo que rechazó el servidor se muestra aparte, en rojo: no es un dato que
-// falte completar sino algo que no se pudo hacer.
+// Sí se muestra:
+//   - lo que falta y NO tiene un campo donde decirlo (un texto suelto, sin
+//     { campo }), para que nunca quede algo pendiente sin explicar;
+//   - lo que rechazó el servidor, en rojo: no es un dato que falte completar
+//     sino algo que no se pudo hacer, como guardar sin conexión.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const normalizar = (f) => (typeof f === 'string' ? { texto: f } : f)
 
-export default function AvisoFaltantes({ faltantes = [], error = null, titulo }) {
-  const lista = faltantes.filter(Boolean).map(normalizar).filter(f => f.texto)
-  if (!lista.length && !error) return null
-
-  const item = (f) => f.campo ? (
-    <button type="button" onClick={() => irAlCampo(f.campo)}
-      // verticalAlign: con dos líneas, la viñeta de la lista queda en la primera
-      style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', verticalAlign: 'top',
-               color: 'inherit', font: 'inherit', textDecoration: 'underline', textUnderlineOffset: 3,
-               textDecorationColor: 'rgba(245,158,11,0.5)' }}>
-      {f.texto}
-    </button>
-  ) : f.texto
+export default function AvisoFaltantes({ faltantes = [], error = null }) {
+  // Lo que tiene campo ya se ve debajo de ese campo
+  const sueltos = faltantes.filter(Boolean).map(normalizar).filter(f => f.texto && !f.campo)
+  if (!sueltos.length && !error) return null
 
   return (
     <>
-      {lista.length > 0 && (
-        <div role="alert" style={{
+      {sueltos.map((f, i) => (
+        <div key={i} role="alert" style={{
           padding: '12px 14px', marginBottom: 12, borderRadius: 10,
           background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)',
         }}>
-          {lista.length === 1 ? (
-            <p style={{ color: '#f59e0b', fontSize: '0.8rem', fontWeight: 600 }}>⚠ {item(lista[0])}</p>
-          ) : (
-            <>
-              <p style={{ color: '#f59e0b', fontSize: '0.8rem', fontWeight: 600, marginBottom: 6 }}>
-                {titulo || (lista.length === 1 ? 'Revisa este dato antes de continuar:' : `Revisa ${lista.length} datos antes de continuar:`)}
-              </p>
-              <ul style={{ margin: 0, paddingLeft: 18 }}>
-                {lista.map((f, i) => (
-                  <li key={i} style={{ color: '#bbb', fontSize: '0.78rem', lineHeight: 1.6 }}>{item(f)}</li>
-                ))}
-              </ul>
-            </>
-          )}
+          <p style={{ color: '#f59e0b', fontSize: '0.8rem', fontWeight: 600 }}>⚠ {f.texto}</p>
         </div>
-      )}
+      ))}
 
       {error && (
         <div role="alert" style={{

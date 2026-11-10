@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { digitosDe, esCorreo, esTelefono, tieneNombreYApellido } from '../../lib/validaciones'
+import { esCorreo, errorEnTelefono, errorEnNombre } from '../../lib/validaciones'
 import Layout from '../../components/layout/Layout'
 import AvisoFaltantes from '../../components/AvisoFaltantes'
 import { propsCampo, MensajeCampo, irAlPrimerError } from '../../components/Validacion'
@@ -73,14 +73,13 @@ export default function GestionEntrenadores() {
   const [intento, setIntento] = useState(false)
   const errores = {}
   {
-    const digitos = digitosDe(form.telefono)
     if (!form.nombre.trim()) errores.nombre = 'Escribe el nombre y apellido del entrenador.'
-    else if (!tieneNombreYApellido(form.nombre)) errores.nombre = 'Falta el apellido: escribe nombre y apellido.'
+    else if (errorEnNombre(form.nombre)) errores.nombre = errorEnNombre(form.nombre)
     if (!form.email.trim()) errores.email = 'Escribe el correo del entrenador.'
     else if (!esCorreo(form.email))
       errores.email = 'El correo no es válido: debe tener @ y un dominio, por ejemplo mario@gmail.com.'
-    if (form.telefono.trim() && !esTelefono(form.telefono))
-      errores.telefono = `El teléfono debe tener 7 u 8 dígitos (tiene ${digitos.length}). Déjalo vacío si no lo sabes.`
+    if (form.telefono.trim() && errorEnTelefono(form.telefono))
+      errores.telefono = errorEnTelefono(form.telefono) + ' Déjalo vacío si no lo sabes.'
   }
   const ORDEN = ['nombre', 'email', 'telefono']
   const faltaEnEntrenador = intento ? ORDEN.filter(c => errores[c]).map(c => ({ campo: c, texto: errores[c] })) : []

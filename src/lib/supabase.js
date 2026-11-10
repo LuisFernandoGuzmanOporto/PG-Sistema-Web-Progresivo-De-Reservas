@@ -21,3 +21,14 @@ if (!url || !clave) {
 }
 
 export const supabase = createClient(url, clave)
+
+// Las consultas de lectura se reintentan solas si falla la red: tres veces,
+// esperando 1, 2 y 4 segundos. Con internet eso salva un corte de un instante,
+// pero sin conexión dejaba la aplicación 7 segundos en «Cargando…» antes de
+// avisar que no había internet (lo encontró la prueba PE-22). Ahora reintenta
+// solo si el navegador tiene red; si no la tiene, falla al momento y aparece
+// el aviso. El cliente lee este valor cada vez que arma una consulta.
+Object.defineProperty(supabase.rest, 'retry', {
+  get: () => typeof navigator === 'undefined' || navigator.onLine !== false,
+  configurable: true,
+})

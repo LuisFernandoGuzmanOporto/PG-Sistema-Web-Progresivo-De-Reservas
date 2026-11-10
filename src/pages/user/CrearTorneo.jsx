@@ -1,3 +1,4 @@
+import { errorEnNombreDeAlgo, esMonto } from '../../lib/validaciones'
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import Layout from '../../components/layout/Layout'
@@ -132,7 +133,7 @@ export default function CrearTorneo() {
 
     if (paso === 1) {
       if (!form.nombre.trim()) e.nombre = 'Escribe el nombre del torneo, por ejemplo «Copa Verano 2026».'
-      else if (form.nombre.trim().length < 4) e.nombre = 'El nombre es muy corto: usa al menos 4 caracteres.'
+      else if (errorEnNombreDeAlgo(form.nombre, { minimo: 4 })) e.nombre = errorEnNombreDeAlgo(form.nombre, { minimo: 4 })
       if (!form.formato) e.formato = 'Elige el formato de competencia.'
       if (!form.fechaInicio) e.fechaInicio = 'Elige la fecha en que empieza el torneo.'
       else if (form.fechaInicio < hoy) e.fechaInicio = 'La fecha de inicio ya pasó. Elige una fecha desde hoy.'
@@ -163,7 +164,7 @@ export default function CrearTorneo() {
 
     if (paso === 3) {
       if (form.precio === '' || form.precio == null) e.precio = 'Escribe el costo de inscripción por equipo. Usa 0 si es gratis.'
-      else if (n(form.precio) < 0) e.precio = 'El costo de inscripción no puede ser negativo.'
+      else if (!esMonto(form.precio)) e.precio = 'El costo de inscripción debe ser un número desde 0, con dos decimales como máximo.'
       if (!form.qrPreview && n(form.precio) > 0) e.qr = 'Sube la imagen de tu código QR para que los equipos puedan pagar.'
     }
     return e

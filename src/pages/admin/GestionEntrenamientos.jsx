@@ -1,3 +1,4 @@
+import { errorEnNombreDeAlgo, esMonto } from '../../lib/validaciones'
 import { useState } from 'react'
 import Layout from '../../components/layout/Layout'
 import AvisoFaltantes from '../../components/AvisoFaltantes'
@@ -114,7 +115,7 @@ export default function GestionEntrenamientos() {
   {
     const n = (v) => Number(v)
     if (!form.nombre.trim()) errores.nombre = 'Escribe el nombre del entrenamiento, por ejemplo «Fútbol infantil».'
-    else if (form.nombre.trim().length < 4) errores.nombre = 'El nombre es muy corto: usa al menos 4 caracteres.'
+    else if (errorEnNombreDeAlgo(form.nombre, { minimo: 4 })) errores.nombre = errorEnNombreDeAlgo(form.nombre, { minimo: 4 })
     if (!form.entrenador.trim()) errores.entrenador = 'Elige el entrenador que dicta este entrenamiento.'
     else if (!misEntrenadores.some(en => en.nombre === form.entrenador))
       errores.entrenador = `${form.entrenador} ya no está activo en el complejo: elige otro entrenador.`
@@ -142,8 +143,8 @@ export default function GestionEntrenamientos() {
         errores.cancha = `Choca con «${otro.nombre}», que ya usa esa cancha ${diasLegibles(otro.dias)} de ${otro.horaInicio} a ${otro.horaFin}.`
       }
     }
-    if (form.precio !== '' && (!Number.isFinite(n(form.precio)) || n(form.precio) < 0))
-      errores.precio = 'El precio no puede ser negativo. Déjalo vacío si es gratis o se consulta en el complejo.'
+    if (form.precio !== '' && !esMonto(form.precio))
+      errores.precio = 'El precio debe ser un número desde 0, con dos decimales como máximo. Déjalo vacío si es gratis o se consulta en el complejo.'
     if (form.cupo !== '' && (!Number.isInteger(n(form.cupo)) || n(form.cupo) < 1))
       errores.cupo = 'El cupo debe ser un número entero mayor a 0. Déjalo vacío si no hay límite.'
     if (form.paraNinos) {

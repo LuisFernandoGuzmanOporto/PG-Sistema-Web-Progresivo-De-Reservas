@@ -1,3 +1,4 @@
+import { errorEnNombreDeAlgo, esMonto } from '../../lib/validaciones'
 // GestionCanchas.jsx
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -132,13 +133,13 @@ export function GestionCanchas() {
     const e = {}
     const nombre = form.nombre.trim()
     if (!nombre) e.nombre = 'Escribe el nombre de la cancha, por ejemplo «Cancha de Fútbol 1».'
-    else if (nombre.length < 3) e.nombre = 'El nombre es muy corto: usa al menos 3 caracteres.'
+    else if (errorEnNombreDeAlgo(nombre)) e.nombre = errorEnNombreDeAlgo(nombre)
     else if (canchas.some(c => c.nombre.toLowerCase() === nombre.toLowerCase() && c.id !== editando))
       e.nombre = `Ya tienes una cancha llamada «${nombre}». Usa otro nombre para distinguirlas.`
 
     const precio = Number(form.precio)
     if (!form.precio) e.precio = 'Escribe el precio por hora en bolivianos.'
-    else if (!Number.isFinite(precio) || precio <= 0) e.precio = 'El precio debe ser un número mayor a 0.'
+    else if (!esMonto(form.precio) || precio <= 0) e.precio = 'El precio debe ser un número mayor a 0, con dos decimales como máximo (por ejemplo 80 o 80.50).'
     else if (precio > 5000) e.precio = 'El precio parece muy alto (más de Bs. 5.000 por hora). Revísalo.'
 
     if (form.capacidad && (!Number.isInteger(Number(form.capacidad)) || Number(form.capacidad) <= 0))

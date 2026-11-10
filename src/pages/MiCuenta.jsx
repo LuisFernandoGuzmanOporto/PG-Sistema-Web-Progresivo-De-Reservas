@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { digitosDe, esTelefono } from '../lib/validaciones'
+import { errorEnTelefono, errorEnNombre, errorEnNombreDeAlgo, errorEnClave, tieneLetras } from '../lib/validaciones'
 import Layout from '../components/layout/Layout'
 import AvisoFaltantes from '../components/AvisoFaltantes'
 import { propsCampo, MensajeCampo, irAlPrimerError } from '../components/Validacion'
@@ -110,12 +110,9 @@ export default function MiCuenta() {
   const [intentoDatos, setIntentoDatos] = useState(false)
   const errDatos = {}
   {
-    const digitos = digitosDe(datos.telefono)
     if (!datos.nombre.trim()) errDatos.nombre = 'Escribe tu nombre completo.'
-    else if (datos.nombre.trim().length < 3) errDatos.nombre = 'El nombre es muy corto: escribe nombre y apellido.'
-    if (datos.telefono.trim() && /[^0-9\s-]/.test(datos.telefono)) errDatos.telefono = 'El teléfono solo puede tener números, espacios o guiones.'
-    else if (datos.telefono.trim() && !esTelefono(datos.telefono))
-      errDatos.telefono = `El teléfono debe tener 7 u 8 dígitos (tiene ${digitos.length}).`
+    else if (errorEnNombre(datos.nombre)) errDatos.nombre = errorEnNombre(datos.nombre)
+    if (datos.telefono.trim() && errorEnTelefono(datos.telefono)) errDatos.telefono = errorEnTelefono(datos.telefono)
   }
   const vDatos = validacion(errDatos, ['nombre', 'telefono'], intentoDatos)
   const faltaEnDatos = vDatos.faltantes
@@ -142,7 +139,7 @@ export default function MiCuenta() {
   const errClave = {}
   if (tieneClave && !clave.actual) errClave.claveActual = 'Escribe tu contraseña actual: así nadie más puede cambiarla.'
   if (!clave.nueva) errClave.claveNueva = 'Escribe la contraseña nueva.'
-  else if (clave.nueva.length < 6) errClave.claveNueva = `La contraseña debe tener al menos 6 caracteres (tiene ${clave.nueva.length}).`
+  else if (errorEnClave(clave.nueva)) errClave.claveNueva = errorEnClave(clave.nueva)
   if (!clave.repetir) errClave.claveRepetir = 'Repite la contraseña para confirmarla.'
   else if (clave.nueva !== clave.repetir) errClave.claveRepetir = 'Las contraseñas no coinciden. Escríbelas de nuevo.'
   const vClave = validacion(errClave, ['claveActual', 'claveNueva', 'claveRepetir'], intentoClave)
@@ -188,12 +185,11 @@ export default function MiCuenta() {
   const [intentoComp, setIntentoComp] = useState(false)
   const errComp = {}
   {
-    const digitos = digitosDe(comp.telefono)
     if (!comp.nombre.trim()) errComp.compNombre = 'Escribe el nombre del complejo.'
-    else if (comp.nombre.trim().length < 3) errComp.compNombre = 'El nombre es muy corto: usa al menos 3 caracteres.'
-    if (comp.telefono.trim() && !esTelefono(comp.telefono))
-      errComp.compTelefono = `El teléfono debe tener 7 u 8 dígitos (tiene ${digitos.length}).`
+    else if (errorEnNombreDeAlgo(comp.nombre)) errComp.compNombre = errorEnNombreDeAlgo(comp.nombre)
+    if (comp.telefono.trim() && errorEnTelefono(comp.telefono)) errComp.compTelefono = errorEnTelefono(comp.telefono)
     if (!comp.direccion.trim()) errComp.direccion = 'Escribe la dirección del complejo, por ejemplo «Av. Blanco Galindo km 4».'
+    else if (!tieneLetras(comp.direccion)) errComp.direccion = 'La dirección debe tener el nombre de la calle o avenida, no solo números.'
     if (!comp.zona.trim()) errComp.zona = 'Elige la zona donde está el complejo.'
     if (comp.horaFin <= comp.horaInicio) errComp.horaFin = `La hora de cierre debe ser posterior a la de apertura (${comp.horaInicio}).`
     if (!comp.deportes.length) errComp.deportes = 'Marca al menos un deporte que ofreces.'

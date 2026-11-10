@@ -1,3 +1,4 @@
+import { errorEnNombreDeAlgo } from '../../lib/validaciones'
 import { useState } from 'react'
 import Layout from '../../components/layout/Layout'
 import AvisoFaltantes from '../../components/AvisoFaltantes'
@@ -121,6 +122,7 @@ export default function GestionRecompensas() {
         errores.descuentoValor = 'Las horas gratis deben ser un número entero entre 1 y 12.'
     }
     if (!String(form.nombre).trim()) errores.nombre = 'Escribe el nombre de la recompensa, por ejemplo «Descuento 20 % en reserva».'
+    else if (errorEnNombreDeAlgo(form.nombre)) errores.nombre = errorEnNombreDeAlgo(form.nombre)
     if (form.puntos === '' || form.puntos == null) errores.puntos = 'Escribe cuántos puntos cuesta canjearla.'
     else if (!Number.isInteger(n(form.puntos)) || n(form.puntos) < 1) errores.puntos = 'Los puntos deben ser un número entero mayor a 0.'
     if (form.stock === '' || form.stock == null) errores.stock = 'Escribe cuántas hay disponibles.'

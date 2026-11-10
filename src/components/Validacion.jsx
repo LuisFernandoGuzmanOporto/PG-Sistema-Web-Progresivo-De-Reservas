@@ -5,13 +5,14 @@
 //
 //   1. El campo con problema se marca en rojo y, justo debajo, se dice qué
 //      pasa y cómo corregirlo («El teléfono debe tener 7 u 8 dígitos»).
-//   2. Arriba del botón, un resumen con todo lo pendiente (AvisoFaltantes).
-//      Cada punto del resumen lleva al campo con un toque.
-//   3. Al intentar guardar con errores, la pantalla va sola al primero.
+//   2. Al intentar guardar con errores, la pantalla va sola al primero.
 //
-// Los campos se identifican con id="campo-<nombre>", así el resumen y el
-// desplazamiento saben a dónde ir, y los lectores de pantalla asocian el
-// mensaje con su campo (aria-invalid y aria-describedby).
+// Lo que falta se dice una sola vez, en su campo: ya no hay un resumen aparte
+// arriba del botón (AvisoFaltantes queda para los errores del servidor).
+//
+// Los campos se identifican con id="campo-<nombre>", así el desplazamiento
+// sabe a dónde ir, y los lectores de pantalla asocian el mensaje con su campo
+// (aria-invalid y aria-describedby).
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Propiedades para un <input>, <select> o <textarea> validado. */

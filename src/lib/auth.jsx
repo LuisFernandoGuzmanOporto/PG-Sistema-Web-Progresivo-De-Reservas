@@ -41,7 +41,12 @@ export function AuthProvider({ children }) {
   const [reintento, setReintento] = useState(0)
 
   useEffect(() => {
-    const volvio = () => { setSinConexion(false); setReintento(n => n + 1) }
+    // Al volver la red se recarga todo, pero el aviso se apaga recién cuando
+    // el perfil llega de verdad (lo hace cargarPerfil). Antes se apagaba al
+    // instante: si el perfil no estaba guardado en el navegador, durante ese
+    // instante la ruta protegida veía «sin perfil y con conexión» y mandaba al
+    // login, y de ahí al inicio, perdiendo la pantalla en la que estaba.
+    const volvio = () => setReintento(n => n + 1)
     const seFue  = () => setSinConexion(true)
     window.addEventListener('online', volvio)
     window.addEventListener('offline', seFue)
@@ -175,12 +180,19 @@ export function AuthProvider({ children }) {
       ])
       if (!cancelado) {
         setErrorDatos(r.error || null)
+        setCargadoPara(usuarioId)
         setCargar(false)
       }
     })()
 
     return () => { cancelado = true }
   }, [usuarioId, sesionLeida, reintento])
+
+  // Para quién terminó ya la primera carga. Hasta entonces las pantallas
+  // esperan con «Cargando…»: si se mostraran apenas llega el perfil, verían
+  // las listas antes de llenarse. En las recargas de después (al volver la
+  // conexión o con «Reintentar») se quedan montadas y no pierden lo escrito.
+  const [cargadoPara, setCargadoPara] = useState(null)
 
   /**
    * Acepta un correo o el usuario de un empleado: si no lleva arroba, se le
@@ -301,6 +313,7 @@ export function AuthProvider({ children }) {
     sesion, perfil, errorDatos, sinConexion,
     reintentar: () => setReintento(n => n + 1),
     cargando: cargando || !sesionLeida,
+    primeraCarga: !sesionLeida || (Boolean(usuarioId) && cargadoPara !== usuarioId),
     autenticado: Boolean(sesion && perfil),
     rol: perfil?.rol ?? null,
     entrar, registrarse, salir, recuperarClave, verificarCodigo, cambiarMiClave, cambiarClaveConLaActual,
@@ -451,10 +464,15 @@ const CuentaSuspendida = () => {
  * en vez de dejarlo en una pagina vacia sin entender por que.
  */
 export function RutaProtegida({ roles, children }) {
-  const { autenticado, cargando, perfil, sesion, sinConexion } = useAuth()
+  const { autenticado, cargando, primeraCarga, perfil, sesion, sinConexion } = useAuth()
   const lugar = useLocation()
 
-  if (cargando) return <Cargando />
+  // «Cargando…» solo hasta que termina la primera carga (o mientras no hay
+  // perfil). Al recargar los datos después (al volver la conexión o con
+  // «Reintentar») la pantalla se queda montada: antes se desmontaba y se
+  // perdía lo que el usuario estaba escribiendo en un formulario abierto
+  // (lo encontró la prueba PE-22).
+  if (cargando && (primeraCarga || !perfil)) return <Cargando />
 
   // Hay sesion pero no se pudo leer el perfil por falta de internet: no es
   // que se haya cerrado la sesion, asi que no se manda al login.

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { digitosDe, esTelefono } from '../../lib/validaciones'
+import { digitosDe, errorEnTelefono, errorEnNombre, errorEnNombreDeAlgo } from '../../lib/validaciones'
 import { useParams, useNavigate } from 'react-router-dom'
 import Layout from '../../components/layout/Layout'
 import NoEncontrado from '../../components/NoEncontrado'
@@ -239,10 +239,11 @@ export default function InscribirEquipo() {
     const quien = (i) => plantel[i]?.nombre?.trim() ? ` (${plantel[i].nombre.trim()})` : ''
     const digitos = digitosDe(capitan.telefono)
     if (!nombreEquipo.trim()) errores.nombreEquipo = `Escribe el nombre ${esPareja ? 'de la pareja' : 'del equipo'}.`
-    else if (nombreEquipo.trim().length < 3) errores.nombreEquipo = 'El nombre es muy corto: usa al menos 3 caracteres.'
+    else if (errorEnNombreDeAlgo(nombreEquipo)) errores.nombreEquipo = errorEnNombreDeAlgo(nombreEquipo)
     if (!capitan.nombre.trim()) errores.capitanNombre = `Escribe el nombre completo ${esPareja ? 'del responsable' : 'del capitán'}.`
+    else if (errorEnNombre(capitan.nombre)) errores.capitanNombre = errorEnNombre(capitan.nombre)
     if (!digitos) errores.capitanTelefono = 'Escribe un teléfono o WhatsApp para que el organizador pueda contactarte.'
-    else if (!esTelefono(capitan.telefono)) errores.capitanTelefono = `El teléfono debe tener 7 u 8 dígitos (tiene ${digitos.length}).`
+    else if (errorEnTelefono(capitan.telefono)) errores.capitanTelefono = errorEnTelefono(capitan.telefono)
     if (anotados < minJugadores) errores.jugadores = `Este torneo pide al menos ${minJugadores} jugadores y llevas ${anotados}. Completa ${minJugadores - anotados} más.`
     else if (anotados > maxJugadores) errores.jugadores = `Este torneo permite como máximo ${maxJugadores} jugadores y llevas ${anotados}. Quita ${anotados - maxJugadores}.`
     orden.push('nombreEquipo', 'capitanNombre', 'capitanTelefono', 'jugadores')
@@ -250,6 +251,8 @@ export default function InscribirEquipo() {
       const nombre = j.nombre.trim()
       if (!nombre && (i < minJugadores || String(j.dorsal).trim()))
         errores['jugador-' + i] = `Escribe el nombre del jugador ${i + 1}.`
+      else if (nombre && errorEnNombre(nombre, { completo: false }))
+        errores['jugador-' + i] = errorEnNombre(nombre, { completo: false }).replace('El nombre', `El nombre del jugador ${i + 1}`)
       if (nombre && !String(j.dorsal).trim()) errores['dorsal-' + i] = `Falta el dorsal de ${nombre}.`
       else if (erroresDorsal[i]) errores['dorsal-' + i] = erroresDorsal[i].replace(/\.$/, '') + quien(i) + '.'
       orden.push('dorsal-' + i, 'jugador-' + i)

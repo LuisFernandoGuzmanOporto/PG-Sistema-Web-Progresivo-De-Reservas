@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { digitosDe, esTelefono } from '../../lib/validaciones'
+import { errorEnTelefono, errorEnNombre } from '../../lib/validaciones'
 import { useNavigate } from 'react-router-dom'
 import Layout from '../../components/layout/Layout'
 import VisorComprobante from '../../components/VisorComprobante'
@@ -198,11 +198,10 @@ export default function PanelEmpleado() {
   const [intentoReserva, setIntentoReserva] = useState(false)
   const erroresReserva = {}
   {
-    const digitos = digitosDe(form.telefono)
     if (!form.cliente.trim()) erroresReserva.cliente = 'Escribe el nombre del cliente que hace la reserva.'
-    else if (form.cliente.trim().length < 3) erroresReserva.cliente = 'El nombre es muy corto: escribe nombre y apellido.'
-    if (form.telefono.trim() && !esTelefono(form.telefono))
-      erroresReserva.telefono = `El teléfono debe tener 7 u 8 dígitos (tiene ${digitos.length}). Déjalo vacío si el cliente no lo da.`
+    else if (errorEnNombre(form.cliente)) erroresReserva.cliente = errorEnNombre(form.cliente)
+    if (form.telefono.trim() && errorEnTelefono(form.telefono))
+      erroresReserva.telefono = errorEnTelefono(form.telefono) + ' Déjalo vacío si el cliente no lo da.'
     if (pago === 'qr' && !compRuta) erroresReserva.comprobante = 'Falta la foto del comprobante de la transferencia. Tómala o cambia el pago a efectivo.'
     if (pago === 'efectivo' && recibido !== '' && (!Number.isFinite(recibidoNum) || recibidoNum < montoPresencial))
       erroresReserva.recibido = `El cliente entrega menos de lo que cuesta: faltan Bs. ${montoBs(Math.max(0, montoPresencial - (recibidoNum || 0)))}. Déjalo vacío si paga justo.`

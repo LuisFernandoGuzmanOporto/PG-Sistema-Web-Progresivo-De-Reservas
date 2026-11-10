@@ -78,7 +78,7 @@ test('PE-16 · Sin internet no se cierra la sesión: se avisa y, al volver la co
   await context.close()
 })
 
-test('PE-17 · Un formulario incompleto marca el campo con error, dice qué corregir y lleva el cursor ahí', async ({ browser }) => {
+test('PE-17 · Un formulario incompleto marca el campo con error, dice qué corregir solo ahí y lleva el cursor al primero', async ({ browser }) => {
   // Arrange
   const { page, context } = await ventanaDe(browser, 'admin')
   await page.goto('/mi-cuenta')
@@ -96,7 +96,8 @@ test('PE-17 · Un formulario incompleto marca el campo con error, dice qué corr
   await expect(page.locator('#error-nombre')).toContainText('Escribe tu nombre completo.')
   await expect(telefono).toHaveAttribute('aria-invalid', 'true')
   await expect(page.locator('#error-telefono')).toContainText('El teléfono debe tener 7 u 8 dígitos (tiene 3).')
-  await expect(page.getByText('Revisa 2 datos antes de continuar:')).toBeVisible()
+  // Lo que falta se dice una sola vez, debajo de cada campo: ya no hay un resumen repetido abajo
+  await expect(page.getByText(/Revisa \d+ datos antes de continuar/)).toHaveCount(0)
   await expect(nombre).toBeFocused()
   await foto(page, 'PE-17_validacion_campos')
   await context.close()

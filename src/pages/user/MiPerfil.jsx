@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { digitosDe, esTelefono, tieneNombreYApellido } from '../../lib/validaciones'
+import { errorEnTelefono, errorEnNombre, errorEnClave } from '../../lib/validaciones'
 import { useNavigate } from 'react-router-dom'
 import Layout from '../../components/layout/Layout'
 import AvisoFaltantes from '../../components/AvisoFaltantes'
@@ -85,7 +85,7 @@ export default function MiPerfil() {
   const errClave = {}
   if (tieneClave && !clave.actual) errClave.claveActual = 'Escribe tu contraseña actual: así nadie más puede cambiarla.'
   if (!clave.nueva) errClave.claveNueva = 'Escribe la contraseña nueva.'
-  else if (clave.nueva.length < 6) errClave.claveNueva = `La contraseña debe tener al menos 6 caracteres (tiene ${clave.nueva.length}).`
+  else if (errorEnClave(clave.nueva)) errClave.claveNueva = errorEnClave(clave.nueva)
   if (!clave.repetir) errClave.claveRepetir = 'Repite la contraseña para confirmarla.'
   else if (clave.nueva !== clave.repetir) errClave.claveRepetir = 'Las contraseñas no coinciden. Escríbelas de nuevo.'
   const ORDEN_CLAVE = ['claveActual', 'claveNueva', 'claveRepetir']
@@ -163,12 +163,9 @@ export default function MiPerfil() {
 
   const validarPerfil = () => {
     const e = {}
-    const digitos = digitosDe(borrador.telefono)
     if (!borrador.nombre.trim()) e.nombre = 'Escribe tu nombre completo.'
-    else if (!tieneNombreYApellido(borrador.nombre)) e.nombre = 'Falta el apellido: escribe nombre y apellido.'
-    if (borrador.telefono.trim() && /[^0-9\s-]/.test(borrador.telefono)) e.telefono = 'El teléfono solo puede tener números, espacios o guiones.'
-    else if (borrador.telefono.trim() && !esTelefono(borrador.telefono))
-      e.telefono = `El teléfono debe tener 7 u 8 dígitos (tiene ${digitos.length}).`
+    else if (errorEnNombre(borrador.nombre)) e.nombre = errorEnNombre(borrador.nombre)
+    if (borrador.telefono.trim() && errorEnTelefono(borrador.telefono)) e.telefono = errorEnTelefono(borrador.telefono)
     return e
   }
 

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { digitosDe, esTelefono } from '../lib/validaciones'
+import { errorEnTelefono, errorEnNombre, errorEnNombreDeAlgo, errorEnClave, esCorreo, tieneLetras } from '../lib/validaciones'
 import { useNavigate } from 'react-router-dom'
 import { registrarSolicitudEmpresa, guardarImagenesEmpresa } from '../lib/guardar'
 import { subirPublico, revisarArchivo, TIPOS_IMAGEN } from '../lib/archivos'
@@ -109,28 +109,28 @@ export default function RegistroEmpresa() {
 
   // ── Validaciones: cada campo dice que le falta, no solo se bloquea el boton ──
   const errores1 = {}
-  const digitos = digitosDe(telefono)
   if (!nombre.trim()) errores1.nombre = 'Escribe el nombre del complejo.'
-  else if (nombre.trim().length < 3) errores1.nombre = 'El nombre es muy corto: usa al menos 3 caracteres.'
+  else if (errorEnNombreDeAlgo(nombre)) errores1.nombre = errorEnNombreDeAlgo(nombre)
   if (!zona) errores1.zona = 'Elige la zona donde está el complejo.'
   if (!telefono.trim()) errores1.telefono = 'Escribe un teléfono de contacto.'
-  else if (/[^0-9\s-]/.test(telefono)) errores1.telefono = 'El teléfono solo puede tener números, espacios o guiones.'
-  else if (!esTelefono(telefono)) errores1.telefono = `El teléfono debe tener 7 u 8 dígitos (tiene ${digitos.length}). Ejemplo: 4123456 o 70012345.`
+  else if (errorEnTelefono(telefono)) errores1.telefono = errorEnTelefono(telefono)
   if (!direccion.trim()) errores1.direccion = 'Escribe la dirección del complejo.'
   else if (direccion.trim().length < 8) errores1.direccion = 'La dirección es muy corta: incluye la calle o avenida y un número o referencia.'
+  else if (!tieneLetras(direccion)) errores1.direccion = 'La dirección debe tener el nombre de la calle o avenida, no solo números.'
   if (horaFin <= horaInicio) errores1.horario = 'La hora de cierre debe ser posterior a la de apertura.'
   if (lat == null || lng == null) errores1.ubicacion = 'Toca el mapa para marcar dónde está el complejo.'
   if (!descripcion.trim()) errores1.descripcion = 'Describe brevemente qué ofrece tu complejo.'
   else if (descripcion.trim().length < 20) errores1.descripcion = `La descripción debe tener al menos 20 caracteres (tiene ${descripcion.trim().length}).`
+  else if (!tieneLetras(descripcion, 10)) errores1.descripcion = 'Describe el complejo con palabras, no solo con números o signos.'
   if (deportes.length === 0) errores1.deportes = 'Elige al menos un deporte que se pueda jugar en el complejo.'
 
   const errores2 = {}
   if (!adminNombre.trim()) errores2.adminNombre = 'Escribe el nombre y apellido del administrador.'
-  else if (adminNombre.trim().split(/\s+/).length < 2) errores2.adminNombre = 'Falta el apellido: escribe nombre y apellido.'
+  else if (errorEnNombre(adminNombre)) errores2.adminNombre = errorEnNombre(adminNombre)
   if (!adminCorreo.trim()) errores2.adminCorreo = 'Escribe el correo del administrador.'
-  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(adminCorreo.trim())) errores2.adminCorreo = 'El correo no es válido: debe tener @ y un dominio, por ejemplo juan@sportcenter.com.'
+  else if (!esCorreo(adminCorreo)) errores2.adminCorreo = 'El correo no es válido: debe tener @ y un dominio, por ejemplo juan@sportcenter.com.'
   if (!adminPassword) errores2.adminPassword = 'Crea una contraseña.'
-  else if (adminPassword.length < 8) errores2.adminPassword = `La contraseña debe tener al menos 8 caracteres (tiene ${adminPassword.length}).`
+  else if (errorEnClave(adminPassword, 8)) errores2.adminPassword = errorEnClave(adminPassword, 8)
   if (!adminPassword2) errores2.adminPassword2 = 'Repite la contraseña para confirmarla.'
   else if (adminPassword !== adminPassword2) errores2.adminPassword2 = 'Las contraseñas no coinciden. Escríbelas de nuevo.'
 

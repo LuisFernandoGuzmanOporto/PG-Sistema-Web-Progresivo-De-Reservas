@@ -129,7 +129,10 @@ export async function cargarDatos({ forzar = false } = {}) {
     ])
 
     const fallo = [empresas, canchas, torneos].find(r => r.error)
-    if (fallo) return { error: traducirError(fallo.error, 'No se pudieron traer los datos') }
+    if (fallo) {
+      if (!yaCargado) vaciarDatosDeEjemplo()
+      return { error: traducirError(fallo.error, 'No se pudieron traer los datos') }
+    }
 
     // Diccionarios para resolver nombres e ids sin recorrer todo cada vez
     const nombrePorPerfil = new Map((perfiles.data || []).map(p => [p.id, p.nombre]))
@@ -520,8 +523,30 @@ export async function cargarDatos({ forzar = false } = {}) {
     yaCargado = true
     return { ok: true }
   } catch (e) {
+    if (!yaCargado) vaciarDatosDeEjemplo()
     return { error: traducirError(e, 'No se pudo conectar con la base de datos') }
   }
+}
+
+/**
+ * Las listas de datos.js todavía traen los datos de ejemplo de cuando la
+ * aplicación no tenía base. Si la PRIMERA carga fallaba (por ejemplo, al abrir
+ * la aplicación sin internet), esos ejemplos quedaban a la vista como si fueran
+ * reales: el inicio mostraba partidos y torneos que no existen (lo encontró la
+ * prueba PE-22). Ahora se vacían, la pantalla dice que no hay datos y el aviso
+ * de «Sin conexión» explica por qué. Si ya se había cargado algo de la base,
+ * no se toca: es información real, aunque no esté al día.
+ */
+function vaciarDatosDeEjemplo() {
+  for (const lista of [D.EMPRESAS, D.TORNEOS, D.PARTIDOS_ESPONTANEOS, D.EMPLEADOS, D.BITACORA,
+                       D.RESERVAS_EMPRESA, D.USUARIOS, D.ENTRENADORES, D.PUNTOS_HISTORIAL, D.CANJES]) {
+    reemplazar(lista, [])
+  }
+  for (const porEmpresa of [D.CANCHAS_POR_EMPRESA, D.ENTRENAMIENTOS_POR_EMPRESA, D.RECOMPENSAS_POR_EMPRESA,
+                            D.CALIFICACIONES_POR_EMPRESA, D.COMENTARIOS_POR_EMPRESA]) {
+    vaciarObjeto(porEmpresa)
+  }
+  calcularEstadisticas()
 }
 
 /**

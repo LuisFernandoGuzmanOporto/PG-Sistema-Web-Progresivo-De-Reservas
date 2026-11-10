@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { esCorreo, esUsuario, tieneNombreYApellido } from '../lib/validaciones'
+import { esCorreo, esUsuario, errorEnNombre, errorEnClave } from '../lib/validaciones'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useAuth, INICIO_POR_ROL } from '../lib/auth'
 import { rutaInterna } from '../lib/rutas'
@@ -58,13 +58,14 @@ export default function LoginPage() {
     }
 
     if (!form.password) e.password = 'Escribe tu contraseña.'
+    else if (tab === 'register' && errorEnClave(form.password)) e.password = errorEnClave(form.password)
     else if (form.password.length < 6) {
       e.password = `La contraseña debe tener al menos 6 caracteres (tiene ${form.password.length}).`
     }
 
     if (tab === 'register') {
       if (!form.nombre.trim()) e.nombre = 'Escribe tu nombre y apellido.'
-      else if (!tieneNombreYApellido(form.nombre)) e.nombre = 'Falta el apellido: escribe nombre y apellido, por ejemplo Juan Pérez.'
+      else if (errorEnNombre(form.nombre)) e.nombre = errorEnNombre(form.nombre)
       if (!form.password2) e.password2 = 'Repite la contraseña para confirmarla.'
       else if (form.password !== form.password2) e.password2 = 'Las contraseñas no coinciden. Escríbelas de nuevo.'
     }

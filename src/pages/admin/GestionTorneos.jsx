@@ -1,3 +1,4 @@
+import { errorEnNombreDeAlgo, esMonto } from '../../lib/validaciones'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Layout from '../../components/layout/Layout'
@@ -158,7 +159,7 @@ export default function GestionTorneos() {
     const e = {}
     const hoy = hoyBolivia()
     if (!form.nombre.trim()) e.nombre = 'Escribe el nombre del torneo, por ejemplo «Copa Sport Center 2026».'
-    else if (form.nombre.trim().length < 4) e.nombre = 'El nombre es muy corto: usa al menos 4 caracteres.'
+    else if (errorEnNombreDeAlgo(form.nombre, { minimo: 4 })) e.nombre = errorEnNombreDeAlgo(form.nombre, { minimo: 4 })
     else if (TORNEOS.some(t => t.nombre.toLowerCase() === form.nombre.trim().toLowerCase()))
       e.nombre = `Ya existe un torneo llamado «${form.nombre.trim()}». Usa otro nombre.`
 
@@ -180,7 +181,7 @@ export default function GestionTorneos() {
     const jug = Number(form.jugadores)
     if (!form.jugadores || jug < 1) e.jugadores = 'Escribe cuántos jugadores de cada equipo juegan en la cancha.'
 
-    if (form.precio !== '' && Number(form.precio) < 0) e.precio = 'La inscripción no puede ser negativa. Usa 0 si es gratis.'
+    if (form.precio !== '' && !esMonto(form.precio)) e.precio = 'La inscripción debe ser un número desde 0, con dos decimales como máximo. Usa 0 si es gratis.'
 
     const minJ = Number(form.jugadoresMin)
     const maxJ = Number(form.jugadoresMax)
