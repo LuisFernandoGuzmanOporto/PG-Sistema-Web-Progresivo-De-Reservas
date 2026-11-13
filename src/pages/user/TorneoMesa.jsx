@@ -702,7 +702,7 @@ export default function TorneoMesa() {
 
               {partido.estado === 'finalizado' && (
                 <div style={{ textAlign: 'center', padding: '24px', background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)', borderRadius: 12 }}>
-                  <p style={{ fontSize: '2rem', marginBottom: 8 }}>OK</p>
+                  <p style={{ fontSize: '2rem', marginBottom: 8 }} aria-hidden="true">✅</p>
                   <p style={{ fontWeight: 700, color: '#22c55e', marginBottom: 4 }}>Partido Finalizado</p>
                   <p style={{ fontSize: '0.82rem', color: '#666', marginBottom: 16 }}>
                     {partido.equipo1} {partido.g1} - {partido.g2} {partido.equipo2}
