@@ -71,11 +71,18 @@ export default defineConfig({
         // Las imágenes del mapa se guardan en el teléfono: la segunda vez que
         // se abre un mapa de la misma zona sale al instante, y por detrás se
         // pide la versión nueva (así lo pide la política de OpenStreetMap).
+        //
+        // Ojo: el service worker se queda con la regla de seguridad (CSP) con
+        // la que se instaló, y el navegador solo lo cambia cuando sw.js cambia.
+        // Si se toca la CSP sin tocar la aplicación, sw.js sale idéntico y los
+        // teléfonos siguen con la regla vieja (así quedó el mapa gris el
+        // 12/11/2026). Por eso el nombre lleva versión: al cambiar la CSP,
+        // subirla aquí obliga a todos a instalar el service worker nuevo.
         runtimeCaching: [{
           urlPattern: /^https:\/\/tile\.openstreetmap\.org\//,
           handler: 'StaleWhileRevalidate',
           options: {
-            cacheName: 'mapa',
+            cacheName: 'mapa-v2',
             expiration: { maxEntries: 600, maxAgeSeconds: 7 * 24 * 60 * 60 },
             cacheableResponse: { statuses: [0, 200] },
           },
