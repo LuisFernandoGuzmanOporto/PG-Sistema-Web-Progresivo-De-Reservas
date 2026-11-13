@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { urlPublica, revisarArchivo, subirComprobante, TIPOS_COMPROBANTE } from '../lib/archivos'
 import { enviarComprobanteCancha } from '../lib/guardar'
 import { montoBs } from '../lib/dinero'
+import { yaTermino } from '../lib/datos'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PAGAR LA CANCHA DE UN TORNEO
@@ -115,7 +116,8 @@ export function PagoPendiente({ torneo, empresa, onEnviado }) {
       </p>
     )
   }
-  if (!(Number(sol.costoTotal) > 0)) return null
+  // Si las fechas ya pasaron no tiene sentido pagar una cancha que no se usó
+  if (!(Number(sol.costoTotal) > 0) || yaTermino(torneo)) return null
 
   const enviar = async () => {
     if (!archivo) { setError('Elige primero la foto o el PDF del comprobante.'); return }

@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { registerSW } from 'virtual:pwa-register'
 import App from './App.jsx'
+import { recargarPorVersionNueva } from './lib/versionNueva'
 
 // La aplicación se actualiza sola. Cuando se publica una versión nueva, el
 // service worker nuevo se instala y la página se recarga una vez; antes cada
@@ -17,6 +18,12 @@ registerSW({
       if (document.visibilityState === 'visible') registro.update()
     })
   },
+})
+
+// Si una pantalla pide un archivo de la versión anterior (se publicó una nueva
+// con la aplicación abierta), se recarga una vez en vez de romperse.
+window.addEventListener('vite:preloadError', (e) => {
+  if (recargarPorVersionNueva()) e.preventDefault()
 })
 
 ReactDOM.createRoot(document.getElementById('root')).render(

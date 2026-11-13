@@ -597,7 +597,7 @@ const INSCRIPCIONES_CERRADAS = { label: 'Inscripciones cerradas', corto: 'Cerrad
 const SIN_CERRAR = { label: 'Terminó sin cerrarse', corto: 'Sin cerrar', color: '#888', bg: 'rgba(255,255,255,0.06)' }
 const NO_SE_JUGO = { label: 'No se jugó', corto: 'No se jugó', color: '#888', bg: 'rgba(255,255,255,0.06)' }
 
-const yaTermino = (t) => !!t.fechaFinISO && t.fechaFinISO < hoyLocal()
+export const yaTermino = (t) => !!t.fechaFinISO && t.fechaFinISO < hoyLocal()
 
 /** El estado que se muestra de un torneo. */
 export const estadoDeTorneo = (t) => {

@@ -1,4 +1,5 @@
 import { Component } from 'react'
+import { esArchivoViejo, recargarPorVersionNueva } from '../lib/versionNueva'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SI ALGO FALLA
@@ -19,6 +20,8 @@ export default class SiAlgoFalla extends Component {
   }
 
   componentDidCatch(error, info) {
+    // Un archivo de la version anterior: se arregla recargando una vez
+    if (esArchivoViejo(error) && recargarPorVersionNueva()) return
     // Queda en la consola para poder encontrarlo despues. Al usuario no se le
     // muestra: no le dice nada y lo asusta.
     console.error('Sportika — se rompió una pantalla:', error, info?.componentStack)

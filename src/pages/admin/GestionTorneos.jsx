@@ -7,8 +7,8 @@ import VisorComprobante from '../../components/VisorComprobante'
 import { propsCampo, MensajeCampo, irAlPrimerError } from '../../components/Validacion'
 import {
   torneosDelComplejo, solicitudesDeCancha, conteoEquipos, solicitudesPendientes,
-  ESTADO_TORNEO, estadoDeTorneo, ESTADO_SOLICITUD, canchasDeEmpresa, torneoPorId,
-  TORNEOS, EMPRESAS, SESION, USUARIO_ACTUAL,
+  ESTADO_TORNEO, estadoDeTorneo, ESTADO_SOLICITUD, equiposAprobados, canchasDeEmpresa, torneoPorId,
+  TORNEOS, EMPRESAS, SESION, USUARIO_ACTUAL, yaTermino,
 } from '../../lib/datos'
 import { resolverSolicitudCancha, registrarEnBitacora, guardarTorneo,
          guardarQRTorneo } from '../../lib/guardar'
@@ -455,7 +455,7 @@ export default function GestionTorneos() {
                             </div>
                           )}
                         </div>
-                      ) : sol.estado === 'pendiente' && (
+                      ) : sol.estado === 'pendiente' && !yaTermino(t) && (
                         <p style={{ color: '#f59e0b', fontSize: '0.8rem', marginBottom: 12 }}>
                           ⚠ {t.creador} todavía no subió el comprobante del pago de la cancha.
                           {empresa?.qrPago ? '' : ' Tu complejo no tiene QR cargado: coordina el pago directamente con el organizador.'}
@@ -478,7 +478,7 @@ export default function GestionTorneos() {
                             el torneo y llevar a verlo */}
                         {sol.estado === 'aprobada' && (() => {
                           const est = estadoDeTorneo(t)
-                          const equipos = conteoEquipos(t)
+                          const equipos = equiposAprobados(t).length
                           const porAprobar = solicitudesPendientes(t).length
                           const partidos = t.partidos || []
                           const jugados = partidos.filter(p => p.estado === 'finalizado').length
@@ -495,7 +495,9 @@ export default function GestionTorneos() {
                                 <br />
                                 {partidos.length
                                   ? <>⚽ {jugados} de {partidos.length} partidos jugados</>
-                                  : <>📅 Empieza el {t.fechaInicio} · el fixture se arma al cerrar las inscripciones</>}
+                                  : yaTermino(t)
+                                    ? <>📅 Las fechas ya pasaron ({t.fechaInicio} — {t.fechaFin}) y no se jugó ningún partido</>
+                                    : <>📅 Empieza el {t.fechaInicio} · el fixture se arma al cerrar las inscripciones</>}
                               </p>
                               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
                                 <button className="btn btn-outline btn-sm" onClick={() => navigate('/app/torneos/' + t.id)}>Ver el torneo</button>

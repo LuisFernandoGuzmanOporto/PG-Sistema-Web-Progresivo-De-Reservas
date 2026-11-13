@@ -31,3 +31,12 @@ describe('Días y horario de un torneo', () => {
     expect(horarioDeJuego({ apertura: '07:00', cierre: '00:00' }, null).revisar('20:00', '23:00')).toBeNull()
   })
 })
+
+describe('Versión nueva publicada con la aplicación abierta', () => {
+  it('PU-51 · reconoce el error del archivo viejo que ya no existe, y no otros', async () => {
+    const { esArchivoViejo } = await import('../../src/lib/versionNueva')
+    expect(esArchivoViejo(new TypeError('Failed to fetch dynamically imported module: http://x/assets/GestionTorneos-cjTAf3CF.js'))).toBe(true)
+    expect(esArchivoViejo(new TypeError('Importing a module script failed.'))).toBe(true)
+    expect(esArchivoViejo(new TypeError("Cannot read properties of undefined (reading 'nombre')"))).toBe(false)
+  })
+})
