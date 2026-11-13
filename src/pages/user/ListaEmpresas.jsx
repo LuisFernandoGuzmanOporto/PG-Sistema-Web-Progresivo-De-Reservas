@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Layout from '../../components/layout/Layout'
 import { canchasDeEmpresa, torneosDeEmpresa, entrenamientosDeEmpresa, USUARIO_ACTUAL, empresasConCanchas } from '../../lib/datos'
@@ -22,6 +22,43 @@ const DEPORTE_COLORES = {
   'Pádel':      { bg: 'rgba(239,68,68,0.12)',   color: '#ef4444' },
   'Tenis':      { bg: 'rgba(251,191,36,0.12)',  color: '#fbbf24' },
   'Futsal':     { bg: 'rgba(99,102,241,0.12)',  color: '#6366f1' },
+}
+
+/**
+ * La descripción en la tarjeta: tres líneas como máximo, y «Ver más» solo si
+ * de verdad se cortó (se mide, no se adivina por la cantidad de letras).
+ */
+function Descripcion({ texto, onVerMas }) {
+  const ref = useRef(null)
+  const [cortada, setCortada] = useState(false)
+
+  useLayoutEffect(() => {
+    const medir = () => {
+      const el = ref.current
+      if (el) setCortada(el.scrollHeight > el.clientHeight + 1)
+    }
+    medir()
+    window.addEventListener('resize', medir)
+    return () => window.removeEventListener('resize', medir)
+  }, [texto])
+
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <p ref={ref} className="texto-cortado"
+        style={{ fontSize: '0.8rem', color: texto ? '#888' : '#555', fontStyle: texto ? 'normal' : 'italic',
+          lineHeight: 1.5, WebkitLineClamp: 3, minHeight: '4.5em' }}>
+        {texto || 'Este complejo todavía no escribió una descripción.'}
+      </p>
+      {/* El espacio del enlace se reserva siempre: con o sin «Ver más», la
+          tarjeta mide lo mismo */}
+      <button type="button" onClick={e => { e.stopPropagation(); onVerMas() }}
+        tabIndex={cortada ? 0 : -1} aria-hidden={!cortada}
+        style={{ visibility: cortada ? 'visible' : 'hidden', background: 'none', border: 'none', padding: 0,
+          marginTop: 2, color: '#00BCD4', fontSize: '0.76rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'Outfit' }}>
+        Ver más →
+      </button>
+    </div>
+  )
 }
 
 export default function ListaEmpresas() {
@@ -101,7 +138,7 @@ export default function ListaEmpresas() {
           {empresasFiltradas.map(empresa => (
             <div
               key={empresa.id}
-              className="card"
+              className="card tarjeta-complejo"
               style={{ cursor: 'pointer', transition: 'transform 0.2s, box-shadow 0.2s' }}
               onClick={() => navigate(`/app/empresa/${empresa.id}`)}
               onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-3px)'}
@@ -139,21 +176,29 @@ export default function ListaEmpresas() {
                 </div>}
               </div>
 
-              <div className="card-body">
-                {/* Nombre + zona */}
-                <div style={{ marginBottom: 8 }}>
-                  <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#f5f5f5', marginBottom: 3 }}>
-                    {empresa.nombre}
-                  </h3>
-                  <p style={{ fontSize: '0.78rem', color: '#666' }}>
-                    📍 {empresa.zona} — {empresa.direccion}
-                  </p>
-                </div>
+              <div className="card-body tarjeta-complejo-cuerpo">
+                {/* Nombre, zona y dirección. Cada dato ocupa siempre el mismo
+                    alto: un nombre o una dirección largos se cortan con «…»
+                    (el texto entero queda al pasar el mouse y en la ficha) */}
+                <h3 className="texto-cortado" title={empresa.nombre}
+                  style={{ fontSize: '1rem', fontWeight: 700, color: '#f5f5f5', marginBottom: 2, WebkitLineClamp: 1 }}>
+                  {empresa.nombre}
+                </h3>
+                <p className="dato-etiqueta" style={{ marginBottom: 8 }}>{empresa.zona || 'Sin zona'}</p>
 
-                {/* Descripción */}
-                <p style={{ fontSize: '0.8rem', color: '#888', lineHeight: 1.5, marginBottom: 12 }}>
-                  {empresa.descripcion}
+                <p className="dato-etiqueta">📍 Dirección</p>
+                <p className="texto-cortado" title={empresa.direccion}
+                  style={{ fontSize: '0.8rem', color: '#aaa', lineHeight: 1.45, WebkitLineClamp: 2, minHeight: '2.9em', marginBottom: 8 }}>
+                  {empresa.direccion || 'No indicó su dirección'}
                 </p>
+
+                {/* Descripción: siempre tres líneas de alto. Si es más larga se
+                    corta con «…» y «Ver más» lleva a la ficha, donde está
+                    entera. No se despliega aquí: la tarjeta crecería y se
+                    descuadraría la fila (pedido del docente, noviembre 2026). */}
+                <p className="dato-etiqueta">Descripción</p>
+                <Descripcion texto={empresa.descripcion}
+                  onVerMas={() => navigate(`/app/empresa/${empresa.id}`)} />
 
                 {/* Chips de deportes */}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
@@ -176,7 +221,9 @@ export default function ListaEmpresas() {
                   ))}
                 </div>
 
-                {/* Stats rápidas */}
+                {/* Stats rápidas y botón: empujados al fondo de la tarjeta, así
+                    los botones de toda la fila quedan a la misma altura */}
+                <div style={{ marginTop: 'auto' }}>
                 <div style={{ display: 'flex', gap: 14, marginBottom: 14, padding: '10px 0', borderTop: '1px solid #2a2a2a' }}>
                   <div style={{ textAlign: 'center' }}>
                     <p style={{ fontFamily: 'Bebas Neue', fontSize: '1.2rem', color: '#00BCD4' }}>{empresa.totalCanchas}</p>
@@ -199,6 +246,7 @@ export default function ListaEmpresas() {
                 >
                   Ver Complejo →
                 </button>
+                </div>
               </div>
             </div>
           ))}

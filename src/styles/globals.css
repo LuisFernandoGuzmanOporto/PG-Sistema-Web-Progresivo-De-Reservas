@@ -667,3 +667,23 @@ img, video { max-width: 100%; }
   .navbar, aside, .aviso-solo-lectura { display: none !important; }
   main { margin-left: 0 !important; padding-top: 0 !important; }
 }
+
+/* ── Tarjetas de la lista de complejos ──────────────────────────────────────
+   Todas las de una fila miden lo mismo (la grilla las estira) y el botón
+   queda abajo: el cuerpo crece y lo de abajo se empuja con margin-top: auto. */
+.tarjeta-complejo { display: flex; flex-direction: column; height: 100%; }
+.tarjeta-complejo-cuerpo { display: flex; flex-direction: column; flex: 1; }
+
+/* Texto que se corta con «…» después de N líneas (WebkitLineClamp en línea) */
+.texto-cortado {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+/* Nombre chico y gris de un dato: «Dirección», «Descripción», la zona */
+.dato-etiqueta {
+  font-size: 0.66rem; font-weight: 700; color: #555;
+  text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 2px;
+}
