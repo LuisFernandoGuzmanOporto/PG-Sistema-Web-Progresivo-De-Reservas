@@ -7,7 +7,7 @@ import { seccionesDelEmpleado } from '../../src/lib/seccionesEmpleado.js'
 const rosa = { activo: true, permisos: ['reservas_confirmar', 'reservas_crear', 'asistencia', 'recompensas'] }
 
 describe('Menú lateral del empleado', () => {
-  it('muestra solo las funciones activadas, en el orden del administrador, y «Mi turno» al final', () => {
+  it('PU-56 · muestra solo las funciones activadas, en el orden del administrador, y «Mi turno» al final', () => {
     // Act
     const s = seccionesDelEmpleado(rosa)
 
@@ -18,7 +18,7 @@ describe('Menú lateral del empleado', () => {
     ])
   })
 
-  it('no ofrece lo que no tiene activado', () => {
+  it('PU-57 · no ofrece lo que no tiene activado', () => {
     // Act
     const s = seccionesDelEmpleado({ activo: true, permisos: ['reservas_confirmar'] })
 
@@ -26,7 +26,7 @@ describe('Menú lateral del empleado', () => {
     expect(s.map(x => x.slug)).toEqual(['reservas', 'turno'])
   })
 
-  it('un empleado dado de baja solo tiene «Mi turno», tenga los permisos que tenga', () => {
+  it('PU-58 · un empleado dado de baja solo tiene «Mi turno», tenga los permisos que tenga', () => {
     // Act
     const s = seccionesDelEmpleado({ ...rosa, activo: false })
 
@@ -34,7 +34,7 @@ describe('Menú lateral del empleado', () => {
     expect(s.map(x => x.slug)).toEqual(['turno'])
   })
 
-  it('cada función tiene una dirección distinta', () => {
+  it('PU-59 · cada función tiene una dirección distinta', () => {
     // Arrange
     const todos = { activo: true, permisos: ['reservas_confirmar', 'reservas_crear', 'asistencia',
       'recompensas', 'canchas_estado', 'entrenamientos', 'torneos_mesa'] }
