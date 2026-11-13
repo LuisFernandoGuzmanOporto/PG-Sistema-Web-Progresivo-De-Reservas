@@ -25,6 +25,50 @@ const DEPORTE_COLORES = {
 }
 
 /**
+ * La portada de la tarjeta. Siempre mide lo mismo (160 px de alto), haya foto
+ * o no, así ninguna tarjeta se descuadra:
+ *  · con foto: la foto llena todo el recuadro y se recorta al centro
+ *    (object-fit: cover), sea vertical, horizontal o chica;
+ *  · sin foto pero con logo: el logo entero, centrado sobre el color del deporte;
+ *  · sin nada: el emoji grande del deporte sobre su color.
+ * Si la foto no carga (se borró del depósito), se cae al respaldo.
+ */
+function Portada({ empresa }) {
+  const [fallo, setFallo] = useState(false)
+  const foto = !fallo && urlPublica(empresa.foto)
+  const logo = urlPublica(empresa.logo)
+  const color = DEPORTE_COLORES[empresa.deportes?.[0]]?.color || '#8B0000'
+
+  return (
+    <div style={{
+      height: 160, flexShrink: 0, position: 'relative', overflow: 'hidden',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: `radial-gradient(circle at 50% 40%, ${color}33 0%, #1f1f1f 70%)`,
+      borderBottom: '1px solid #2a2a2a',
+    }}>
+      {foto ? (
+        <img src={foto} alt={'Foto de ' + empresa.nombre} loading="lazy" onError={() => setFallo(true)}
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+      ) : logo ? (
+        <img src={logo} alt={'Logo de ' + empresa.nombre} loading="lazy"
+          style={{ width: 104, height: 104, objectFit: 'contain', borderRadius: 18,
+            background: '#fff', padding: 8, boxShadow: '0 6px 20px rgba(0,0,0,0.45)' }} />
+      ) : (
+        <span style={{ fontSize: '4.6rem', filter: 'drop-shadow(0 6px 14px rgba(0,0,0,0.5))' }}>{empresa.emoji}</span>
+      )}
+
+      {/* Horario: solo si el complejo lo cargó */}
+      {empresa.horario && (
+        <div style={{ position: 'absolute', bottom: 8, right: 10, background: 'rgba(0,0,0,0.7)',
+          padding: '3px 10px', borderRadius: 20, fontSize: '0.72rem', color: '#00BCD4', fontWeight: 600 }}>
+          🕐 {empresa.horario}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/**
  * La descripción en la tarjeta: tres líneas como máximo, y «Ver más» solo si
  * de verdad se cortó (se mide, no se adivina por la cantidad de letras).
  */
@@ -144,37 +188,8 @@ export default function ListaEmpresas() {
               onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-3px)'}
               onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
             >
-              {/* Banner / imagen */}
-              <div style={{
-                height: 130,
-                background: 'linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                position: 'relative',
-                overflow: 'hidden',
-              }}>
-                {/* Si el complejo subio su foto se usa esa; el emoji del
-                    deporte queda de respaldo para los que todavia no */}
-                {empresa.foto
-                  ? <img src={urlPublica(empresa.foto)} alt={empresa.nombre}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : <span style={{ fontSize: '4rem' }}>{empresa.emoji}</span>}
-                {/* Badge horario: solo si el complejo cargó su horario */}
-                {empresa.horario && <div style={{
-                  position: 'absolute',
-                  bottom: 8,
-                  right: 10,
-                  background: 'rgba(0,0,0,0.7)',
-                  padding: '3px 10px',
-                  borderRadius: 20,
-                  fontSize: '0.72rem',
-                  color: '#00BCD4',
-                  fontWeight: 600,
-                }}>
-                  🕐 {empresa.horario}
-                </div>}
-              </div>
+              {/* Portada: el mismo alto en todas las tarjetas */}
+              <Portada empresa={empresa} />
 
               <div className="card-body tarjeta-complejo-cuerpo">
                 {/* Nombre, zona y dirección. Cada dato ocupa siempre el mismo
