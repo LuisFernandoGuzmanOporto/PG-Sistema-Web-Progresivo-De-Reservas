@@ -4,7 +4,7 @@ import Layout from '../../components/layout/Layout'
 import AvisoFaltantes from '../../components/AvisoFaltantes'
 import { propsCampo, MensajeCampo, irAlPrimerError } from '../../components/Validacion'
 import Confirmar from '../../components/Confirmar'
-import { ENTRENADORES, entrenadoresDeEmpresa, entrenamientosDe, SESION,
+import { ENTRENADORES, entrenadoresDeEmpresa, entrenamientosDe, SESION, empresaPorId,
 } from '../../lib/datos'
 import { guardarEntrenador, borrarEntrenador, registrarEnBitacora } from '../../lib/guardar'
 
@@ -52,8 +52,14 @@ export default function GestionEntrenadores() {
     e.deporte.toLowerCase().includes(busqueda.toLowerCase())
   )
 
+  // Solo los deportes que el complejo ofrece, no una lista fija para todos
+  const deportesDelComplejo = (() => {
+    const lista = empresaPorId(SESION.empresaId)?.deportes
+    return lista?.length ? lista : DEPORTES
+  })()
+
   function abrirNuevo() {
-    setForm(FORM_INIT)
+    setForm({ ...FORM_INIT, deporte: deportesDelComplejo[0] })
     setIntento(false); setModal('nuevo')
   }
 
@@ -348,7 +354,8 @@ export default function GestionEntrenadores() {
                 <select className="input" value={form.deporte}
                   onChange={e => setForm(p=>({...p, deporte: e.target.value}))}
                   style={{ width:'100%', boxSizing:'border-box', background:'#111' }}>
-                  {DEPORTES.map(d => <option key={d}>{d}</option>)}
+                  {[...deportesDelComplejo, ...(deportesDelComplejo.includes(form.deporte) ? [] : [form.deporte])]
+                    .map(d => <option key={d}>{d}</option>)}
                 </select>
               </div>
               <div>

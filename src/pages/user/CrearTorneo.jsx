@@ -9,10 +9,11 @@ import { guardarTorneo, guardarQRTorneo } from '../../lib/guardar'
 import { subirPublico, revisarArchivo, TIPOS_IMAGEN } from '../../lib/archivos'
 import NoEncontrado from '../../components/NoEncontrado'
 import { DEPORTE_CONFIG } from '../../lib/deportes'
-import { DIAS_SEMANA, jornadasDelTorneo, costoDelTorneo } from '../../lib/jornadas'
+import { DIAS_SEMANA, jornadasDelTorneo, costoDelTorneo, diasEnElRango, horarioDeJuego } from '../../lib/jornadas'
 import { hoyBolivia, nombreDia } from '../../lib/fecha'
 import { choquesEnFranja } from '../../lib/datos'
 import { montoBs } from '../../lib/dinero'
+import PagoCancha, { subirPagoDeCancha } from '../../components/PagoCancha'
 
 // Pasos del formulario
 const PASOS = ['Deporte y Cancha', 'Formato y Fechas', 'Reglas y Equipos', 'Inscripción y QR', 'Confirmar']
@@ -65,6 +66,19 @@ export default function CrearTorneo() {
   const cfg = DEPORTE_CONFIG[form.deporte]
 
   const set = (campo, valor) => setForm(f => ({ ...f, [campo]: valor }))
+
+  // Si al cambiar las fechas un dia marcado ya no cae en el rango, se
+  // desmarca solo y se dice cual, en vez de dejarlo marcado sin efecto.
+  const [avisoDias, setAvisoDias] = useState(null)
+  const cambiarFecha = (campo, valor) => {
+    const nuevo = { ...form, [campo]: valor }
+    const caen = diasEnElRango(nuevo.fechaInicio, nuevo.fechaFin)
+    const fuera = form.dias.filter(d => !caen.includes(d))
+    setAvisoDias(fuera.length
+      ? `Se desmarcó ${fuera.map(nombreDia).join(', ')}: no cae${fuera.length > 1 ? 'n' : ''} entre esas fechas.`
+      : null)
+    setForm({ ...nuevo, dias: form.dias.filter(d => caen.includes(d)) })
+  }
 
   // Cuando cambia el deporte, pre-llenar config
   const seleccionarDeporte = (dep) => {
@@ -145,7 +159,14 @@ export default function CrearTorneo() {
         e.inscripcionHasta = 'Las inscripciones deben cerrar antes de que empiece el torneo (o el mismo día).'
       if (!e.fechaInicio && !e.fechaFin && form.fechaInicio && form.fechaFin && plan.jornadas === 0)
         e.dias = 'Con esas fechas y esos días no queda ninguna jornada. Amplía el rango de fechas o marca otros días.'
+      const fueraDelRango = form.dias.filter(d => !diasDisponibles.includes(d))
+      if (!e.dias && fueraDelRango.length)
+        e.dias = `${fueraDelRango.map(nombreDia).join(', ')} no cae entre el ${fechaCorta(form.fechaInicio)} y el ${fechaCorta(form.fechaFin)}. Desmárcalo o cambia las fechas.`
       if (plan.horasPorJornada <= 0) e.horaFin = `La hora de fin debe ser posterior a la de inicio (${form.horaInicio}).`
+      else if (atiende?.revisar(form.horaInicio, form.horaFin)) {
+        const r = atiende.revisar(form.horaInicio, form.horaFin)
+        e[r.campo] = r.texto
+      }
       else if (choques.length > 0)
         e.horaInicio = `${choques.length} ${choques.length === 1 ? 'hora ya está ocupada' : 'horas ya están ocupadas'} en esa cancha (ver la lista de abajo). Cambia el horario, los días o la cancha.`
     }
@@ -191,6 +212,13 @@ export default function CrearTorneo() {
 
   const canchaElegida = canchasDeEmpresa(id).find(c => c.nombre === form.cancha)
 
+  // Los dias que de verdad caen entre las fechas elegidas
+  const diasDisponibles = diasEnElRango(form.fechaInicio, form.fechaFin)
+  const fechaCorta = (iso) => iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) : ''
+
+  // Entre que horas se puede jugar en esa cancha
+  const atiende = horarioDeJuego(empresa, canchaElegida)
+
   // Cuantas jornadas salen y cuanto suma la cancha
   const plan = costoDelTorneo({
     fechaInicio: form.fechaInicio, fechaFin: form.fechaFin, dias: form.dias,
@@ -231,9 +259,24 @@ export default function CrearTorneo() {
   const [errorCrear, setErrorCrear] = useState(null)
   const [creando, setCreando] = useState(false)
 
+  // El pago de la cancha al complejo. Si el complejo tiene QR y la cancha
+  // cuesta algo, el comprobante es obligatorio: el complejo lo revisa antes
+  // de aprobar. Sin QR, se coordina directo con el complejo.
+  const [pagoCancha, setPagoCancha] = useState(null)
+  const [errorPago, setErrorPago]   = useState(null)
+  const [avisoPago, setAvisoPago]   = useState(null)
+  const pideComprobante = !!empresa?.qrPago && plan.total > 0
+
   const confirmar = async () => {
     const emp = empresa
     const cancha = canchasDeEmpresa(id).find(c => c.nombre === form.cancha)
+
+    if (pideComprobante && !pagoCancha) {
+      setErrorPago('Paga la cancha con el QR del complejo y sube la foto del comprobante para enviar la solicitud.')
+      document.getElementById('campo-comprobante')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      return
+    }
+    setErrorPago(null)
 
     setCreando(true)
     setErrorCrear(null)
@@ -271,12 +314,25 @@ export default function CrearTorneo() {
         await guardarQRTorneo({ torneoId: g.torneo.id, qrPago: rutaQR })
       }
     }
+
+    // El comprobante de la cancha va despues por lo mismo. Si falla, la
+    // solicitud igual llego y se puede volver a subir desde la ficha del torneo.
+    let rutaPago = null
+    if (pagoCancha) {
+      const p = await subirPagoDeCancha({ empresaId: id, torneoId: g.torneo.id, archivo: pagoCancha })
+      if (p.error) setAvisoPago('La solicitud se envió, pero el comprobante no se pudo subir: ' + p.error +
+        ' Vuelve a subirlo desde «Ver mi torneo».')
+      else rutaPago = p.ruta
+    }
     setCreando(false)
 
     const nuevo = {
       id: g.torneo.id, qrPago: rutaQR,
       creador_id: USUARIO_ACTUAL.id, creador: USUARIO_ACTUAL.nombre, creador_tipo: 'cliente',
-      solicitud: { estado: 'pendiente', fecha: fechaLegible(hoyBolivia()), resueltaPor: null, motivo: null },
+      solicitud: { estado: 'pendiente', fecha: fechaLegible(hoyBolivia()), resueltaPor: null, motivo: null,
+                   cancha: form.cancha, cancha_id: canchaElegida?.id, dias: form.dias,
+                   horaInicio: form.horaInicio, horaFin: form.horaFin,
+                   costoTotal: plan.total, comprobante: rutaPago },
       nombre: form.nombre.trim(), emoji: EMOJI[form.deporte] || '🏆',
       deporte: form.deporte, deporteKey: form.deporte,
       empresa_id: id, empresa: emp?.nombre || '', cancha: form.cancha,
@@ -320,11 +376,15 @@ export default function CrearTorneo() {
           <div style={{ padding: '14px 18px', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 12, marginBottom: 28, textAlign: 'left' }}>
             <p style={{ color: '#f59e0b', fontWeight: 700, fontSize: '0.84rem', marginBottom: 6 }}>⏳ Qué sigue ahora</p>
             <p style={{ color: '#888', fontSize: '0.82rem', lineHeight: 1.6 }}>
-              El administrador del complejo revisa que la cancha esté libre en esas fechas.
+              El administrador del complejo revisa que la cancha esté libre en esas fechas
+              {pagoCancha && !avisoPago ? ' y tu comprobante de pago' : ''}.
               Cuando la apruebe, tu torneo se publica y los equipos podrán inscribirse.
               Si la rechaza vas a ver el motivo para proponer otra fecha.
             </p>
           </div>
+          {avisoPago && (
+            <p style={{ color: '#f59e0b', fontSize: '0.82rem', marginTop: -16, marginBottom: 24 }}>⚠ {avisoPago}</p>
+          )}
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
             <button
               className="btn btn-primary"
@@ -528,12 +588,12 @@ export default function CrearTorneo() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
               <div className="form-group">
                 <label className="form-label">Fecha de inicio *</label>
-                <input className="input" type="date" value={form.fechaInicio} onChange={e => set('fechaInicio', e.target.value)} {...pc('fechaInicio')} />
+                <input className="input" type="date" value={form.fechaInicio} onChange={e => cambiarFecha('fechaInicio', e.target.value)} {...pc('fechaInicio')} />
                 {mc('fechaInicio')}
               </div>
               <div className="form-group">
                 <label className="form-label">Fecha de fin *</label>
-                <input className="input" type="date" value={form.fechaFin} onChange={e => set('fechaFin', e.target.value)} {...pc('fechaFin')} />
+                <input className="input" type="date" value={form.fechaFin} onChange={e => cambiarFecha('fechaFin', e.target.value)} {...pc('fechaFin')} />
                 {mc('fechaFin')}
               </div>
             </div>
@@ -559,18 +619,32 @@ export default function CrearTorneo() {
                 <div id="campo-dias" tabIndex={-1} style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
                   {DIAS_SEMANA.map(d => {
                     const on = form.dias.includes(d)
+                    const cae = diasDisponibles.includes(d)
                     return (
-                      <button key={d} onClick={() => toggleDia(d)}
-                        style={{ padding: '9px 13px', borderRadius: 9, cursor: 'pointer', fontFamily: 'Outfit',
+                      <button key={d} type="button" onClick={() => cae && toggleDia(d)}
+                        disabled={!cae}
+                        title={cae ? '' : `${nombreDia(d)} no cae entre el ${fechaCorta(form.fechaInicio)} y el ${fechaCorta(form.fechaFin)}`}
+                        style={{ padding: '9px 13px', borderRadius: 9, cursor: cae ? 'pointer' : 'not-allowed', fontFamily: 'Outfit',
                           fontWeight: 700, fontSize: '0.8rem',
                           background: on ? 'rgba(0,188,212,0.18)' : '#1a1a1a',
                           border: '1px solid ' + (on ? '#00BCD4' : '#2a2a2a'),
-                          color: on ? '#00BCD4' : '#777' }}>
+                          color: on ? '#00BCD4' : '#777',
+                          opacity: cae ? 1 : 0.35, textDecoration: cae ? 'none' : 'line-through' }}>
                         {nombreDia(d)}
                       </button>
                     )
                   })}
                 </div>
+                {diasDisponibles.length < 7 && (
+                  <p style={{ fontSize: '0.74rem', color: '#888', marginTop: 6 }}>
+                    Entre el {fechaCorta(form.fechaInicio)} y el {fechaCorta(form.fechaFin)} solo
+                    cae{diasDisponibles.length > 1 ? 'n' : ''}: {diasDisponibles.map(nombreDia).join(', ')}.
+                    Los demás días están apagados.
+                  </p>
+                )}
+                {avisoDias && (
+                  <p style={{ fontSize: '0.74rem', color: '#f59e0b', marginTop: 6 }}>⚠ {avisoDias}</p>
+                )}
                 {form.dias.length === 0 && (
                   <p style={{ fontSize: '0.74rem', color: '#666', marginTop: 6 }}>
                     Si no marcas ninguno, se toma que se juega todos los días del rango.
@@ -579,16 +653,23 @@ export default function CrearTorneo() {
                 {mc('dias')}
               </div>
 
+              {atiende && (
+                <p style={{ fontSize: '0.76rem', color: '#888', marginBottom: 8 }}>
+                  🕐 {atiende.texto} El torneo tiene que jugarse dentro de ese horario.
+                </p>
+              )}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                 <div className="form-group">
                   <label className="form-label">Desde</label>
                   <input className="input" type="time" step="3600" value={form.horaInicio}
+                    min={atiende?.desde}
                     onChange={e => set('horaInicio', e.target.value)} {...pc('horaInicio')} />
                   {mc('horaInicio')}
                 </div>
                 <div className="form-group">
                   <label className="form-label">Hasta</label>
                   <input className="input" type="time" step="3600" value={form.horaFin}
+                    max={atiende && atiende.hasta !== '00:00' ? atiende.hasta : undefined}
                     onChange={e => set('horaFin', e.target.value)} {...pc('horaFin')} />
                   {mc('horaFin')}
                 </div>
@@ -920,6 +1001,15 @@ export default function CrearTorneo() {
                 </div>
               )}
             </div>
+
+            {/* La cancha se le paga al complejo con su QR */}
+            {plan.total > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                <PagoCancha empresa={empresa} total={plan.total}
+                  archivo={pagoCancha} error={errorPago}
+                  onArchivo={(f) => { setPagoCancha(f); if (f) setErrorPago(null) }} />
+              </div>
+            )}
 
             <div style={{ padding: '12px 16px', background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 10, marginBottom: 20 }}>
               <p style={{ fontSize: '0.8rem', color: '#f59e0b' }}>

@@ -82,7 +82,17 @@ export default function GestionEntrenamientos() {
     }))
   }
 
-  const abrirNuevo = () => { setEditando(null); setForm(FORM_INIT); setIntento(false); setShowModal(true) }
+  // Solo los deportes que el complejo ofrece. Antes salian los cinco de
+  // siempre, y se podia publicar Pádel en un complejo que solo tiene fútbol.
+  const deportesDelComplejo = (() => {
+    const lista = empresaPorId(SESION.empresaId)?.deportes
+    return lista?.length ? lista : ['Fútbol']
+  })()
+
+  const abrirNuevo = () => {
+    setEditando(null); setForm({ ...FORM_INIT, deporte: deportesDelComplejo[0] })
+    setIntento(false); setShowModal(true)
+  }
 
   const abrirEdicion = (ent) => {
     setEditando(ent.id)
@@ -421,7 +431,10 @@ export default function GestionEntrenamientos() {
                 <div className="form-group">
                   <label className="form-label">Deporte</label>
                   <select className="input" value={form.deporte} onChange={e => setForm(p => ({...p, deporte: e.target.value}))}>
-                    <option>Fútbol</option><option>Wally</option><option>Básquetbol</option><option>Voleibol</option><option>Pádel</option>
+                    {/* Uno viejo con un deporte que el complejo ya no ofrece se
+                        sigue mostrando, para no cambiarlo sin querer al editar */}
+                    {[...deportesDelComplejo, ...(deportesDelComplejo.includes(form.deporte) ? [] : [form.deporte])]
+                      .map(d => <option key={d}>{d}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
@@ -547,26 +560,29 @@ export default function GestionEntrenamientos() {
                 <textarea className="input" rows={3} placeholder="Describe el entrenamiento, requisitos, etc." style={{ resize: 'none' }} value={form.descripcion} onChange={e => setForm(p => ({...p, descripcion: e.target.value}))} />
               </div>
 
+              {/* Los avisos van arriba, a todo el ancho. Antes estaban en la
+                  misma fila que los botones y los estiraban hasta hacerlos
+                  enormes. */}
+              {misEntrenadores.length === 0 && (
+                <div style={{ padding: '12px 14px', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.35)', borderRadius: 10 }}>
+                  <p style={{ color: '#f59e0b', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>
+                    Primero necesitas un entrenador
+                  </p>
+                  <p style={{ color: '#888', fontSize: '0.78rem', lineHeight: 1.5 }}>
+                    Todo entrenamiento tiene que decir quién lo dicta. Regístralo en
+                    «Gestión de Entrenadores» y vuelve aquí.
+                  </p>
+                </div>
+              )}
+              <AvisoFaltantes
+                faltantes={misEntrenadores.length ? faltantes : []}
+                error={errorGuardar} />
+
               {/* Botones */}
               <div style={{ display: 'flex', gap: 10, paddingTop: 4 }}>
-                <button className="btn btn-outline w-full" style={{ justifyContent: 'center' }} onClick={() => setShowModal(false)}>Cancelar</button>
-                {misEntrenadores.length === 0 && (
-                  <div style={{ padding: '12px 14px', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.35)', borderRadius: 10, marginBottom: 10 }}>
-                    <p style={{ color: '#f59e0b', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>
-                      Primero necesitas un entrenador
-                    </p>
-                    <p style={{ color: '#888', fontSize: '0.78rem', lineHeight: 1.5 }}>
-                      Todo entrenamiento tiene que decir quién lo dicta. Registralo en
-                      «Gestión de Entrenadores» y vuelve aquí.
-                    </p>
-                  </div>
-                )}
-
-                <AvisoFaltantes
-                  faltantes={misEntrenadores.length ? faltantes : []}
-                  error={errorGuardar} />
-                <button className="btn btn-primary w-full" style={{ justifyContent: 'center' }} onClick={guardarEntrenamiento}>
-                  {editando ? 'Guardar cambios' : 'Publicar Entrenamiento'}
+                <button className="btn btn-outline" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setShowModal(false)}>Cancelar</button>
+                <button className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }} onClick={guardarEntrenamiento}>
+                  {editando ? 'Guardar cambios' : 'Publicar entrenamiento'}
                 </button>
               </div>
 

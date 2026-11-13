@@ -71,3 +71,43 @@ export function costoDelTorneo({ fechaInicio, fechaFin, dias, horaInicio, horaFi
     total: jornadas * horas * (Number(precioHora) || 0),
   }
 }
+
+/**
+ * Los dias de la semana que de verdad caen entre dos fechas.
+ *
+ * Del viernes 13 al sabado 14 solo caen Vie y Sab: marcar el domingo no
+ * agrega ninguna jornada, y antes se dejaba marcar sin decir nada.
+ * Sin fechas completas se devuelven todos, para no apagar nada todavia.
+ */
+export function diasEnElRango(fechaInicio, fechaFin) {
+  const fechas = jornadasDelTorneo({ fechaInicio, fechaFin, dias: [] })
+  if (!fechaInicio || !fechaFin || !fechas.length) return [...DIAS_SEMANA]
+  const indices = new Set(fechas.slice(0, 7).map(f => aFecha(f).getDay()))
+  return DIAS_SEMANA.filter(d => indices.has(DIA_INDICE[d]))
+}
+
+/**
+ * Entre que horas se puede jugar en una cancha: el horario del complejo, y si
+ * la cancha tiene uno propio mas corto, ese. La base de datos aplica la misma
+ * regla al reservar las jornadas, pero recien cuando el complejo aprueba; por
+ * eso se revisa antes, en el formulario. Un cierre a las 00:00 es medianoche.
+ */
+export function horarioDeJuego(empresa, cancha) {
+  const fin = (h) => h === '00:00' ? '24:00' : h
+  let desde = empresa?.apertura || null
+  let hasta = empresa?.cierre || null
+  const propio = cancha?.apertura && cancha?.cierre
+  if (propio && (!desde || cancha.apertura > desde)) desde = cancha.apertura
+  if (propio && (!hasta || fin(cancha.cierre) < fin(hasta))) hasta = cancha.cierre
+  if (!desde || !hasta) return null
+  return {
+    desde, hasta,
+    texto: `${propio ? 'Esta cancha' : 'El complejo'} atiende de ${desde} a ${hasta}.`,
+    /** Que esta mal de ese horario, o null si entra. */
+    revisar(horaInicio, horaFin) {
+      if (horaInicio && horaInicio < desde) return { campo: 'horaInicio', texto: `${this.texto} El torneo puede empezar desde las ${desde}.` }
+      if (horaFin && hasta !== '00:00' && horaFin > hasta) return { campo: 'horaFin', texto: `${this.texto} El torneo tiene que terminar a las ${hasta} como máximo.` }
+      return null
+    },
+  }
+}

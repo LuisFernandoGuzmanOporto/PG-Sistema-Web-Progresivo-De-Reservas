@@ -444,7 +444,9 @@ export async function cargarDatos({ forzar = false } = {}) {
               dias: solicitudPorTorneo.get(t.id).dias || [],
               horaInicio: hora(solicitudPorTorneo.get(t.id).hora_inicio),
               horaFin: hora(solicitudPorTorneo.get(t.id).hora_fin),
-              costoTotal: solicitudPorTorneo.get(t.id).costo_total }
+              costoTotal: solicitudPorTorneo.get(t.id).costo_total,
+              // La foto del pago de la cancha (migraciones/050)
+              comprobante: solicitudPorTorneo.get(t.id).comprobante_url || null }
           : null,
         grupos: Object.keys(grupos).length ? grupos : null,
 

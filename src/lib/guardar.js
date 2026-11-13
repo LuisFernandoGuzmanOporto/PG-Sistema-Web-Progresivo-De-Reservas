@@ -878,6 +878,19 @@ export async function guardarComprobanteEquipo({ equipoId, comprobante }) {
     .update({ comprobante_url: comprobante || null }).eq('id', equipoId).select())
 }
 
+/**
+ * El organizador de un torneo pago la cancha con el QR del complejo y sube
+ * el comprobante. Pasa por una funcion de la base (migraciones/050) porque la
+ * solicitud solo la puede cambiar el complejo, que es quien la aprueba.
+ */
+export async function enviarComprobanteCancha({ torneoId, comprobante }) {
+  const { data, error } = await supabase.rpc('enviar_comprobante_cancha',
+    { p_torneo: torneoId, p_comprobante: comprobante })
+  if (error) return fallo(error)
+  const solicitud = Array.isArray(data) ? data[0] : data
+  return solicitud ? { solicitud } : { error: 'No se pudo guardar el comprobante. Inténtalo de nuevo.' }
+}
+
 /** El QR con el que se le paga la inscripcion al organizador del torneo. */
 export async function guardarQRTorneo({ torneoId, qrPago }) {
   return cambio(await supabase.from('torneos')

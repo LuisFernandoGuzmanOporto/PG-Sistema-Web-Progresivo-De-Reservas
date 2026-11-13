@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Layout from '../../components/layout/Layout'
 import AvisoFaltantes from '../../components/AvisoFaltantes'
+import VisorComprobante from '../../components/VisorComprobante'
 import { propsCampo, MensajeCampo, irAlPrimerError } from '../../components/Validacion'
 import {
   torneosDelComplejo, solicitudesDeCancha, conteoEquipos, solicitudesPendientes,
@@ -11,7 +12,7 @@ import {
 } from '../../lib/datos'
 import { resolverSolicitudCancha, registrarEnBitacora, guardarTorneo,
          guardarQRTorneo } from '../../lib/guardar'
-import { jornadasDelTorneo, DIAS_SEMANA, costoDelTorneo } from '../../lib/jornadas'
+import { jornadasDelTorneo, DIAS_SEMANA, costoDelTorneo, diasEnElRango, horarioDeJuego } from '../../lib/jornadas'
 import { hoyBolivia, fechaCorta, nombreDia, diasLegibles } from '../../lib/fecha'
 import { subirPublico, revisarArchivo, TIPOS_IMAGEN, urlPublica } from '../../lib/archivos'
 import { DEPORTE_CONFIG } from '../../lib/deportes'
@@ -126,11 +127,29 @@ export default function GestionTorneos() {
   const [creando, setCreando] = useState(false)
   const [errorCrear, setErrorCrear] = useState(null)
   const [misTorneos, setMis]  = useState(torneosDelComplejo(SESION.empresaId))
+  const [viendoPago, setViendoPago] = useState(null)  // solicitud con el comprobante abierto
 
   const set = (campo) => (e) => {
     setForm(f => ({ ...f, [campo]: e.target.value }))
     setErrores(er => ({ ...er, [campo]: null }))
   }
+
+  // Al cambiar las fechas, el dia marcado que ya no cae en el rango se
+  // desmarca solo y se dice cual.
+  const [avisoDias, setAvisoDias] = useState(null)
+  const cambiarFecha = (campo) => (e) => {
+    const nuevo = { ...form, [campo]: e.target.value }
+    const caen = diasEnElRango(nuevo.inicio, nuevo.fin)
+    const fuera = form.dias.filter(d => !caen.includes(d))
+    setAvisoDias(fuera.length
+      ? `Se desmarcó ${fuera.map(nombreDia).join(', ')}: no cae${fuera.length > 1 ? 'n' : ''} entre esas fechas.`
+      : null)
+    setForm({ ...nuevo, dias: form.dias.filter(d => caen.includes(d)) })
+    setErrores(er => ({ ...er, [campo]: null }))
+  }
+  const diasDisponibles = diasEnElRango(form.inicio, form.fin)
+  const atiende = horarioDeJuego(empresa, canchas.find(c => c.nombre === form.cancha))
+  const ddmm = (iso) => iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) : ''
 
   const abrirCrear = () => {
     setForm(FORM_VACIO); setErrores({}); setQr(null)
@@ -191,8 +210,11 @@ export default function GestionTorneos() {
     else if (minJ && maxJ < minJ)       e.jugadoresMax = `El máximo no puede ser menor que el mínimo (${minJ}).`
 
     if (!form.dias.length) e.dias = 'Elige al menos un día de la semana en que se jugará.'
+    else if (form.dias.some(d => !diasDisponibles.includes(d)))
+      e.dias = `${form.dias.filter(d => !diasDisponibles.includes(d)).map(nombreDia).join(', ')} no cae entre el ${ddmm(form.inicio)} y el ${ddmm(form.fin)}. Desmárcalo o cambia las fechas.`
     if (!form.horaInicio || !form.horaFin) e.horaInicio = 'Elige el horario de juego: desde qué hora y hasta qué hora.'
     else if (form.horaFin <= form.horaInicio) e.horaInicio = `La hora de fin debe ser posterior a la de inicio (${form.horaInicio}).`
+    else if (atiende?.revisar(form.horaInicio, form.horaFin)) e.horaInicio = atiende.revisar(form.horaInicio, form.horaFin).texto
     if (!form.premio1.trim()) e.premio1 = 'Escribe al menos el premio del primer lugar, por ejemplo «Trofeo + Bs. 500».'
     return e
   }
@@ -418,6 +440,29 @@ export default function GestionTorneos() {
                       ))}
                     </div>
 
+                    {/* El pago de la cancha: el cliente sube el comprobante
+                        al pedirla, y se revisa antes de aprobar */}
+                    {Number(sol.costoTotal) > 0 && (
+                      sol.comprobante ? (
+                        <div style={{ marginBottom: 12 }}>
+                          <button className="btn btn-outline btn-sm"
+                            onClick={() => setViendoPago(viendoPago === t.id ? null : t.id)}>
+                            {viendoPago === t.id ? 'Ocultar comprobante' : '📎 Ver comprobante del pago'}
+                          </button>
+                          {viendoPago === t.id && (
+                            <div style={{ marginTop: 10, maxWidth: 420 }}>
+                              <VisorComprobante ruta={sol.comprobante} alto={320} />
+                            </div>
+                          )}
+                        </div>
+                      ) : sol.estado === 'pendiente' && (
+                        <p style={{ color: '#f59e0b', fontSize: '0.8rem', marginBottom: 12 }}>
+                          ⚠ {t.creador} todavía no subió el comprobante del pago de la cancha.
+                          {empresa?.qrPago ? '' : ' Tu complejo no tiene QR cargado: coordina el pago directamente con el organizador.'}
+                        </p>
+                      )
+                    )}
+
                     {sol.estado === 'pendiente' ? (
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                         <button data-escribe className="btn btn-primary btn-sm" onClick={() => aprobar(t)}>✓ Aprobar la cancha</button>
@@ -429,6 +474,38 @@ export default function GestionTorneos() {
                         <p style={{ color: '#555', fontSize: '0.78rem' }}>
                           {es.label} el {sol.fecha}{sol.resueltaPor ? ' por ' + sol.resueltaPor : ''}
                         </p>
+                        {/* Ya aprobada: en vez de solo decirlo, mostrar como va
+                            el torneo y llevar a verlo */}
+                        {sol.estado === 'aprobada' && (() => {
+                          const est = estadoDeTorneo(t)
+                          const equipos = conteoEquipos(t)
+                          const porAprobar = solicitudesPendientes(t).length
+                          const partidos = t.partidos || []
+                          const jugados = partidos.filter(p => p.estado === 'finalizado').length
+                          return (
+                            <div style={{ marginTop: 10, padding: '12px 14px', background: 'rgba(34,197,94,0.05)',
+                              border: '1px solid rgba(34,197,94,0.2)', borderRadius: 10 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+                                <span style={{ fontSize: '0.78rem', color: '#888' }}>Cómo va el torneo:</span>
+                                <span className="badge" style={{ background: est.bg, color: est.color }}>{est.corto}</span>
+                              </div>
+                              <p style={{ fontSize: '0.8rem', color: '#bbb', lineHeight: 1.6 }}>
+                                👥 {equipos} de {t.maxEquipos} equipos inscritos
+                                {porAprobar > 0 && <span style={{ color: '#f59e0b' }}> · {porAprobar} esperando que el organizador los apruebe</span>}
+                                <br />
+                                {partidos.length
+                                  ? <>⚽ {jugados} de {partidos.length} partidos jugados</>
+                                  : <>📅 Empieza el {t.fechaInicio} · el fixture se arma al cerrar las inscripciones</>}
+                              </p>
+                              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+                                <button className="btn btn-outline btn-sm" onClick={() => navigate('/app/torneos/' + t.id)}>Ver el torneo</button>
+                                {t.estado === 'en_curso' && (
+                                  <button className="btn btn-outline btn-sm" onClick={() => navigate('/app/torneos/' + t.id + '/en-vivo')}>🔴 En vivo</button>
+                                )}
+                              </div>
+                            </div>
+                          )
+                        })()}
                         {sol.motivo && (
                           <p style={{ color: '#ef4444', fontSize: '0.78rem', marginTop: 4 }}>Motivo: {sol.motivo}</p>
                         )}
@@ -530,7 +607,8 @@ export default function GestionTorneos() {
                 ].map(([campo, label]) => (
                   <div className="form-group" key={campo}>
                     <label className="form-label">{label}</label>
-                    <input className="input" type="date" value={form[campo]} onChange={set(campo)}
+                    <input className="input" type="date" value={form[campo]}
+                      onChange={campo === 'limite' ? set(campo) : cambiarFecha(campo)}
                       {...propsCampo(campo, errores[campo])} />
                     <MensajeCampo nombre={campo} error={errores[campo]} />
                   </div>
@@ -630,25 +708,45 @@ export default function GestionTorneos() {
                 <div id="campo-dias" tabIndex={-1} style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
                   {DIAS_SEMANA.map(d => {
                     const on = form.dias.includes(d)
+                    const cae = diasDisponibles.includes(d)
                     return (
-                      <button key={d} type="button" onClick={() => alternarDia(d)}
-                        style={{ padding: '8px 14px', borderRadius: 9, cursor: 'pointer',
+                      <button key={d} type="button" onClick={() => cae && alternarDia(d)}
+                        disabled={!cae}
+                        title={cae ? '' : `${nombreDia(d)} no cae entre el ${ddmm(form.inicio)} y el ${ddmm(form.fin)}`}
+                        style={{ padding: '8px 14px', borderRadius: 9, cursor: cae ? 'pointer' : 'not-allowed',
                           fontFamily: 'Outfit', fontWeight: 600, fontSize: '0.8rem',
                           background: on ? 'rgba(0,188,212,0.15)' : '#1a1a1a',
                           border: '1px solid ' + (on ? '#00BCD4' : '#2a2a2a'),
-                          color: on ? '#00BCD4' : '#888' }}>
+                          color: on ? '#00BCD4' : '#888',
+                          opacity: cae ? 1 : 0.35, textDecoration: cae ? 'none' : 'line-through' }}>
                         {nombreDia(d)}
                       </button>
                     )
                   })}
                 </div>
+                {diasDisponibles.length < 7 && (
+                  <p style={{ fontSize: '0.74rem', color: '#888', marginTop: 6 }}>
+                    Entre el {ddmm(form.inicio)} y el {ddmm(form.fin)} solo
+                    cae{diasDisponibles.length > 1 ? 'n' : ''}: {diasDisponibles.map(nombreDia).join(', ')}.
+                    Los demás días están apagados.
+                  </p>
+                )}
+                {avisoDias && (
+                  <p style={{ fontSize: '0.74rem', color: '#f59e0b', marginTop: 6 }}>⚠ {avisoDias}</p>
+                )}
                 <MensajeCampo nombre="dias" error={errores.dias} />
               </div>
 
+              {atiende && (
+                <p style={{ fontSize: '0.76rem', color: '#888', marginBottom: 8 }}>
+                  🕐 {atiende.texto} El torneo tiene que jugarse dentro de ese horario.
+                </p>
+              )}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div className="form-group">
                   <label className="form-label">Desde las *</label>
                   <input className="input" type="time" step="3600" value={form.horaInicio}
+                    min={atiende?.desde}
                     onChange={set('horaInicio')}
                     {...propsCampo('horaInicio', errores.horaInicio)} />
                   <MensajeCampo nombre="horaInicio" error={errores.horaInicio} />
@@ -656,6 +754,7 @@ export default function GestionTorneos() {
                 <div className="form-group">
                   <label className="form-label">Hasta las *</label>
                   <input className="input" type="time" step="3600" value={form.horaFin}
+                    max={atiende && atiende.hasta !== '00:00' ? atiende.hasta : undefined}
                     onChange={set('horaFin')} />
                 </div>
               </div>

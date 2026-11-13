@@ -16,8 +16,9 @@ import { sortearGrupos, gruposSugeridos, nombreRonda, generarFixture,
 
 import { TORNEOS, USUARIO_ACTUAL, estadoDeTorneo,
          SOLICITUD_BADGE, equiposPorGrupo, solicitudDe,
-         ESTADO_SOLICITUD, mismo,
+         ESTADO_SOLICITUD, mismo, empresaPorId,
          miEquipoEn, puedeInscribirseEn } from '../../lib/datos'
+import { PagoPendiente } from '../../components/PagoCancha'
 import { montoBs } from '../../lib/dinero'
 
 export default function TorneoDetalle() {
@@ -284,6 +285,16 @@ export default function TorneoDetalle() {
                     ? torneoData.empresa + ' todavía no confirmó la cancha para estas fechas. Hasta que lo haga, los equipos no pueden inscribirse.'
                     : (solicitudDe(torneoData).motivo || 'El complejo no puede ceder la cancha en esas fechas.')}
                 </p>
+                {/* Si al crearlo no subio el pago de la cancha (o fallo), aqui */}
+                {soyCreador && solicitudDe(torneoData).estado === 'pendiente' && (
+                  <PagoPendiente torneo={torneoData} empresa={empresaPorId(torneoData.empresa_id)}
+                    onEnviado={(ruta) => {
+                      const real = TORNEOS.find(t => mismo(t.id, torneoData.id))
+                      const solicitud = { ...(torneoData.solicitud || {}), comprobante: ruta }
+                      if (real) real.solicitud = solicitud
+                      setTorneoData(t => ({ ...t, solicitud }))
+                    }} />
+                )}
               </div>
             )}
             {/* Su equipo en este torneo, en el estado que esté. Antes la
