@@ -58,7 +58,7 @@ test.afterAll(async () => {
 test('PE-01 · Cada rol entra directo a su pantalla de inicio', async ({ browser }) => {
   // Arrange
   const inicio = { juan: /\/app\/dashboard$/, admin: /\/admin\/dashboard$/,
-                   rosa: /\/empleado\/panel$/, superadmin: /\/superadmin\/dashboard$/ }
+                   rosa: /\/empleado\/reservas$/, superadmin: /\/superadmin\/dashboard$/ }
 
   for (const [quien, destino] of Object.entries(inicio)) {
     const { page, context } = await ventanaDe(browser, quien)

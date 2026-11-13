@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { identidadDeRol, pts, EMPRESAS, empresaPorId } from '../../lib/datos'
+import { identidadDeRol, pts, EMPRESAS, empresaPorId, EMPLEADO_ACTUAL } from '../../lib/datos'
+import { seccionesDelEmpleado } from '../../lib/seccionesEmpleado'
 import { useAuth } from '../../lib/auth'
 import Notificaciones from '../Notificaciones'
 import Avatar from '../Avatar'
@@ -28,10 +29,9 @@ const ADMIN_NAV = [
   { icon: '👤', label: 'Mi cuenta',      path: '/mi-cuenta'            },
 ]
 
-const EMPLEADO_NAV = [
-  { icon: '📋', label: 'Mi Panel',  path: '/empleado/panel' },
-  { icon: '👤', label: 'Mi cuenta', path: '/mi-cuenta'      },
-]
+// El menú del empleado se arma con los permisos que el administrador le activó
+// (ver seccionesDelEmpleado), más «Mi cuenta».
+const EMPLEADO_CUENTA = { icon: '👤', label: 'Mi cuenta', path: '/mi-cuenta' }
 
 // El super administrador ve todo, en tres partes:
 //  · Plataforma: lo de todos los complejos juntos.
@@ -65,7 +65,9 @@ const SUPERADMIN_CUENTA = [
 // Detecta si es móvil al montar
 const isMobile = () => window.innerWidth < 768
 
-export default function Layout({ children, role = 'user' }) {
+// `avisos` (opcional): cuántas cosas esperan en cada opción del menú, por
+// dirección, p. ej. { '/empleado/reservas': 3 }. Se dibuja como una burbuja.
+export default function Layout({ children, role = 'user', avisos = {} }) {
   const navigate  = useNavigate()
   const location  = useLocation()
 
@@ -91,7 +93,7 @@ export default function Layout({ children, role = 'user' }) {
 
   const navItems  = role === 'superadmin' ? null
                   : role === 'admin'      ? ADMIN_NAV
-                  : role === 'empleado'   ? EMPLEADO_NAV
+                  : role === 'empleado'   ? [...seccionesDelEmpleado(EMPLEADO_ACTUAL), EMPLEADO_CUENTA]
                   : USER_NAV
   const roleLabel = role === 'superadmin' ? 'Super Admin'
                   : role === 'admin'      ? 'Admin Empresa'
@@ -451,8 +453,23 @@ export default function Layout({ children, role = 'user' }) {
               }
             }}
           >
-            <span style={{ fontSize: '1.15rem', flexShrink: 0 }}>{item.icon}</span>
-            {!collapsed && <span>{item.label}</span>}
+            <span style={{ fontSize: '1.15rem', flexShrink: 0, position: 'relative' }}>
+              {item.icon}
+              {/* Con el menú colapsado la burbuja se pega al ícono */}
+              {collapsed && avisos[item.path] > 0 && (
+                <span aria-hidden="true" style={{ position: 'absolute', top: -4, right: -6, width: 9, height: 9,
+                  borderRadius: '50%', background: '#f59e0b' }} />
+              )}
+            </span>
+            {!collapsed && <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.label}</span>}
+            {!collapsed && avisos[item.path] > 0 && (
+              <span aria-label={avisos[item.path] + ' pendientes'}
+                style={{ minWidth: 20, padding: '1px 6px', borderRadius: 10, textAlign: 'center',
+                  background: 'rgba(245,158,11,0.18)', color: '#f59e0b',
+                  fontSize: '0.72rem', fontWeight: 700 }}>
+                {avisos[item.path]}
+              </span>
+            )}
           </div>
     )
   }

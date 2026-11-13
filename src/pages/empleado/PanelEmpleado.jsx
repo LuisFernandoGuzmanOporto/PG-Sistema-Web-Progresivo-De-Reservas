@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { errorEnTelefono, errorEnNombre } from '../../lib/validaciones'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams, Navigate } from 'react-router-dom'
 import Layout from '../../components/layout/Layout'
+import { seccionesDelEmpleado } from '../../lib/seccionesEmpleado'
 import VisorComprobante from '../../components/VisorComprobante'
 import { CalendarioMostrador, ResumenDelDia } from './AgendaMostrador'
 import { propsCampo, MensajeCampo, irAlPrimerError } from '../../components/Validacion'
 import {
-  EMPLEADO_ACTUAL, PERMISOS_EMPLEADO, puede, empresaPorId, BITACORA,
+  EMPLEADO_ACTUAL, empresaPorId, BITACORA,
   reservasDeEmpresa, canjesDeEmpresa, canchasDeEmpresa, CANJES, RESERVAS_EMPRESA,
   entrenamientosDeEmpresa, torneosDeEmpresa, pts,
 } from '../../lib/datos'
@@ -34,6 +35,8 @@ const hora = () => new Date().toLocaleTimeString('es-BO', { timeZone: 'America/L
 
 export default function PanelEmpleado() {
   const navigate = useNavigate()
+  // Qué función está abierta: viene de la dirección (/empleado/reservas...)
+  const { seccion } = useParams()
 
   // El empleado es siempre el que inicio sesion. Antes habia un selector para
   // cambiar de empleado, util cuando no existia el login; ahora seria un
@@ -127,10 +130,12 @@ export default function PanelEmpleado() {
     return null
   })()
 
-  // Solo aparecen las pestanas de los permisos que el administrador le activo
-  const tabs = PERMISOS_EMPLEADO.filter(p => puede(empleado, p.key))
-  const [tabElegida, setTab] = useState(null)
-  const tab = tabs.some(t => t.key === tabElegida) ? tabElegida : (tabs[0]?.key || null)
+  // Solo aparecen en el menú lateral las funciones que el administrador le
+  // activó, y al final «Mi turno». La que está abierta sale de la dirección.
+  const secciones = seccionesDelEmpleado(empleado)
+  const actual    = secciones.find(s => s.slug === seccion)
+  const tab       = actual?.key || null
+  const sinPermisos = secciones.length === 1
 
   /** Toda accion pasa por aqui: se registra y el administrador la ve en la bitacora. */
   const registrar = (tipo, accion, detalle) => {
@@ -301,29 +306,24 @@ export default function PanelEmpleado() {
     )
   }
 
-  return (
-    <Layout role="empleado">
-      {/* Cabecera */}
-      <div style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.18) 0%, rgba(0,188,212,0.06) 100%)', border: '1px solid #2a2a2a', borderRadius: 20, padding: 24, marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
-        <div>
-          <h1 style={{ fontFamily: 'Bebas Neue', fontSize: '1.9rem', color: '#f5f5f5', marginBottom: 2 }}>
-            Hola, {empleado.nombre.split(' ')[0]} 👋
-          </h1>
-          <p style={{ color: '#888', fontSize: '0.85rem' }}>
-            {empresa?.emoji} {empresa?.nombre}
-            {empleado.turno ? ' · Turno ' + empleado.turno : ''}
-          </p>
-        </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <span className="badge badge-warning">{pendientes.length} reservas por revisar</span>
-          {puede(empleado, 'recompensas') && <span className="badge badge-success">{canjesPend.length} canjes por entregar</span>}
-        </div>
-      </div>
+  // Una dirección que no existe, o una función que no tiene activada, lleva a
+  // la primera que sí puede usar (o a «Mi turno» si no tiene ninguna)
+  if (!actual) return <Navigate to={secciones[0].path} replace />
 
-      {/* Aviso de bitacora */}
-      <div style={{ padding: '10px 14px', background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.25)', borderRadius: 10, marginBottom: 20 }}>
-        <p style={{ color: '#a78bfa', fontSize: '0.82rem' }}>
-          🧾 Todo lo que registres aquí queda guardado con tu nombre y la hora. El administrador lo revisa en la bitácora.
+  return (
+    <Layout role="empleado" avisos={{
+      '/empleado/reservas':    pendientes.length,
+      '/empleado/recompensas': canjesPend.length,
+    }}>
+      {/* Cabecera: una sola línea. Los pendientes de cada función se ven como
+          burbujas en el menú lateral. */}
+      <div style={{ marginBottom: 18 }}>
+        <h1 style={{ fontFamily: 'Bebas Neue', fontSize: '1.7rem', color: '#f5f5f5', marginBottom: 2 }}>
+          {actual.icon} {actual.titulo}
+        </h1>
+        <p style={{ color: '#888', fontSize: '0.82rem' }}>
+          Hola, {empleado.nombre.split(' ')[0]} · {empresa?.emoji} {empresa?.nombre}
+          {empleado.turno ? ' · Turno ' + empleado.turno : ''}
         </p>
       </div>
 
@@ -333,22 +333,7 @@ export default function PanelEmpleado() {
         </div>
       )}
 
-      {tabs.length === 0 ? (
-        <div className="empty-state">
-          <div className="empty-state-icon">🔑</div>
-          <h3>Sin permisos asignados</h3>
-          <p>El administrador todavía no te activó ninguna función. Pídele que te habilite las que necesitas.</p>
-        </div>
-      ) : (
-        <>
-          <div className="tabs" style={{ marginBottom: 20, flexWrap: 'wrap' }}>
-            {tabs.map(t => (
-              <button key={t.key} className={`tab ${tab === t.key ? 'active' : ''}`} onClick={() => setTab(t.key)}>
-                {t.icon} {t.label}
-              </button>
-            ))}
-          </div>
-
+      <>
           {/* ══ CONFIRMAR RESERVAS ══ */}
           {tab === 'reservas_confirmar' && (
             <div className="card">
@@ -426,7 +411,6 @@ export default function PanelEmpleado() {
           {/* ══ RESERVA PRESENCIAL ══ */}
           {tab === 'reservas_crear' && (
             <div className="card" style={{ padding: 20, maxWidth: 660 }}>
-              <h3 style={{ color: '#f5f5f5', fontWeight: 700, marginBottom: 4 }}>Reserva presencial</h3>
               <p style={{ color: '#666', fontSize: '0.8rem', marginBottom: 18 }}>
                 Para el cliente que llega al complejo sin usar la app. Mira qué horas
                 quedan libres, elige las que quiera y cóbrale en efectivo o con el QR
@@ -826,7 +810,6 @@ export default function PanelEmpleado() {
           {/* ══ MESA TECNICA ══ */}
           {tab === 'torneos_mesa' && (
             <div className="card" style={{ padding: 20 }}>
-              <h3 style={{ color: '#f5f5f5', fontWeight: 700, marginBottom: 4 }}>Mesa técnica</h3>
               <p style={{ color: '#666', fontSize: '0.8rem', marginBottom: 16 }}>
                 Solo los torneos que organiza el complejo. Los que arma un cliente los maneja
                 él mismo desde su cuenta.
@@ -870,24 +853,45 @@ export default function PanelEmpleado() {
               )}
             </div>
           )}
-        </>
-      )}
-
-      {/* Lo que hice en el turno */}
-      {registro.length > 0 && (
-        <div className="card" style={{ padding: 18, marginTop: 20 }}>
-          <h3 style={{ color: '#f5f5f5', fontWeight: 700, marginBottom: 12 }}>🧾 Lo que registraste en este turno</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {registro.map(a => (
-              <div key={a.id} style={{ display: 'flex', gap: 10, padding: '8px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: 8, fontSize: '0.8rem' }}>
-                <span style={{ color: '#555', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{a.hora}</span>
-                <span style={{ color: '#f5f5f5', fontWeight: 600, flexShrink: 0 }}>{a.accion}</span>
-                <span style={{ color: '#666' }}>{a.detalle}</span>
+          {/* ══ MI TURNO: lo que hice y qué puedo hacer ══ */}
+          {tab === 'turno' && (
+            <>
+              {/* Aviso de bitácora */}
+              <div style={{ padding: '10px 14px', background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.25)', borderRadius: 10, marginBottom: 16 }}>
+                <p style={{ color: '#a78bfa', fontSize: '0.82rem' }}>
+                  🧾 Todo lo que registres queda guardado con tu nombre y la hora. El administrador lo revisa en la bitácora.
+                </p>
               </div>
-            ))}
-          </div>
-        </div>
-      )}
+
+              {sinPermisos && (
+                <div className="empty-state">
+                  <div className="empty-state-icon">🔑</div>
+                  <h3>Sin permisos asignados</h3>
+                  <p>El administrador todavía no te activó ninguna función. Pídele que te habilite las que necesitas.</p>
+                </div>
+              )}
+
+              {!sinPermisos && (
+                <div className="card" style={{ padding: 18 }}>
+                  <h3 style={{ color: '#f5f5f5', fontWeight: 700, marginBottom: 12 }}>Lo que registraste en este turno</h3>
+                  {registro.length === 0 ? (
+                    <p style={{ color: '#666', fontSize: '0.85rem' }}>Todavía no registraste nada en este turno.</p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {registro.map(a => (
+                        <div key={a.id} style={{ display: 'flex', gap: 10, padding: '8px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: 8, fontSize: '0.8rem', flexWrap: 'wrap' }}>
+                          <span style={{ color: '#555', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{a.hora}</span>
+                          <span style={{ color: '#f5f5f5', fontWeight: 600, flexShrink: 0 }}>{a.accion}</span>
+                          <span style={{ color: '#666' }}>{a.detalle}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+      </>
 
       {/* Modal comprobante */}
       {comprobante && (

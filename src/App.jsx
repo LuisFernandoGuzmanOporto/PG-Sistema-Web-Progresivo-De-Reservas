@@ -124,7 +124,9 @@ export default function App() {
           <Route path="/admin/calificaciones" element={<RutaProtegida roles={['admin_empresa', 'superadmin']}><ComplejoElegido><GestionCalificaciones /></ComplejoElegido></RutaProtegida>} />
 
           {/* Empleado del complejo */}
-          <Route path="/empleado/panel" element={<RutaProtegida roles={['empleado']}><PanelEmpleado /></RutaProtegida>} />
+          {/* Cada función del empleado es una opción del menú lateral. «panel» (y
+              cualquier otra) lleva a la primera que tenga activada. */}
+          <Route path="/empleado/:seccion" element={<RutaProtegida roles={['empleado']}><PanelEmpleado /></RutaProtegida>} />
 
           {/* Super Admin */}
           <Route path="/superadmin/dashboard" element={<RutaProtegida roles={['superadmin']}><DashboardSuperAdmin /></RutaProtegida>} />

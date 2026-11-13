@@ -27,7 +27,8 @@ test('PE-18 · La empleada elige cancha y día en el calendario, cobra en efecti
 
   // Act
   await page.goto('/empleado/panel')
-  await page.getByRole('button', { name: /Reserva presencial/ }).click()
+  await page.getByText('Reserva presencial', { exact: true }).first().click()
+  await expect(page).toHaveURL(/\/empleado\/presencial$/)
   await page.getByRole('button', { name: /Cancha de Fútbol Principal/ }).click()
   if (dia.getMonth() !== new Date().getMonth()) await page.getByRole('button', { name: 'Mes siguiente' }).click()
   await page.locator('button[title*="horas libres"]', { hasText: new RegExp('^' + dia.getDate()) }).first().click()

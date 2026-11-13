@@ -22,7 +22,7 @@ SPORTIKA es una Aplicación Web Progresiva (PWA) que reúne en un solo lugar a j
 |---|---|---|
 | Super Administrador | `/superadmin/*` | Aprueba los complejos y administra a los usuarios de la plataforma |
 | Administrador de Empresa | `/admin/*` | Maneja todo lo de su complejo |
-| Empleado | `/empleado/panel` | Atiende las reservas del día, registra reservas en el mostrador y valida comprobantes |
+| Empleado | `/empleado/panel` (lleva a su primera función; cada una es una opción del menú lateral) | Atiende las reservas del día, registra reservas en el mostrador y valida comprobantes |
 | Cliente | `/app/*` | Reserva canchas, se une a partidos, inscribe equipos y canjea puntos |
 
 ## Tecnologías
