@@ -4,7 +4,8 @@ import Layout from '../../components/layout/Layout'
 import { TORNEOS, ESTADO_TORNEO, estadoDeTorneo, conteoEquipos, torneosCreadosPor,
          torneosDondeParticipa, miEquipoEn, solicitudesPendientes,
          SOLICITUD_BADGE, aceptaInscripciones, solicitudDe,
-         ESTADO_SOLICITUD, yaInscritoEn, puedeInscribirseEn, empresasConCanchas } from '../../lib/datos'
+         ESTADO_SOLICITUD, yaInscritoEn, puedeInscribirseEn, empresasConCanchas,
+         mismo, USUARIO_ACTUAL } from '../../lib/datos'
 import { montoBs } from '../../lib/dinero'
 
 export default function Torneos() {
@@ -12,7 +13,9 @@ export default function Torneos() {
 
   // Se derivan de la fuente unica: nunca se escriben a mano
   // Un torneo aparece aqui solo si el complejo ya aprobo la cancha
-  const disponibles   = TORNEOS.filter(aceptaInscripciones)
+  // Los que organiza uno mismo van en «Mis Torneos»: aqui decia «puedes
+  // inscribir tu equipo» y en el propio torneo no se puede.
+  const disponibles   = TORNEOS.filter(t => aceptaInscripciones(t) && !mismo(t.creador_id, USUARIO_ACTUAL.id))
 
   // Los que ya arrancaron o ya terminaron. Son los que se miran, no los que se
   // juegan: hasta ahora un torneo desaparecia de esta pantalla en cuanto se

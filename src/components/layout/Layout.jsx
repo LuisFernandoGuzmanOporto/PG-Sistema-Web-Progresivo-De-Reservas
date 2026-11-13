@@ -81,6 +81,11 @@ export default function Layout({ children, role = 'user' }) {
   // siempre los suyos, y en esas pantallas todo queda en solo lectura.
   const esSuper     = perfil?.rol === 'superadmin'
   if (esSuper) role = 'superadmin'
+  // Lo mismo con el administrador y el empleado cuando abren una pantalla de
+  // torneos (que es de cliente): antes salía su nombre con «Cliente» y el
+  // menú del cliente, y se perdían.
+  else if (perfil?.rol === 'admin_empresa') role = 'admin'
+  else if (perfil?.rol === 'empleado') role = 'empleado'
   const soloLectura = esSuper && !location.pathname.startsWith('/superadmin') && location.pathname !== '/mi-cuenta'
   const complejo    = esSuper && complejoVisto ? empresaPorId(complejoVisto) : null
 

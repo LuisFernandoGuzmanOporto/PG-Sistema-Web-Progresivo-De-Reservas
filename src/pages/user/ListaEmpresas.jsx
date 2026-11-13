@@ -135,7 +135,7 @@ export default function ListaEmpresas() {
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 20, flexWrap: 'wrap' }}>
         <input
           className="input"
-          style={{ maxWidth: 280, marginBottom: 0 }}
+          style={{ flex: '1 1 280px', maxWidth: 420, marginBottom: 0 }}
           placeholder="🔍 Buscar por nombre o zona..."
           value={busqueda}
           onChange={e => setBusqueda(e.target.value)}

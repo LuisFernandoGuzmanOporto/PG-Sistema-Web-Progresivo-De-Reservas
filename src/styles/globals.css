@@ -687,3 +687,21 @@ img, video { max-width: 100%; }
   font-size: 0.66rem; font-weight: 700; color: #555;
   text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 2px;
 }
+
+/* ── En el celular: que se pueda tocar y leer ────────────────────────────
+   Revisado en 360 px de ancho (el celular Android más común). Había botones
+   de 24-28 px de alto (filtros de deporte y de días, Editar, Eliminar,
+   Responder, Volver), difíciles de acertar con el dedo, y etiquetas de
+   10 px. Los estilos van escritos en cada pantalla, por eso aquí se corrige
+   por tamaño y no pantalla por pantalla. */
+@media (max-width: 600px) {
+  main button, .modal button, main .btn {
+    min-height: 36px;
+  }
+  main [style*="font-size: 0.6rem"], main [style*="font-size: 0.62rem"],
+  main [style*="font-size: 0.64rem"], main [style*="font-size: 0.65rem"],
+  main [style*="font-size: 0.66rem"], main [style*="font-size: 0.68rem"],
+  main .dato-etiqueta {
+    font-size: 0.72rem !important;
+  }
+}

@@ -58,6 +58,8 @@ export default function GestionTorneos() {
       jugadoresMax: String((c?.jugadoresTitulares ?? 5) + (c?.suplentes ?? 0)),
       puntosPorSet:  String(c?.puntosPorSet  ?? ''),
       setsParaGanar: String(c?.setsParaGanar ?? ''),
+      // La cancha elegida tiene que ser de ese deporte
+      cancha: canchas.some(x => x.nombre === f.cancha && x.deporte === dep) ? f.cancha : '',
     }))
   }
 
@@ -67,7 +69,10 @@ export default function GestionTorneos() {
    * Escribe en el torneo real: recién ahi los equipos pueden inscribirse.
    * Se guarda primero en la base; si falla, la pantalla no miente.
    */
-  const resolverSolicitud = async (t, solicitud) => {
+  const resolverSolicitud = async (t, cambio) => {
+    // Se conserva lo que se pidio (cancha, horario, costo, comprobante): antes
+    // se reemplazaba todo y al aprobar la tarjeta quedaba con «—».
+    const solicitud = { ...(t.solicitud || {}), ...cambio }
     const g = await resolverSolicitudCancha(t.id, solicitud.estado, solicitud.motivo)
     if (g.error) { avisar('No se guardó el cambio. ' + g.error); return false }
 
@@ -99,11 +104,12 @@ export default function GestionTorneos() {
 
   // ── Formulario de torneo propio del complejo ──────────────────────────
   const EMOJI = { 'Fútbol': '⚽', 'Wally': '🎾', 'Básquetbol': '🏀', 'Voleibol': '🏐', 'Pádel': '🏓' }
-  const primerDeporte = deportes[0] || 'Fútbol'
+  // Se empieza por un deporte que tenga cancha, y con esa cancha elegida
+  const primerDeporte = deportes.find(d => canchas.some(c => c.deporte === d)) || deportes[0] || 'Fútbol'
   const cfgPrimero    = DEPORTE_CONFIG[primerDeporte]
 
   const FORM_VACIO = {
-    nombre: '', deporte: primerDeporte, cancha: canchas[0]?.nombre || '',
+    nombre: '', deporte: primerDeporte, cancha: canchas.find(c => c.deporte === primerDeporte)?.nombre || '',
     formato: cfgPrimero?.formatos?.[0] || 'Grupos + Eliminación',
     inicio: '', fin: '', limite: '',
     maxEquipos: '8',
@@ -596,8 +602,15 @@ export default function GestionTorneos() {
                 <select className="input" value={form.cancha} onChange={set('cancha')}
                   {...propsCampo('cancha', errores.cancha)}>
                   <option value="">Selecciona la cancha</option>
-                  {canchas.map(c => <option key={c.id} value={c.nombre}>{c.nombre}</option>)}
+                  {/* Solo las de ese deporte: se podia armar un torneo de futbol en la cancha de wally */}
+                  {canchas.filter(c => c.deporte === form.deporte)
+                    .map(c => <option key={c.id} value={c.nombre}>{c.nombre}</option>)}
                 </select>
+                {!canchas.some(c => c.deporte === form.deporte) && (
+                  <p style={{ color: '#f59e0b', fontSize: '0.74rem', marginTop: 4 }}>
+                    Tu complejo no tiene canchas de {form.deporte}. Elige otro deporte o crea la cancha en «Mis Canchas».
+                  </p>
+                )}
                 <MensajeCampo nombre="cancha" error={errores.cancha} />
               </div>
 

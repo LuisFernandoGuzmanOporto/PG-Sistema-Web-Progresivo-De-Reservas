@@ -959,10 +959,13 @@ export const estadisticasDe = (empresaId) => ESTADISTICAS[empresaId] || SIN_ESTA
  * quedaba en blanco al leerle un campo. Ahora devuelve null: quien lo use
  * tiene que contemplar que todavia no hay datos.
  */
-export const pico = (serie, campo = 'reservas') =>
-  serie?.length
-    ? serie.reduce((max, x) => (x[campo] > max[campo] ? x : max), serie[0])
-    : null
+// Sin ninguna reserva no hay pico: antes devolvia el primero de la lista y el
+// panel decia «Dia de mayor demanda: DOM» y «06:00» con 0 reservas.
+export const pico = (serie, campo = 'reservas') => {
+  if (!serie?.length) return null
+  const max = serie.reduce((m, x) => (x[campo] > m[campo] ? x : m), serie[0])
+  return Number(max[campo]) > 0 ? max : null
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // RECOMPENSAS
