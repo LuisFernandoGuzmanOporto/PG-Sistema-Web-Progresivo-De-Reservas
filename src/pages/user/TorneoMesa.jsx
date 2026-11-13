@@ -149,11 +149,21 @@ export default function TorneoMesa() {
   const partido = partidoSeleccionado !== null
     ? todosLosPartidos.find(p => p.id === partidoSeleccionado) : null
 
+  // En wally, vóley y pádel el partido lo gana quien llega a los sets que hacen
+  // falta. Antes se podía finalizar a mitad del partido (quedó uno cerrado con
+  // los sets 1-1) y la tabla le daba la victoria a quien tenía más puntos.
+  const setsDelPartido = partido
+    ? marcadorPorSets(partido.eventos, partido.equipo1_id,
+        { puntosPorSet: TORNEO?.puntosPorSet, setsParaGanar: TORNEO?.setsParaGanar })
+    : null
+  const faltanSets = Boolean(setsDelPartido && !setsDelPartido.ganador)
+
   // Fuera de los grupos no puede haber empate: se registra la tanda tiro por
   // tiro. Vale para las llaves y tambien para el tercer puesto, que tiene fase
-  // propia y hasta ahora quedaba afuera de esta cuenta.
+  // propia y hasta ahora quedaba afuera de esta cuenta. Por sets no hay
+  // penales: el partido ya lo define quien gana los sets.
   const requierePenales = Boolean(
-    partido && partido.fase !== 'grupos' && partido.g1 === partido.g2)
+    partido && !setsDelPartido && partido.fase !== 'grupos' && partido.g1 === partido.g2)
   const tandaEstado = estadoTanda(tanda)
   const penalesInvalidos = requierePenales && !tandaEstado.finalizada
 
@@ -361,6 +371,7 @@ export default function TorneoMesa() {
   }
 
   const finalizarPartido = async () => {
+    if (faltanSets) return
     const p = todosLosPartidos.find(x => x.id === partidoSeleccionado)
     const conPenales = requierePenales
       ? { pen1: tandaEstado.a, pen2: tandaEstado.b, tanda: [...tanda] } : {}
@@ -693,10 +704,16 @@ export default function TorneoMesa() {
                     <button onClick={compartirWhatsApp} style={{ padding: '12px', background: 'rgba(37,211,102,0.1)', border: '1px solid rgba(37,211,102,0.3)', borderRadius: 12, color: '#25d366', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', fontFamily: 'Outfit' }}>
                       Compartir por WA
                     </button>
-                    <button onClick={() => { setTanda([]); setConfirmFinalizar(true) }} style={{ padding: '12px', background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.35)', borderRadius: 12, color: '#22c55e', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', fontFamily: 'Outfit' }}>
+                    <button onClick={() => { setTanda([]); setConfirmFinalizar(true) }} disabled={faltanSets}
+                      style={{ padding: '12px', background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.35)', borderRadius: 12, color: '#22c55e', fontWeight: 700, fontSize: '0.85rem', cursor: faltanSets ? 'not-allowed' : 'pointer', fontFamily: 'Outfit', opacity: faltanSets ? 0.45 : 1 }}>
                       Finalizar Partido
                     </button>
                   </div>
+                  {faltanSets && (
+                    <p style={{ fontSize: '0.76rem', color: '#888', textAlign: 'center', marginTop: 8 }}>
+                      Para finalizar, un equipo tiene que ganar {TORNEO.setsParaGanar} {Number(TORNEO.setsParaGanar) === 1 ? 'set' : 'sets'}.
+                    </p>
+                  )}
                 </>
               )}
 
