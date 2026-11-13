@@ -9,7 +9,8 @@ import FotoDePerfil from '../components/FotoDePerfil'
 import { SESION, USUARIO_ACTUAL, EMPRESAS, empresaPorId, DEPORTES, ZONAS,
          DOMINIO_EMPLEADOS } from '../lib/datos'
 import { guardarPerfil, guardarMiComplejo } from '../lib/guardar'
-import { subirPublico, urlPublica } from '../lib/archivos'
+import { subirPublico, urlPublica, revisarArchivo, TIPOS_IMAGEN } from '../lib/archivos'
+import AcomodarFoto from '../components/AcomodarFoto'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MI CUENTA
@@ -49,9 +50,9 @@ const Exito = ({ texto }) => texto ? (
  * Un cuadro con la imagen que hay ahora y el boton para cambiarla.
  * El QR va sobre blanco: la camara no lee un QR con el fondo oscuro.
  */
-const Imagen = ({ ruta, texto, ayuda, fondoBlanco, cargando, bloqueado, onElegir }) => (
+const Imagen = ({ ruta, texto, ayuda, fondoBlanco, ancha, limite = 'hasta 5 MB.', cargando, bloqueado, onElegir }) => (
   <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-    <div style={{ width: 130, height: 130, borderRadius: 12, flexShrink: 0,
+    <div style={{ width: ancha ? 200 : 130, height: ancha ? 100 : 130, borderRadius: 12, flexShrink: 0,
       border: '2px dashed ' + (ruta ? 'rgba(34,197,94,0.45)' : '#2a2a2a'),
       background: ruta && fondoBlanco ? '#fff' : 'rgba(255,255,255,0.02)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
@@ -72,7 +73,7 @@ const Imagen = ({ ruta, texto, ayuda, fondoBlanco, cargando, bloqueado, onElegir
           onChange={e => { onElegir(e.target.files?.[0]); e.target.value = '' }} />
       </label>
       <p style={{ color: '#555', fontSize: '0.72rem', marginTop: 8, lineHeight: 1.5 }}>
-        {ayuda ? ayuda + ' ' : ''}JPG, PNG o WEBP, hasta 5 MB.
+        {ayuda ? ayuda + ' ' : ''}JPG, PNG o WEBP, {limite}
       </p>
     </div>
   </div>
@@ -215,6 +216,18 @@ export default function MiCuenta() {
     setComp(c => ({ ...c, [campo]: r.ruta }))
   }
 
+  // El logo y la foto se acomodan antes de subirse (AcomodarFoto): se ve la
+  // forma exacta en que van a aparecer y se sube solo lo elegido, recortado.
+  // El QR no: se sube tal cual, recortarlo podría dejarlo ilegible.
+  const [acomodando, setAcomodando] = useState(null)   // { campo, archivo }
+  const paraAcomodar = (campo, archivo) => {
+    if (!archivo) return
+    const aviso = revisarArchivo(archivo, { tipos: TIPOS_IMAGEN, limite: 20 * 1024 * 1024 })
+    if (aviso) { setErrorImagen(aviso); return }
+    setErrorImagen(null)
+    setAcomodando({ campo, archivo })
+  }
+
   const guardarComplejo = async () => {
     setAvisoComp(null); setErrorComp(null)
     setIntentoComp(true)
@@ -239,6 +252,11 @@ export default function MiCuenta() {
 
   return (
     <Layout role={LAYOUT_DE[rol] || 'user'}>
+      {acomodando && (
+        <AcomodarFoto archivo={acomodando.archivo} forma={acomodando.campo === 'logo' ? 'logo' : 'portada'}
+          onCancelar={() => setAcomodando(null)}
+          onListo={(f) => { const { campo } = acomodando; setAcomodando(null); elegirImagen(campo, f) }} />
+      )}
       <div style={{ maxWidth: 680 }}>
         <div className="section-header">
           <div>
@@ -443,18 +461,18 @@ export default function MiCuenta() {
                 <p style={{ color: '#888', fontSize: '0.78rem', marginBottom: 10 }}>
                   Va en la cabecera de tu ficha.
                 </p>
-                <Imagen ruta={comp.logo} texto="el logo"
+                <Imagen ruta={comp.logo} texto="el logo" fondoBlanco limite="hasta 20 MB; al elegirlo podrás acomodarlo."
                   cargando={subiendo === 'logo'} bloqueado={Boolean(subiendo)}
-                  onElegir={a => elegirImagen('logo', a)} />
+                  onElegir={a => paraAcomodar('logo', a)} />
               </div>
               <div className="form-group">
                 <label className="form-label">Foto del complejo</label>
                 <p style={{ color: '#888', fontSize: '0.78rem', marginBottom: 10 }}>
                   Es la portada que ven en la lista de complejos.
                 </p>
-                <Imagen ruta={comp.foto} texto="una foto"
+                <Imagen ruta={comp.foto} texto="una foto" ancha limite="hasta 20 MB; al elegirla podrás acomodarla."
                   cargando={subiendo === 'foto'} bloqueado={Boolean(subiendo)}
-                  onElegir={a => elegirImagen('foto', a)} />
+                  onElegir={a => paraAcomodar('foto', a)} />
               </div>
             </div>
 

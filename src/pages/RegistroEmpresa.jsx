@@ -3,6 +3,7 @@ import { errorEnTelefono, errorEnNombre, errorEnNombreDeAlgo, errorEnClave, esCo
 import { useNavigate } from 'react-router-dom'
 import { registrarSolicitudEmpresa, guardarImagenesEmpresa } from '../lib/guardar'
 import { useAuth, marcarRegistroDeComplejo } from '../lib/auth'
+import AcomodarFoto from '../components/AcomodarFoto'
 import { subirPublico, revisarArchivo, TIPOS_IMAGEN } from '../lib/archivos'
 import AvisoFaltantes from '../components/AvisoFaltantes'
 import { propsCampo, MensajeCampo, irAlPrimerError } from '../components/Validacion'
@@ -107,14 +108,26 @@ export default function RegistroEmpresa() {
     prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]
   )
 
+  // La foto elegida no se usa tal cual: primero el dueño la acomoda en un
+  // recuadro con la forma en que se va a ver (AcomodarFoto) y se sube recortada.
+  // Por eso se acepta una foto grande del celular: lo que se sube pesa poco.
+  const [acomodando, setAcomodando] = useState(null)   // { tipo, archivo }
+
   const handleImagen = (e, tipo) => {
     const file = e.target.files[0]
+    e.target.value = ''
     if (!file) return
 
-    const aviso = revisarArchivo(file, { tipos: TIPOS_IMAGEN, limite: 5 * 1024 * 1024 })
-    if (aviso) { setErrorImagen(aviso); e.target.value = ''; return }
+    const aviso = revisarArchivo(file, { tipos: TIPOS_IMAGEN, limite: 20 * 1024 * 1024 })
+    if (aviso) { setErrorImagen(aviso); return }
     setErrorImagen(null)
+    setAcomodando({ tipo, archivo: file })
+  }
 
+  /** La foto ya acomodada y recortada, lista para subir al enviar. */
+  const imagenAcomodada = (file) => {
+    const { tipo } = acomodando
+    setAcomodando(null)
     const url = URL.createObjectURL(file)
     if (tipo === 'logo') { setLogoPreview(url); setLogoNombre(file.name); setLogoFile(file) }
     else                 { setFotoPreview(url); setFotoNombre(file.name); setFotoFile(file) }
@@ -165,6 +178,11 @@ export default function RegistroEmpresa() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#0f0f0f', fontFamily: 'Outfit, sans-serif', display: 'flex', flexDirection: 'column' }}>
+
+      {acomodando && (
+        <AcomodarFoto archivo={acomodando.archivo} forma={acomodando.tipo === 'logo' ? 'logo' : 'portada'}
+          onListo={imagenAcomodada} onCancelar={() => setAcomodando(null)} />
+      )}
 
       {/* Navbar simple */}
       <nav style={{ height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 32px', borderBottom: '1px solid #1a1a1a', background: 'rgba(15,15,15,0.9)', backdropFilter: 'blur(16px)', position: 'sticky', top: 0, zIndex: 100 }}>
@@ -243,7 +261,7 @@ export default function RegistroEmpresa() {
                       transition: 'all 0.2s',
                     }}>
                       {logoPreview ? (
-                        <img src={logoPreview} alt="logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <img src={logoPreview} alt="logo" style={{ height: '100%', aspectRatio: '1', objectFit: 'contain', background: '#fff' }} />
                       ) : (
                         <>
                           <span style={{ fontSize: '1.8rem', marginBottom: 4 }}>🏢</span>
@@ -253,7 +271,9 @@ export default function RegistroEmpresa() {
                     </div>
                     <input type="file" accept="image/png,image/jpeg,image/webp" style={{ display: 'none' }} onChange={e => handleImagen(e, 'logo')} />
                   </label>
-                  {logoNombre && <p style={{ fontSize: '0.7rem', color: '#22c55e', marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>✓ {logoNombre}</p>}
+                  {logoNombre
+                    ? <p style={{ fontSize: '0.7rem', color: '#22c55e', marginTop: 4 }}>✓ Logo listo · toca para cambiarlo</p>
+                    : <p style={{ fontSize: '0.7rem', color: '#555', marginTop: 4 }}>Al elegirlo podrás acomodarlo</p>}
                 </div>
 
                 {/* Foto del complejo */}
@@ -277,7 +297,9 @@ export default function RegistroEmpresa() {
                     </div>
                     <input type="file" accept="image/png,image/jpeg,image/webp" style={{ display: 'none' }} onChange={e => handleImagen(e, 'foto')} />
                   </label>
-                  {fotoNombre && <p style={{ fontSize: '0.7rem', color: '#00BCD4', marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>✓ {fotoNombre}</p>}
+                  {fotoNombre
+                    ? <p style={{ fontSize: '0.7rem', color: '#00BCD4', marginTop: 4 }}>✓ Foto lista · así sale en la lista de complejos</p>
+                    : <p style={{ fontSize: '0.7rem', color: '#555', marginTop: 4 }}>Es la portada en la lista de complejos; al elegirla podrás acomodarla</p>}
                   {errorImagen && (
                     <p style={{ fontSize: '0.74rem', color: '#ef4444', marginTop: 6 }}>{errorImagen}</p>
                   )}
