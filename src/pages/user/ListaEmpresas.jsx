@@ -29,14 +29,14 @@ const DEPORTE_COLORES = {
  * o no, así ninguna tarjeta se descuadra:
  *  · con foto: la foto llena todo el recuadro y se recorta al centro
  *    (object-fit: cover), sea vertical, horizontal o chica;
- *  · sin foto pero con logo: el logo entero, centrado sobre el color del deporte;
- *  · sin nada: el emoji grande del deporte sobre su color.
+ *  · sin foto: el emoji grande del deporte sobre su color.
+ * El logo NO va aquí: el logo se ve al entrar al complejo; en la lista va la
+ * foto del complejo (pedido de Fernando, noviembre 2026).
  * Si la foto no carga (se borró del depósito), se cae al respaldo.
  */
 function Portada({ empresa }) {
   const [fallo, setFallo] = useState(false)
   const foto = !fallo && urlPublica(empresa.foto)
-  const logo = urlPublica(empresa.logo)
   const color = DEPORTE_COLORES[empresa.deportes?.[0]]?.color || '#8B0000'
 
   return (
@@ -49,10 +49,6 @@ function Portada({ empresa }) {
       {foto ? (
         <img src={foto} alt={'Foto de ' + empresa.nombre} loading="lazy" onError={() => setFallo(true)}
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-      ) : logo ? (
-        <img src={logo} alt={'Logo de ' + empresa.nombre} loading="lazy"
-          style={{ width: 104, height: 104, objectFit: 'contain', borderRadius: 18,
-            background: '#fff', padding: 8, boxShadow: '0 6px 20px rgba(0,0,0,0.45)' }} />
       ) : (
         <span style={{ fontSize: '4.6rem', filter: 'drop-shadow(0 6px 14px rgba(0,0,0,0.5))' }}>{empresa.emoji}</span>
       )}
