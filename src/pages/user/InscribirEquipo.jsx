@@ -349,7 +349,18 @@ export default function InscribirEquipo() {
             </div>
           )}
 
-          {!canjeAplicado && (
+          {/* Torneo gratuito: no hay nada que pagar. Antes se pedia QR y
+              comprobante igual, con un precio de Bs. 0 en pantalla. */}
+          {!canjeAplicado && !(Number(torneo.precio) > 0) && (
+            <div style={{ padding: 16, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)', borderRadius: 14, marginBottom: 24, textAlign: 'left' }}>
+              <p style={{ color: '#22c55e', fontWeight: 700, fontSize: '0.88rem', marginBottom: 4 }}>✓ Torneo gratuito</p>
+              <p style={{ color: '#888', fontSize: '0.8rem', lineHeight: 1.6 }}>
+                Este torneo no cobra inscripción. No tienes que pagar ni subir comprobante; solo falta que el organizador apruebe tu equipo.
+              </p>
+            </div>
+          )}
+
+          {!canjeAplicado && Number(torneo.precio) > 0 && (
           <div style={{ padding: 20, background: 'rgba(0,188,212,0.08)', border: '1px solid rgba(0,188,212,0.2)', borderRadius: 14, marginBottom: 24, textAlign: 'left' }}>
             <p style={{ color: '#00BCD4', fontWeight: 700, fontSize: '0.88rem', marginBottom: 12 }}>💳 Siguiente paso — Pago con QR</p>
             <p style={{ color: '#888', fontSize: '0.82rem', lineHeight: 1.6, marginBottom: 12 }}>

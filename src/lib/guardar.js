@@ -575,20 +575,27 @@ export async function guardarSorteo(torneoId, gruposPorEquipo, calendario) {
     if (r.error) return r
   }
 
+  let partidosCreados = []
   if (calendario?.length) {
     const filas = calendario.map(p => ({
       torneo_id: torneoId,
       equipo_a_id: p.equipoA, equipo_b_id: p.equipoB,
       fase: p.fase || 'grupos', grupo: p.grupo || null, ronda: p.ronda || null,
       estado: 'programado',
+      // Cuando y donde: antes no se guardaba y al recargar no tenia hora
+      cancha_id: p.canchaId || null, fecha_hora: p.fechaHora || null,
     }))
-    const { error } = await supabase.from('partidos_torneo').insert(filas)
+    // Se devuelven con su id: la pantalla los necesita para habilitar
+    // jugadores y abrir la mesa sin tener que recargar
+    const { data: creados, error } = await supabase.from('partidos_torneo').insert(filas).select()
     if (error) return fallo(error)
+    partidosCreados = creados || []
   }
 
-  return cambio(await supabase.from('torneos')
+  const r = cambio(await supabase.from('torneos')
     .update({ estado: 'en_curso', sorteado_at: new Date().toISOString() })
     .eq('id', torneoId).select())
+  return r.error ? r : { ...r, partidos: partidosCreados || [] }
 }
 
 /**

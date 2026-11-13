@@ -10,7 +10,10 @@ import TabEquipos from './torneo/TabEquipos'
 import TabPosiciones from './torneo/TabPosiciones'
 import TabEnVivo from './torneo/TabEnVivo'
 import TabCalendario from './torneo/TabCalendario'
-import { resolverEquipo, guardarSorteo, deshacerSorteo } from '../../lib/guardar'
+import { resolverEquipo, guardarSorteo, deshacerSorteo, guardarPartidoTorneo } from '../../lib/guardar'
+import { programarPartidos, instanteBolivia, FORMATOS } from '../../lib/torneo'
+import { jornadasDelTorneo } from '../../lib/jornadas'
+import { diaConFecha } from '../../lib/fecha'
 import { sortearGrupos, gruposSugeridos, nombreRonda, generarFixture,
          suspensionesPara, calcularTabla } from '../../lib/torneo'
 
@@ -67,6 +70,21 @@ export default function TorneoDetalle() {
   const gruposPorDefecto = gruposSugeridos(equiposAprobados.length)
   const gruposElegidos = numGrupos ?? gruposPorDefecto
   const [fixture, setFixture] = useState([])
+  const [sinHorario, setSinHorario] = useState(0)
+  const esLiga = torneoData.formato === FORMATOS.LIGA
+  // Lo que ya esta sorteado en la base. Antes, al recargar, el panel volvia a
+  // ofrecer «Sortear grupos» como si no se hubiera hecho, y sortear de nuevo
+  // creaba el fixture entero otra vez.
+  const yaSorteado   = !!porGrupo && torneoData.partidos.some(p => p.fase === 'grupos')
+  const gruposVista  = grupos || (yaSorteado ? porGrupo : null)
+  const fixtureVista = fixture.length ? fixture : torneoData.partidos.filter(p => p.fase === 'grupos')
+  const fechaSorteoVista = fechaSorteo || (torneoData.sorteadoEl
+    ? new Date(torneoData.sorteadoEl).toLocaleString('es-BO', { timeZone: 'America/La_Paz',
+        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : '')
+  const sinHorarioVista = fixture.length ? sinHorario : fixtureVista.filter(p => !p.hora).length
+  // Como se agrupan los partidos: por jornada al sortear, por dia al recargar
+  const etiquetaDeTanda = (p) => p.jornada ? 'Jornada ' + p.jornada : p.fecha ? diaConFecha(p.fecha) : 'Sin fecha asignada'
   // El sorteo escribe una fila por equipo y una por partido: con ocho grupos
   // son varios segundos. Sin este aviso el boton parecia no hacer nada y se
   // volvia a tocar, lo que duplicaba el fixture entero.
@@ -98,12 +116,18 @@ export default function TorneoDetalle() {
   const realizarSorteo = async () => {
     if (sorteando) return
     setSorteando(true)
-    const nuevos = sortearGrupos(equiposAprobados, gruposElegidos)
-    // El fixture de la fase de grupos se genera junto con el sorteo
-    const nuevoFixture = generarFixture(nuevos, {
-      canchas: [torneoData.cancha, 'Cancha Auxiliar'],
-      horas: ['09:00', '11:00', '15:00', '17:00', '19:00'],
+    // En una liga todos juegan contra todos: un solo grupo
+    const nuevos = sortearGrupos(equiposAprobados, esLiga ? 1 : gruposElegidos)
+    // El fixture de la fase de grupos se genera junto con el sorteo, en las
+    // fechas, el horario y la cancha que el torneo tiene reservados
+    const sol = torneoData.solicitud || {}
+    const programa = programarPartidos(generarFixture(nuevos), {
+      fechas: jornadasDelTorneo({
+        fechaInicio: torneoData.fechaInicioISO, fechaFin: torneoData.fechaFinISO, dias: sol.dias,
+      }),
+      horaInicio: sol.horaInicio, horaFin: sol.horaFin, cancha: torneoData.cancha,
     })
+    const nuevoFixture = programa.partidos
 
     // El sorteo no se puede repetir: se guarda antes de mostrarlo, para que
     // nadie vea unos grupos en pantalla y otros distintos al recargar.
@@ -114,6 +138,8 @@ export default function TorneoDetalle() {
       nuevoFixture.map(p => ({
         equipoA: p.equipo1_id, equipoB: p.equipo2_id,
         fase: p.fase, grupo: p.grupo,
+        canchaId: sol.cancha_id || null,
+        fechaHora: instanteBolivia(p.fecha, p.hora),
       })),
     )
     if (g.error) {
@@ -125,8 +151,22 @@ export default function TorneoDetalle() {
 
     setGrupos(nuevos)
     setFixture(nuevoFixture)
-    // Al sortear, el torneo deja de recibir inscripciones y pasa a estar en curso
-    setTorneoData(t => ({ ...t, estado: 'en_curso' }))
+    setSinHorario(programa.sinHorario)
+    // Al sortear, el torneo deja de recibir inscripciones y pasa a estar en
+    // curso. Los partidos entran ya con su id de la base: antes la
+    // habilitacion decia «Sin partidos pendientes» hasta recargar.
+    const conId = nuevoFixture.map(p => ({ ...p, id: (g.partidos || []).find(x =>
+      x.equipo_a_id === p.equipo1_id && x.equipo_b_id === p.equipo2_id)?.id ?? p.id }))
+    const grupoDe = Object.fromEntries(Object.entries(nuevos).flatMap(([letra, eqs]) => eqs.map(e => [e.id, letra])))
+    const actualizar = (t) => ({
+      ...t, estado: 'en_curso', sorteadoEl: new Date().toISOString(),
+      partidos: conId,
+      grupos: Object.fromEntries(Object.entries(nuevos).map(([letra, eqs]) => [letra, eqs.map(e => e.id)])),
+      equipos: t.equipos.map(e => grupoDe[e.id] ? { ...e, grupo: grupoDe[e.id] } : e),
+    })
+    const real = TORNEOS.find(x => mismo(x.id, torneoData.id))
+    if (real) Object.assign(real, actualizar(real))
+    setTorneoData(actualizar)
     setErrorTorneo(null)
     setFechaSorteo(new Date().toLocaleString('es-BO', { timeZone: 'America/La_Paz',
       day: '2-digit', month: '2-digit', year: 'numeric',
@@ -178,7 +218,15 @@ export default function TorneoDetalle() {
     }))
   }
 
-  const iniciarPartidoDesdeHabilitacion = (partidoId) => {
+  // Antes solo cambiaba esta pantalla: no se guardaba, y quienes miraban
+  // «En vivo» seguían viendo «No hay partidos en curso». Ahora se guarda y se
+  // abre la mesa técnica, que es donde se anotan los puntos.
+  const iniciarPartidoDesdeHabilitacion = async (partidoId) => {
+    const g = await guardarPartidoTorneo(partidoId, { estado: 'en_vivo', minuto: 0 })
+    if (g?.error) { setErrorTorneo('No se pudo iniciar el partido. ' + g.error); return }
+    const real = TORNEOS.find(x => mismo(x.id, torneoData.id))
+    if (real) real.partidos = real.partidos.map(pt => mismo(pt.id, partidoId) ? { ...pt, estado: 'en_vivo', minuto: 0 } : pt)
+    navigate('/app/torneos/' + torneoData.id + '/mesa')
     setTorneoData(p => ({
       ...p,
       partidos: p.partidos.map(pt =>
@@ -312,7 +360,7 @@ export default function TorneoDetalle() {
                 <p style={{ color: '#888', fontSize: '0.8rem', lineHeight: 1.5 }}>
                   <strong style={{ color: '#f5f5f5' }}>{miEquipo.nombre}</strong>
                   {miEquipo.estado === 'pendiente'
-                    ? (miEquipo.comprobante || miEquipo.codigoCanje
+                    ? (miEquipo.comprobante || miEquipo.codigoCanje || !(Number(torneoData.precio) > 0)
                         ? ' · El organizador está revisando tu inscripción.'
                         : ' · Falta el comprobante de pago: súbelo para que el organizador pueda aprobarte.')
                     : miEquipo.estado === 'aprobado'
@@ -388,7 +436,7 @@ export default function TorneoDetalle() {
           <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
             {[
               { key: 'solicitudes', label: `📋 Solicitudes (${equiposPendientes.length})` },
-              { key: 'sorteo',      label: '🎲 Sorteo de Grupos' },
+              { key: 'sorteo',      label: esLiga ? '🎲 Sorteo del fixture' : '🎲 Sorteo de Grupos' },
               { key: 'habilitacion', label: '✅ Habilitación Pre-Partido' },
             ].map(t => (
               <button key={t.key} onClick={() => setTabCreador(t.key)} style={{
@@ -405,11 +453,14 @@ export default function TorneoDetalle() {
             <div>
               <div style={{ padding: '14px 18px', background: 'rgba(0,188,212,0.06)', border: '1px solid rgba(0,188,212,0.2)', borderRadius: 12, marginBottom: 20 }}>
                 <p style={{ color: '#00BCD4', fontSize: '0.85rem', fontWeight: 700, marginBottom: 6 }}>
-                  Sorteo de la fase de grupos
+                  {esLiga ? 'Sorteo del fixture de la liga' : 'Sorteo de la fase de grupos'}
                 </p>
                 <p style={{ color: '#888', fontSize: '0.8rem', lineHeight: 1.6 }}>
-                  El sorteo reparte al azar los equipos aprobados entre los grupos. Una vez sorteado se
-                  genera el fixture de la fase de grupos y ya no se pueden aceptar más inscripciones.
+                  {esLiga
+                    ? 'Es una liga: todos juegan contra todos y gana el que más puntos sume. El sorteo decide el orden de los partidos.'
+                    : 'El sorteo reparte al azar los equipos aprobados entre los grupos.'}
+                  {' '}Cada partido queda con su día, hora y cancha, dentro de lo que el torneo tiene
+                  reservado. Una vez sorteado ya no se pueden aceptar más inscripciones.
                   Queda registrada la fecha y la hora en que se realizó.
                 </p>
               </div>
@@ -420,17 +471,24 @@ export default function TorneoDetalle() {
                   <h3>Aún no se puede sortear</h3>
                   <p>Se necesitan al menos 4 equipos aprobados. Hay {equiposAprobados.length}.</p>
                 </div>
-              ) : !grupos ? (
+              ) : !gruposVista ? (
                 <div className="card" style={{ padding: 24, textAlign: 'center' }}>
                   <p style={{ fontFamily: 'Bebas Neue', fontSize: '1.6rem', color: '#f5f5f5', marginBottom: 4 }}>
                     {equiposAprobados.length} equipos aprobados
                   </p>
+                  {esLiga ? (
+                    <p style={{ color: '#888', fontSize: '0.85rem', marginBottom: 18 }}>
+                      Son <strong style={{ color: '#00BCD4' }}>{equiposAprobados.length * (equiposAprobados.length - 1) / 2} partidos</strong>:
+                      cada equipo juega una vez contra cada uno de los otros.
+                    </p>
+                  ) : (
                   <p style={{ color: '#888', fontSize: '0.85rem', marginBottom: 18 }}>
                     Se repartirán en <strong style={{ color: '#00BCD4' }}>{gruposElegidos} grupo{gruposElegidos > 1 ? 's' : ''}</strong> de
                     aproximadamente {Math.ceil(equiposAprobados.length / gruposElegidos)} equipos cada uno.
                   </p>
+                  )}
 
-                  <div style={{ display: 'flex', gap: 10, justifyContent: 'center', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap' }}>
+                  {!esLiga && <div style={{ display: 'flex', gap: 10, justifyContent: 'center', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap' }}>
                     <span style={{ fontSize: '0.8rem', color: '#666' }}>Cantidad de grupos:</span>
                     {[1, 2, 4, 8].filter(n => equiposAprobados.length >= n * 2).map(n => (
                       <button key={n} onClick={() => setNumGrupos(n)} style={{
@@ -440,23 +498,24 @@ export default function TorneoDetalle() {
                         color: gruposElegidos === n ? '#00BCD4' : '#666', fontSize: '0.82rem',
                       }}>{n}</button>
                     ))}
-                  </div>
+                  </div>}
 
                   <button onClick={realizarSorteo} className="btn btn-primary"
                     disabled={sorteando}
                     style={{ padding: '13px 30px', fontSize: '0.92rem', justifyContent: 'center',
                              opacity: sorteando ? 0.6 : 1, cursor: sorteando ? 'wait' : 'pointer' }}>
-                    {sorteando ? 'Sorteando…' : '🎲 Sortear grupos'}
+                    {sorteando ? 'Sorteando…' : esLiga ? '🎲 Sortear el fixture' : '🎲 Sortear grupos'}
                   </button>
                   <p style={{ color: '#555', fontSize: '0.73rem', marginTop: 12 }}>
-                    Clasifican los 2 primeros de cada grupo a la fase eliminatoria.
+                    {esLiga ? 'No hay fase eliminatoria: el campeón es el primero de la tabla.'
+                      : 'Clasifican los 2 primeros de cada grupo a la fase eliminatoria.'}
                   </p>
                 </div>
               ) : (
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
                     <p style={{ color: '#22c55e', fontSize: '0.82rem', fontWeight: 600 }}>
-                      ✓ Sorteo realizado el {fechaSorteo}
+                      ✓ Sorteo realizado{fechaSorteoVista ? ' el ' + fechaSorteoVista : ''}
                     </p>
                     {/* Repetir borra el fixture en la base. Antes solo limpiaba
                         la pantalla: al recargar volvian los mismos grupos, y un
@@ -467,10 +526,10 @@ export default function TorneoDetalle() {
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14 }}>
-                    {Object.entries(grupos).map(([letra, equipos]) => (
+                    {Object.entries(gruposVista).map(([letra, equipos]) => (
                       <div key={letra} className="card" style={{ padding: 0, overflow: 'hidden' }}>
                         <div style={{ padding: '10px 14px', background: 'rgba(139,0,0,0.15)', borderBottom: '1px solid #2a2a2a' }}>
-                          <p style={{ fontFamily: 'Bebas Neue', fontSize: '1.05rem', color: '#f5f5f5' }}>Grupo {letra}</p>
+                          <p style={{ fontFamily: 'Bebas Neue', fontSize: '1.05rem', color: '#f5f5f5' }}>{esLiga ? 'Equipos de la liga' : 'Grupo ' + letra}</p>
                         </div>
                         <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
                           {equipos.map((e, i) => (
@@ -485,21 +544,30 @@ export default function TorneoDetalle() {
                   </div>
 
                   {/* Fixture generado automaticamente */}
-                  {fixture.length > 0 && (
+                  {fixtureVista.length > 0 && (
                     <div style={{ marginTop: 20 }}>
                       <p style={{ color: '#f59e0b', fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
-                        Fixture generado · {fixture.length} partidos
+                        Fixture generado · {fixtureVista.length} partidos
                       </p>
-                      {[...new Set(fixture.map(p => p.jornada))].map(j => (
+                      {sinHorarioVista > 0 && (
+                        <p style={{ color: '#f59e0b', fontSize: '0.78rem', lineHeight: 1.5, marginBottom: 12, padding: '10px 12px',
+                          background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 8 }}>
+                          ⚠ {sinHorarioVista === 1 ? 'Un partido quedó' : sinHorarioVista + ' partidos quedaron'} sin día ni hora:
+                          las horas reservadas para el torneo no alcanzan (cada partido ocupa una hora).
+                          {' '}Habla con el complejo para sumar horas, o juégalos al final de una jornada.
+                        </p>
+                      )}
+                      {[...new Set(fixtureVista.map(etiquetaDeTanda))].map(j => (
                         <div key={j} style={{ marginBottom: 12 }}>
-                          <p style={{ fontSize: '0.72rem', color: '#666', fontWeight: 600, marginBottom: 6 }}>Jornada {j}</p>
-                          {fixture.filter(p => p.jornada === j).map(p => (
+                          <p style={{ fontSize: '0.72rem', color: '#666', fontWeight: 600, marginBottom: 6 }}>{j}</p>
+                          {fixtureVista.filter(p => etiquetaDeTanda(p) === j).map(p => (
                             <div key={p.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr auto', gap: 10, alignItems: 'center', padding: '9px 14px', marginBottom: 6, background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 10 }}>
                               <span style={{ fontSize: '0.83rem', color: '#f5f5f5', textAlign: 'right' }}>{p.equipo1}</span>
                               <span style={{ fontSize: '0.7rem', color: '#555' }}>vs</span>
                               <span style={{ fontSize: '0.83rem', color: '#f5f5f5' }}>{p.equipo2}</span>
                               <span style={{ fontSize: '0.7rem', color: '#666', whiteSpace: 'nowrap' }}>
-                                G{p.grupo} · {p.hora} · {p.cancha}
+                                {[!esLiga && 'G' + p.grupo, p.fecha && p.jornada ? diaConFecha(p.fecha) : null,
+                                  p.hora || 'sin hora', p.cancha].filter(Boolean).join(' · ')}
                               </span>
                             </div>
                           ))}
@@ -508,16 +576,16 @@ export default function TorneoDetalle() {
                     </div>
                   )}
 
-                  <div style={{ marginTop: 18, padding: '12px 16px', background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.22)', borderRadius: 10 }}>
+                  {!esLiga && <div style={{ marginTop: 18, padding: '12px 16px', background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.22)', borderRadius: 10 }}>
                     <p style={{ color: '#22c55e', fontSize: '0.8rem', marginBottom: 4, fontWeight: 600 }}>
-                      Fase eliminatoria: {nombreRonda(Object.keys(grupos).length)}
+                      Fase eliminatoria: {nombreRonda(Object.keys(gruposVista).length)}
                     </p>
                     <p style={{ color: '#888', fontSize: '0.78rem', lineHeight: 1.6 }}>
-                      Clasifican {Object.keys(grupos).length * 2} equipos en total. El cuadro se divide en dos
+                      Clasifican {Object.keys(gruposVista).length * 2} equipos en total. El cuadro se divide en dos
                       lados: el primero de un grupo enfrenta al segundo del grupo emparejado, de modo que los
                       punteros solo pueden encontrarse en la final.
                     </p>
-                  </div>
+                  </div>}
                 </div>
               )}
             </div>
@@ -625,7 +693,9 @@ export default function TorneoDetalle() {
                                   color: p.estado === 'programado' ? '#666' : '#ef4444',
                                 }}>{p.estado === 'programado' ? '🕐 Programado' : '🔴 En Vivo'}</span>
                               </div>
-                              <p style={{ fontSize: '0.75rem', color: '#555' }}>🕐 {p.hora}{p.cancha && <> • 📍 {p.cancha}</>}</p>
+                              <p style={{ fontSize: '0.75rem', color: '#555' }}>
+                                {p.fecha ? '📅 ' + diaConFecha(p.fecha) + ' • ' : ''}🕐 {p.hora || 'sin hora asignada'}{p.cancha && <> • 📍 {p.cancha}</>}
+                              </p>
                               <div style={{ display: 'flex', gap: 16, marginTop: 6 }}>
                                 <span style={{ fontSize: '0.72rem', color: hab1 === tot1 && tot1 > 0 ? '#22c55e' : '#f59e0b' }}>
                                   {p.equipo1}: {hab1}/{tot1} habilitados

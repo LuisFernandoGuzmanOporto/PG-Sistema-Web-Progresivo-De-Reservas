@@ -38,7 +38,7 @@ export default function TabEnVivo({ torneoData, navigate }) {
                 <p style={{ fontFamily: 'Bebas Neue', fontSize: '3rem', color: '#f5f5f5', lineHeight: 1 }}>{p.g1} - {p.g2}</p>
                 <p style={{ fontFamily: 'Bebas Neue', fontSize: '1rem', color: '#f5f5f5' }}>{p.equipo2}</p>
               </div>
-              <EventosPartido partido={p} deporte={torneoData.deporte} />
+              <EventosPartido partido={p} deporte={torneoData.deporte} sets={torneoData} />
             </div>
           ))
         )}

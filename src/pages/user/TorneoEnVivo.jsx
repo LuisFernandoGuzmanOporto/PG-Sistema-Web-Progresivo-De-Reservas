@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import Layout from '../../components/layout/Layout'
 import {
   FORMATOS, calcularTabla, marcarClasificados, generarCuadro, resultadosDeLlave,
-  gruposFinalizados, CRITERIOS_DESEMPATE, puntajePorDeporte,
+  gruposFinalizados, criteriosDeDesempate, puntajePorDeporte,
   partidoTercerPuesto, campeonDelTorneo, rankingJugadores, ganadorDeLlave, presentacionDeporte,
   etiquetasDeTabla,
 } from '../../lib/torneo'
@@ -304,7 +304,7 @@ export default function TorneoEnVivo() {
                 </div>
                 {/* Quien anoto y quien vio tarjeta, equipo por equipo */}
                 <div style={{ marginBottom: 14 }}>
-                  <EventosPartido partido={p} deporte={TORNEO.deporte} />
+                  <EventosPartido partido={p} deporte={TORNEO.deporte} sets={TORNEO} />
                 </div>
                 <button onClick={() => compartirWhatsApp(p)}
                   style={{ width: '100%', padding: '8px', background: 'rgba(37,211,102,0.12)', border: '1px solid rgba(37,211,102,0.3)', borderRadius: 10, color: '#25d366', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'Outfit' }}>
@@ -402,7 +402,7 @@ export default function TorneoEnVivo() {
             </p>
             <p style={{ fontSize: '0.72rem', color: '#555', marginBottom: 4 }}>Criterios de desempate, en orden:</p>
             <ol style={{ margin: 0, paddingLeft: 18 }}>
-              {CRITERIOS_DESEMPATE.map((c, i) => (
+              {criteriosDeDesempate(TORNEO.deporte).map((c, i) => (
                 <li key={i} style={{ fontSize: '0.76rem', color: '#888', marginBottom: 2 }}>{c}</li>
               ))}
             </ol>
@@ -621,7 +621,7 @@ export default function TorneoEnVivo() {
                     ) : <div />}
                     {p.estado !== 'programado' && (p.eventos || []).length > 0 && (
                       <div style={{ gridColumn: '1 / -1' }}>
-                        <EventosPartido partido={p} deporte={TORNEO.deporte} compacto />
+                        <EventosPartido partido={p} deporte={TORNEO.deporte} sets={TORNEO} compacto />
                       </div>
                     )}
                   </div>

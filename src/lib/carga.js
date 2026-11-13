@@ -94,7 +94,7 @@ async function traerTodo() {
     supabase.from('equipos').select('*'),
     supabase.from('equipo_jugadores').select(COLUMNAS_JUGADOR).order('dorsal'),
     supabase.from('partidos_torneo').select('*').order('fecha_hora'),
-    supabase.from('eventos_partido').select('*').order('minuto'),
+    supabase.from('eventos_partido').select('*').order('minuto').order('created_at'),
     supabase.from('partidos_espontaneos').select('*'),
     supabase.from('partido_jugadores').select('*'),
     supabase.from('bitacora').select('*').order('created_at', { ascending: false }),
@@ -387,6 +387,18 @@ export async function cargarDatos({ forzar = false } = {}) {
 
     // ── Torneos: equipos, jugadores, partidos y eventos ──────────────────
     const solicitudPorTorneo = new Map((solicitudes.data || []).map(s => [s.torneo_id, s]))
+
+    // Quien no organiza el torneo ni trabaja en el complejo no puede leer la
+    // solicitud de cancha (RLS). Sin ella, el torneo de un cliente se veia
+    // siempre «esperando la aprobacion» y nadie se podia inscribir. La base
+    // tiene una funcion que solo responde si la cancha esta aprobada.
+    const sinSolicitudVisible = (torneos.data || [])
+      .filter(t => t.creador_tipo === 'cliente' && !solicitudPorTorneo.has(t.id))
+    const aprobadas = new Set()
+    await Promise.all(sinSolicitudVisible.map(async t => {
+      const { data } = await supabase.rpc('cancha_aprobada', { t: t.id })
+      if (data === true) aprobadas.add(t.id)
+    }))
     const jugadoresPorEquipo = agrupar(jugadores.data || [], 'equipo_id')
     const equiposPorTorneo   = agrupar(equipos.data || [], 'torneo_id')
     const partidosPorTorneo  = agrupar(partidos.data || [], 'torneo_id')
@@ -431,6 +443,7 @@ export async function cargarDatos({ forzar = false } = {}) {
         tieneGoles: t.deporte === 'Fútbol',
         reglas: t.reglas || [], horarios: t.horarios,
         qrPago: t.qr_pago_url || null,
+        sorteadoEl: t.sorteado_at || null,
         solicitud: solicitudPorTorneo.get(t.id)
           ? { estado: solicitudPorTorneo.get(t.id).estado,
               // Pendiente: cuándo se pidió. Resuelta: cuándo y quién la resolvió
@@ -447,7 +460,7 @@ export async function cargarDatos({ forzar = false } = {}) {
               costoTotal: solicitudPorTorneo.get(t.id).costo_total,
               // La foto del pago de la cancha (migraciones/050)
               comprobante: solicitudPorTorneo.get(t.id).comprobante_url || null }
-          : null,
+          : aprobadas.has(t.id) ? { estado: 'aprobada' } : null,
         grupos: Object.keys(grupos).length ? grupos : null,
 
         equipos: misEquipos.map(e => ({
@@ -485,7 +498,8 @@ export async function cargarDatos({ forzar = false } = {}) {
           // un equipo para contar amarillas y rojas: sin esto llegaban en el
           // orden que quisiera la base y una suspension se podia perder.
           creado: p.created_at,
-          hora: p.fecha_hora ? String(p.fecha_hora).slice(11, 16) : '',
+          // En hora de Bolivia: la base devuelve el instante en UTC
+          hora: horaDeBolivia(p.fecha_hora), fecha: fechaDeBolivia(p.fecha_hora) || null,
           cancha: nombreDeCancha.get(p.cancha_id) || '',
           eventos: (eventosPorPartido[p.id] || []).map(ev => {
             const j = jugadorPorId.get(ev.jugador_equipo_id)
@@ -673,7 +687,7 @@ export async function recargarPartidosDeTorneo(torneoId) {
   const [partidos, eventos] = await Promise.all([
     supabase.from('partidos_torneo').select('*').eq('torneo_id', torneoId),
     supabase.from('eventos_partido').select('*, partidos_torneo!inner(torneo_id)')
-      .eq('partidos_torneo.torneo_id', torneoId),
+      .eq('partidos_torneo.torneo_id', torneoId).order('minuto').order('created_at'),
   ])
   if (partidos.error) return { error: traducirError(partidos.error, 'No se pudo actualizar') }
 
@@ -693,7 +707,7 @@ export async function recargarPartidosDeTorneo(torneoId) {
     pen1: p.penales_a, pen2: p.penales_b, tanda: p.tanda || undefined,
     estado: p.estado, minuto: p.minuto,
     creado: p.created_at,
-    hora: p.fecha_hora ? String(p.fecha_hora).slice(11, 16) : '',
+    hora: horaDeBolivia(p.fecha_hora), fecha: fechaDeBolivia(p.fecha_hora) || null,
     cancha: p.cancha_id ? (torneo.cancha || '') : '',
     eventos: (eventosPorPartido[p.id] || []).map(ev => {
       const j = jugadorPorId.get(ev.jugador_equipo_id)

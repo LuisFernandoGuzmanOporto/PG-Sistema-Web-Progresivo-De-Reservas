@@ -5,7 +5,7 @@ import NoEncontrado from '../../components/NoEncontrado'
 import { etiquetaJugador, calcularTabla, marcarClasificados, generarCuadro,
          gruposFinalizados, estadoTanda, PENALES_SERIE, suspensionesPara,
          amarillasAcumuladas, AMARILLAS_PARA_SUSPENDER,
-         partidoTercerPuesto, campeonDelTorneo, resultadosDeLlave } from '../../lib/torneo'
+         partidoTercerPuesto, campeonDelTorneo, resultadosDeLlave, marcadorPorSets } from '../../lib/torneo'
 import { guardarPartidoTorneo, guardarEventoPartido, borrarEventoPartido,
          asegurarPartidoDeLlave, sumarAlMarcador,
          cerrarTorneo } from '../../lib/guardar'
@@ -577,6 +577,37 @@ export default function TorneoMesa() {
                 </div>
               </div>
 
+              {/* Cómo van los sets: se cuentan desde los puntos anotados */}
+              {(() => {
+                const ms = marcadorPorSets(partido.eventos, partido.equipo1_id,
+                  { puntosPorSet: TORNEO.puntosPorSet, setsParaGanar: TORNEO.setsParaGanar })
+                if (!ms || partido.estado === 'programado') return null
+                return (
+                  <div className="card" style={{ padding: '12px 16px', marginBottom: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '0.8rem', color: '#888' }}>
+                        Sets: <strong style={{ color: '#f5f5f5', fontSize: '1rem' }}>{ms.ganados1} - {ms.ganados2}</strong>
+                      </span>
+                      {!ms.ganador && (
+                        <span style={{ fontSize: '0.8rem', color: '#00BCD4' }}>
+                          Set {ms.setEnJuego}: <strong>{ms.actual.a} - {ms.actual.b}</strong>
+                        </span>
+                      )}
+                    </div>
+                    {ms.sets.length > 0 && (
+                      <p style={{ fontSize: '0.74rem', color: '#666', marginTop: 6 }}>
+                        {ms.sets.map((x, i) => 'Set ' + (i + 1) + ': ' + x.a + '-' + x.b).join(' · ')}
+                      </p>
+                    )}
+                    {ms.ganador && partido.estado === 'en_vivo' && (
+                      <p style={{ fontSize: '0.8rem', color: '#22c55e', fontWeight: 700, marginTop: 8 }}>
+                        ✓ {ms.ganador === 1 ? partido.equipo1 : partido.equipo2} ganó {ms.ganados1}-{ms.ganados2} en sets. Ya puedes finalizar el partido.
+                      </p>
+                    )}
+                  </div>
+                )
+              })()}
+
               {partido.estado === 'programado' && (
                 <button onClick={iniciarPartido} style={{ width: '100%', padding: '14px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)', borderRadius: 12, color: '#ef4444', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', fontFamily: 'Outfit', marginBottom: 12 }}>
                   Iniciar Partido
@@ -643,13 +674,13 @@ export default function TorneoMesa() {
                                 <span style={{ fontSize: '0.8rem', color: '#bbb' }}>
                                   <strong style={{ color: '#f5f5f5' }}>{ev.jugador}</strong>{' — '}
                                   <span style={{ color: col, fontWeight: 700 }}>
-                                    {ev.tipo === 'gol' ? 'GOL' : ev.tipo === 'amarilla' ? 'AMARILLA' : 'ROJA'}
+                                    {ev.tipo === 'gol' ? (config.metricaLabel === 'Goles' ? 'GOL' : 'PUNTO') : ev.tipo === 'amarilla' ? 'AMARILLA' : 'ROJA'}
                                   </span>
                                 </span>
                               </div>
                               <div style={{ textAlign: 'right', flexShrink: 0 }}>
                                 <span style={{ fontSize: '0.7rem', color: '#555' }}>{ev.equipo}</span>
-                                {ev.minuto != null && <span style={{ fontSize: '0.7rem', color: '#ef4444', marginLeft: 8 }}>{ev.minuto}&apos;</span>}
+                                {config.tieneMinuto && ev.minuto != null && <span style={{ fontSize: '0.7rem', color: '#ef4444', marginLeft: 8 }}>{ev.minuto}&apos;</span>}
                               </div>
                             </div>
                           )

@@ -116,6 +116,17 @@ export const CRITERIOS_DESEMPATE = [
   'Resultado del enfrentamiento directo',
 ]
 
+/** Los mismos criterios, con lo que se cuenta en ese deporte (goles, puntos, sets). */
+export const criteriosDeDesempate = (deporte) => {
+  const c = etiquetasDeTabla(deporte).cuenta
+  return [
+    'Mayor cantidad de puntos en la tabla',
+    'Mejor diferencia de ' + c,
+    'Mayor cantidad de ' + c + ' a favor',
+    'Resultado del enfrentamiento directo',
+  ]
+}
+
 // ── Sorteo de grupos ───────────────────────────────────────────────────────
 // Reparte al azar los equipos aprobados entre la cantidad de grupos indicada.
 export function sortearGrupos(equipos, numGrupos) {
@@ -593,3 +604,68 @@ export const presentacionDeporte = (deporte) => PRESENTACION[deporte] || PRESENT
 /** Icono de un evento del partido segun el deporte: ⚽ / 🏀 / 🟨 / 🟥 */
 export const iconoEvento = (tipo, deporte) =>
   tipo === 'amarilla' ? '🟨' : tipo === 'roja' ? '🟥' : presentacionDeporte(deporte).icono
+
+// ── Cuándo y dónde se juega cada partido ───────────────────────────────────
+/**
+ * Pone fecha, hora y cancha a los partidos del fixture, usando lo que el
+ * torneo tiene reservado: sus jornadas (fechas), su horario y su cancha.
+ *
+ * Antes cada partido salía a las 09:00 en «Cancha Auxiliar», una cancha que
+ * no existe, aunque el torneo se jugara de 15:00 a 17:00 en la cancha del
+ * complejo. Y nada de eso se guardaba: al recargar, el partido no tenía hora.
+ *
+ * Cada partido ocupa una hora. Se llenan las horas en orden, jornada tras
+ * jornada; si no alcanzan, los que sobran quedan sin horario y se avisa.
+ */
+export function programarPartidos(partidos, { fechas = [], horaInicio, horaFin, cancha } = {}) {
+  const h = (t) => Number(String(t || '').slice(0, 2))
+  const turnos = []
+  if (horaInicio && horaFin) {
+    for (const fecha of fechas) {
+      for (let x = h(horaInicio); x + 1 <= (horaFin === '00:00' ? 24 : h(horaFin)); x++) {
+        turnos.push({ fecha, hora: String(x).padStart(2, '0') + ':00' })
+      }
+    }
+  }
+  let sinHorario = 0
+  const programados = partidos.map((p, i) => {
+    const t = turnos[i]
+    if (!t) sinHorario++
+    return { ...p, fecha: t?.fecha || null, hora: t?.hora || '', cancha: cancha || p.cancha || '' }
+  })
+  return { partidos: programados, sinHorario, turnos: turnos.length }
+}
+
+/** '2026-11-27' y '15:00' -> el instante en Bolivia (UTC-4, sin horario de verano). */
+export const instanteBolivia = (fecha, hora) =>
+  fecha && hora ? `${fecha}T${hora}:00-04:00` : null
+
+// ── Sets, contados a partir de los puntos ──────────────────────────────────
+/**
+ * En los deportes por sets (wally, vóley, pádel) la mesa anota punto por
+ * punto. Recorriendo esos puntos en orden se sabe cómo va cada set: un set
+ * se gana al llegar a `puntosPorSet` con dos de ventaja, y el partido al
+ * ganar `setsParaGanar` sets.
+ *
+ * Antes la mesa solo sumaba puntos: con 15-9 seguía contando como si fuera un
+ * solo marcador, aunque arriba decía «set a 15, gana el que llegue a 2 sets».
+ */
+export function marcadorPorSets(eventos, equipo1Id, { puntosPorSet, setsParaGanar } = {}) {
+  const meta = Number(puntosPorSet) || 0
+  const necesarios = Number(setsParaGanar) || 0
+  if (!meta || !necesarios) return null
+  const sets = []          // [{ a, b }] los ya cerrados
+  let a = 0, b = 0, ganados1 = 0, ganados2 = 0, ganador = null
+  for (const ev of eventos || []) {
+    if (ev.tipo !== 'gol' || ganador) continue
+    if (String(ev.equipo_id) === String(equipo1Id)) a++; else b++
+    if ((a >= meta || b >= meta) && Math.abs(a - b) >= 2) {
+      sets.push({ a, b })
+      if (a > b) ganados1++; else ganados2++
+      a = 0; b = 0
+      if (ganados1 >= necesarios) ganador = 1
+      else if (ganados2 >= necesarios) ganador = 2
+    }
+  }
+  return { sets, actual: { a, b }, ganados1, ganados2, ganador, setEnJuego: sets.length + 1 }
+}
