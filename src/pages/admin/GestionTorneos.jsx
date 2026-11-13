@@ -294,7 +294,7 @@ export default function GestionTorneos() {
             Los torneos que organizas y las solicitudes de cancha de los clientes
           </p>
         </div>
-        <button className="btn btn-primary" onClick={abrirCrear}>+ Crear Torneo</button>
+        <button data-escribe className="btn btn-primary" onClick={abrirCrear}>+ Crear Torneo</button>
       </div>
 
       {aviso && (
@@ -319,7 +319,7 @@ export default function GestionTorneos() {
             <div className="empty-state-icon">🏆</div>
             <h3>No organizas torneos aún</h3>
             <p>Crea tu primer torneo y empieza a recibir inscripciones</p>
-            <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={abrirCrear}>+ Crear Torneo</button>
+            <button data-escribe className="btn btn-primary" style={{ marginTop: 16 }} onClick={abrirCrear}>+ Crear Torneo</button>
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
@@ -353,7 +353,7 @@ export default function GestionTorneos() {
                     {t.estado === 'en_curso' && (
                       <>
                         <button className="btn btn-outline btn-sm" onClick={() => navigate('/app/torneos/' + t.id + '/en-vivo')}>🔴 En vivo</button>
-                        <button className="btn btn-primary btn-sm" onClick={() => navigate('/app/torneos/' + t.id + '/mesa')}>⚙️ Mesa</button>
+                        <button data-escribe className="btn btn-primary btn-sm" onClick={() => navigate('/app/torneos/' + t.id + '/mesa')}>⚙️ Mesa</button>
                       </>
                     )}
                   </div>
@@ -420,8 +420,8 @@ export default function GestionTorneos() {
 
                     {sol.estado === 'pendiente' ? (
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        <button className="btn btn-primary btn-sm" onClick={() => aprobar(t)}>✓ Aprobar la cancha</button>
-                        <button className="btn btn-outline btn-sm" onClick={() => { setRechaz(t); setMotivo('') }}>Rechazar</button>
+                        <button data-escribe className="btn btn-primary btn-sm" onClick={() => aprobar(t)}>✓ Aprobar la cancha</button>
+                        <button data-escribe className="btn btn-outline btn-sm" onClick={() => { setRechaz(t); setMotivo('') }}>Rechazar</button>
                         <button className="btn btn-ghost btn-sm" onClick={() => navigate('/app/torneos/' + t.id)}>Ver el torneo</button>
                       </div>
                     ) : (

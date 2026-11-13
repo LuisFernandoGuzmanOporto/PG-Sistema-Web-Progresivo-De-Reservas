@@ -640,3 +640,30 @@ body { padding-bottom: env(safe-area-inset-bottom); }
 /* Nada de desplazamiento horizontal de toda la pagina por un elemento suelto */
 html, body { overflow-x: hidden; max-width: 100%; }
 img, video { max-width: 100%; }
+
+/* ── Super Admin mirando un complejo: solo lectura ──────────────────────────
+   Los botones que guardan, cambian o borran llevan data-escribe. Aquí se
+   esconden; y aunque alguien los forzara, la base (RLS) no le deja escribir. */
+.solo-lectura [data-escribe] { display: none !important; }
+
+.aviso-solo-lectura {
+  display: flex; flex-wrap: wrap; gap: 10px;
+  align-items: center; justify-content: space-between;
+  margin-bottom: 20px; padding: 10px 14px; border-radius: 10px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #f5c46b; font-size: 0.84rem;
+}
+.aviso-solo-lectura strong { color: #f59e0b; }
+
+/* Consultar un horario (Super Admin): cada campo con su nombre arriba */
+.campo-consulta {
+  display: flex; flex-direction: column; gap: 6px;
+  color: #888; font-size: 0.76rem; font-weight: 600;
+}
+
+/* Al imprimir una consulta va solo el contenido, sin menú ni barra */
+@media print {
+  .navbar, aside, .aviso-solo-lectura { display: none !important; }
+  main { margin-left: 0 !important; padding-top: 0 !important; }
+}

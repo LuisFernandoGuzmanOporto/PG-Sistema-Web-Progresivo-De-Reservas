@@ -205,7 +205,7 @@ export default function GestionRecompensas() {
           <h1 style={{ fontFamily: 'Bebas Neue', fontSize: '2rem', color: '#f5f5f5' }}>⭐ Gestión de Recompensas</h1>
           <p style={{ color: '#666', fontSize: '0.85rem' }}>Define recompensas y revisa los canjes realizados por los usuarios</p>
         </div>
-        <button className="btn btn-primary" onClick={abrirCrear}>+ Nueva Recompensa</button>
+        <button data-escribe className="btn btn-primary" onClick={abrirCrear}>+ Nueva Recompensa</button>
       </div>
 
       {/* ── Stats ── */}
@@ -283,13 +283,13 @@ export default function GestionRecompensas() {
                 </div>
 
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button className="btn btn-outline btn-sm" style={{ justifyContent: 'center', flex: 1 }} onClick={() => toggleActivo(r.id)}>
+                  <button data-escribe className="btn btn-outline btn-sm" style={{ justifyContent: 'center', flex: 1 }} onClick={() => toggleActivo(r.id)}>
                     {r.activo ? '⏸ Pausar' : '▶ Activar'}
                   </button>
-                  <button className="btn btn-outline btn-sm" style={{ justifyContent: 'center', flex: 1 }} onClick={() => abrirEditar(r)}>
+                  <button data-escribe className="btn btn-outline btn-sm" style={{ justifyContent: 'center', flex: 1 }} onClick={() => abrirEditar(r)}>
                     ✏️ Editar
                   </button>
-                  <button className="btn btn-sm" style={{ background: 'rgba(239,68,68,0.12)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)', padding: '6px 10px' }} onClick={() => setShowEliminar(r)}>
+                  <button data-escribe className="btn btn-sm" style={{ background: 'rgba(239,68,68,0.12)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)', padding: '6px 10px' }} onClick={() => setShowEliminar(r)}>
                     🗑
                   </button>
                 </div>
@@ -297,7 +297,7 @@ export default function GestionRecompensas() {
             )
           })}
 
-          <div
+          <div data-escribe
             className="card"
             style={{ padding: 20, border: '2px dashed #2a2a2a', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', minHeight: 200 }}
             onClick={abrirCrear}
@@ -414,7 +414,7 @@ export default function GestionRecompensas() {
                           <span style={{ fontSize: '0.78rem', color: '#888', whiteSpace: 'nowrap' }}>{queSeHizo(c)}</span>
                         )}
                         {c.estadoCodigo === 'disponible' && (
-                          <button
+                          <button data-escribe
                             className="btn btn-sm"
                             style={{ background: 'rgba(34,197,94,0.12)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.3)', padding: '4px 12px', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
                             onClick={() => marcarEntregado(c.id)}

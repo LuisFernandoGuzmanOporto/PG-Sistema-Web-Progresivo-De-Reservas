@@ -41,7 +41,7 @@ const CSP = [
   // comprobantes, escudos, fotos de complejos y de perfil), los mosaicos del
   // mapa y la foto de la cuenta de Google de quien entra con Google.
   // 'data:' y 'blob:' son para las vistas previas antes de subir un archivo.
-  "img-src 'self' data: blob: https://*.supabase.co https://*.tile.openstreetmap.org https://*.googleusercontent.com",
+  "img-src 'self' data: blob: https://*.supabase.co https://*.tile.openstreetmap.org https://tile.openstreetmap.org https://*.googleusercontent.com",
 
   // A donde puede hablar: solo a Supabase. 'wss' es la conexion viva que usa
   // para avisar de cambios.

@@ -40,6 +40,10 @@ const SECCIONES = [
     + 'inscripciones y comprobantes que se hacen en sus canchas. Tu nombre aparece en los partidos y torneos en '
     + 'los que participas, y tus calificaciones y comentarios se ven en la ficha del complejo. El super '
     + 'administrador de la plataforma puede ver las cuentas para aprobar complejos y atender problemas.',
+    'Además, el super administrador puede consultar, sin modificarlas, las reservas, inscripciones, comprobantes '
+    + 'y datos de contacto que se registran en cada complejo, y quién del personal las atendió. Lo hace solo '
+    + 'para atender reclamos o incidentes (por ejemplo, un accidente en una cancha) y para supervisar que la '
+    + 'plataforma funcione bien.',
     'No compartimos tus datos con otras empresas, salvo con los servicios técnicos que hacen funcionar la '
     + 'plataforma y que se describen a continuación.',
   ]],

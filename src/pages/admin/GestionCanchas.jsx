@@ -188,7 +188,7 @@ export function GestionCanchas() {
           <h1 style={{ fontFamily: 'Bebas Neue', fontSize: '2rem', color: '#f5f5f5' }}>🏟️ Mis Canchas</h1>
           <p style={{ color: '#666', fontSize: '0.85rem' }}>Gestiona las canchas de {empresa?.nombre}</p>
         </div>
-        <button className="btn btn-primary" onClick={abrirNueva}>+ Nueva Cancha</button>
+        <button data-escribe className="btn btn-primary" onClick={abrirNueva}>+ Nueva Cancha</button>
       </div>
 
       {aviso && (
@@ -215,8 +215,8 @@ export function GestionCanchas() {
               📅 {reservasHoy(c.nombre)} {reservasHoy(c.nombre) === 1 ? 'reserva' : 'reservas'} hoy
             </p>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button className="btn btn-outline btn-sm w-full" style={{ justifyContent: 'center' }} onClick={() => abrirEdicion(c)}>Editar</button>
-              <button className="btn btn-sm w-full" onClick={() => pedirAlternar(c)} style={{ justifyContent: 'center', background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8 }}>
+              <button data-escribe className="btn btn-outline btn-sm w-full" style={{ justifyContent: 'center' }} onClick={() => abrirEdicion(c)}>Editar</button>
+              <button data-escribe className="btn btn-sm w-full" onClick={() => pedirAlternar(c)} style={{ justifyContent: 'center', background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8 }}>
                 {c.disponible ? 'Desactivar' : 'Activar'}
               </button>
             </div>
@@ -224,7 +224,7 @@ export function GestionCanchas() {
         ))}
 
         {/* Add cancha card */}
-        <div className="card" style={{ padding: 20, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 200, cursor: 'pointer', border: '2px dashed #2a2a2a' }} onClick={abrirNueva}>
+        <div data-escribe className="card" style={{ padding: 20, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 200, cursor: 'pointer', border: '2px dashed #2a2a2a' }} onClick={abrirNueva}>
           <span style={{ fontSize: '2rem', marginBottom: 8, opacity: 0.4 }}>+</span>
           <p style={{ color: '#555', fontSize: '0.9rem' }}>Agregar Cancha</p>
         </div>

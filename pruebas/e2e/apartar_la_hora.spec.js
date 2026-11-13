@@ -72,8 +72,12 @@ test('PE-19 · Mientras Juan paga, Marco ve esa hora apartada y no puede elegirl
   // Juan suelta la hora al cerrar el pago
   await juan.page.getByRole('button', { name: 'Soltar la hora' }).click()
   // (el botón de confirmar aparece arriba, en el aviso «¿Soltar la hora?»)
+  // La pantalla se cierra primero y después avisa a la base: se espera esa
+  // respuesta antes de cerrar la ventana, para que la hora quede libre de verdad
+  const soltada = juan.page.waitForResponse(r => r.url().includes('/rpc/soltar_apartado'))
   await juan.page.getByRole('button', { name: 'Soltar la hora' }).first().click()
   await expect(juan.page.getByText('Pago y Comprobante')).toBeHidden()
+  expect((await soltada).ok()).toBe(true)
   await juan.context.close()
   await marco.context.close()
 })

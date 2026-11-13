@@ -10,7 +10,7 @@ import AvisoFaltantes from '../components/AvisoFaltantes'
 export default function LoginPage() {
   const navigate = useNavigate()
   const lugar    = useLocation()
-  const { entrar, registrarse, autenticado, perfil, cargando } = useAuth()
+  const { entrar, registrarse, autenticado, perfil, cargando, accesoNegado } = useAuth()
 
   // Al volver de Google, el navegador aterriza en esta pantalla con la sesion
   // ya establecida. Sin esto se quedaba mirando el formulario de login aunque
@@ -23,6 +23,9 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [avisoConfirmar, setAvisoConfirmar] = useState(null)
   const [errorServidor, setErrorServidor] = useState(null)
+  // El complejo todavía no se aprobó: no es un error de lo que escribió
+  const [avisoAcceso, setAvisoAcceso] = useState(null)
+  const aviso = avisoAcceso || accesoNegado
   const [tab, setTab] = useState('login') // login | register
 
   // Formulario de email: campos controlados y validados
@@ -76,6 +79,7 @@ export default function LoginPage() {
   const enviar = async () => {
     setEnv(true)
     setErrorServidor(null)
+    setAvisoAcceso(null)
     const e = validar()
     setError(e)
     if (Object.keys(e).length > 0) { irAlPrimerError(e, ['nombre', 'email', 'password', 'password2']); return }
@@ -86,6 +90,7 @@ export default function LoginPage() {
       : await registrarse(form.email, form.password, form.nombre.trim())
 
     if (r.error) { setErrorServidor(r.error); setLoading(false); return }
+    if (r.aviso) { setAvisoAcceso(r.aviso); setLoading(false); return }
 
     // La cuenta quedo creada pero el proyecto pide confirmar el correo: no hay
     // sesion todavia, asi que no tiene sentido llevarlo a su panel.
@@ -279,6 +284,14 @@ export default function LoginPage() {
                   Te enviamos un correo a <strong style={{ color: '#f5f5f5' }}>{avisoConfirmar}</strong>.
                   Confirmalo y después inicia sesión aquí mismo.
                 </p>
+              </div>
+            )}
+
+            {aviso && tab === 'login' && (
+              <div role="status" style={{ padding: '12px 14px', marginBottom: 12, borderRadius: 10,
+                background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.35)' }}>
+                <p style={{ color: '#f59e0b', fontSize: '0.84rem', fontWeight: 700, marginBottom: 4 }}>⏳ Todavía no puedes entrar</p>
+                <p style={{ color: '#ccc', fontSize: '0.82rem', lineHeight: 1.5 }}>{aviso}</p>
               </div>
             )}
 

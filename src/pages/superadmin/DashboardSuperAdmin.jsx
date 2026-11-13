@@ -110,6 +110,9 @@ export default function DashboardSuperAdmin() {
               {[
                 { label: '🏢 Ver Empresas', path: '/superadmin/empresas' },
                 { label: '👥 Ver Usuarios', path: '/superadmin/usuarios' },
+                { label: '🔎 Ver un complejo', path: '/superadmin/complejo' },
+                { label: '🔍 Consultar un horario', path: '/superadmin/horario' },
+                { label: '📈 Reportes', path: '/superadmin/reportes' },
               ].map(item => (
                 <button key={item.label} onClick={() => navigate(item.path)} className="btn btn-outline" style={{ justifyContent: 'flex-start', fontSize: '0.85rem' }}>{item.label}</button>
               ))}

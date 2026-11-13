@@ -233,7 +233,7 @@ export function GestionReservas() {
                       {r.torneo ? (
                         <span style={{ color: '#555', fontSize: '0.75rem' }}>Cancha tomada</span>
                       ) : r.estado === 'pendiente' ? (
-                        <div style={{ display: 'flex', gap: 6 }}>
+                        <div data-escribe style={{ display: 'flex', gap: 6 }}>
                           <button className="btn btn-primary btn-sm" onClick={() => resolver(r, 'confirmada')}>✓ Aprobar</button>
                           <button className="btn btn-outline btn-sm" onClick={() => resolver(r, 'rechazada')}>✕</button>
                         </div>
@@ -292,7 +292,7 @@ export function GestionReservas() {
               </p>
             )}
             {comprobante.estado === 'pendiente' && (
-              <div style={{ display: 'flex', gap: 10 }}>
+              <div data-escribe style={{ display: 'flex', gap: 10 }}>
                 <button className="btn btn-outline w-full" style={{ justifyContent: 'center' }} onClick={() => resolver(comprobante, 'rechazada')}>Rechazar</button>
                 <button className="btn btn-primary w-full" style={{ justifyContent: 'center' }} onClick={() => resolver(comprobante, 'confirmada')}>Confirmar pago</button>
               </div>

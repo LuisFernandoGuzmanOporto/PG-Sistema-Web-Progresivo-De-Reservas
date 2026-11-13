@@ -16,6 +16,7 @@ import './styles/globals.css'
 import { AuthProvider, RutaProtegida } from './lib/auth'
 import SiAlgoFalla from './components/SiAlgoFalla'
 import PaginaInexistente from './components/PaginaInexistente'
+import ComplejoElegido from './components/ComplejoElegido'
 
 // Pages
 import LandingPage from './pages/LandingPage'
@@ -51,6 +52,13 @@ const GestionCalificaciones = lazy(() => import('./pages/admin/GestionCalificaci
 const DashboardSuperAdmin = lazy(() => import('./pages/superadmin/DashboardSuperAdmin'))
 const GestionEmpresas = lazy(() => import('./pages/superadmin/GestionEmpresas'))
 const GestionUsuarios = lazy(() => import('./pages/superadmin/GestionUsuarios'))
+const ElegirComplejo = lazy(() => import('./pages/superadmin/ElegirComplejo'))
+const ReservasGlobales = lazy(() => import('./pages/superadmin/ReservasGlobales'))
+const TorneosGlobales = lazy(() => import('./pages/superadmin/TorneosGlobales'))
+const ConsultarHorario = lazy(() => import('./pages/superadmin/ConsultarHorario'))
+const ResenasGlobales = lazy(() => import('./pages/superadmin/ResenasGlobales'))
+const BitacoraGlobal = lazy(() => import('./pages/superadmin/BitacoraGlobal'))
+const Reportes = lazy(() => import('./pages/superadmin/Reportes'))
 
 /** Lo que se ve el instante que tarda en llegar el archivo de la pantalla. */
 const Cargando = () => (
@@ -92,27 +100,28 @@ export default function App() {
           {/* La reserva se hace en el calendario de cada complejo */}
           <Route path="/app/reservas" element={<Navigate to="/app/inicio" replace />} />
           <Route path="/app/torneos" element={<RutaProtegida roles={['cliente', 'admin_empresa', 'empleado']}><Torneos /></RutaProtegida>} />
-          <Route path="/app/torneos/:id" element={<RutaProtegida roles={['cliente', 'admin_empresa', 'empleado']}><TorneoDetalle /></RutaProtegida>} />
+          <Route path="/app/torneos/:id" element={<RutaProtegida roles={['cliente', 'admin_empresa', 'empleado', 'superadmin']}><TorneoDetalle /></RutaProtegida>} />
           <Route path="/app/torneos/:id/inscribir" element={<RutaProtegida roles={['cliente', 'admin_empresa', 'empleado']}><InscribirEquipo /></RutaProtegida>} />
-          <Route path="/app/torneos/:id/en-vivo" element={<RutaProtegida roles={['cliente', 'admin_empresa', 'empleado']}><TorneoEnVivo /></RutaProtegida>} />
+          <Route path="/app/torneos/:id/en-vivo" element={<RutaProtegida roles={['cliente', 'admin_empresa', 'empleado', 'superadmin']}><TorneoEnVivo /></RutaProtegida>} />
           <Route path="/app/torneos/:id/mesa" element={<RutaProtegida roles={['cliente', 'admin_empresa', 'empleado']}><TorneoMesa /></RutaProtegida>} />
           <Route path="/app/perfil" element={<RutaProtegida roles={['cliente']}><MiPerfil /></RutaProtegida>} />
           <Route path="/app/recompensas" element={<RutaProtegida roles={['cliente']}><Recompensas /></RutaProtegida>} />
           <Route path="/app/entrenamientos" element={<RutaProtegida roles={['cliente']}><Entrenamientos /></RutaProtegida>} />
 
-          {/* Admin de empresa */}
+          {/* Admin de empresa. El super administrador también entra, a mirar el
+              complejo que eligió, sin poder cambiar nada */}
           {/* La cuenta propia: el cliente ya tiene la suya en /app/perfil */}
           <Route path="/mi-cuenta" element={<RutaProtegida roles={['admin_empresa', 'empleado', 'superadmin']}><MiCuenta /></RutaProtegida>} />
 
-          <Route path="/admin/dashboard" element={<RutaProtegida roles={['admin_empresa']}><DashboardAdmin /></RutaProtegida>} />
-          <Route path="/admin/canchas" element={<RutaProtegida roles={['admin_empresa']}><GestionCanchas /></RutaProtegida>} />
-          <Route path="/admin/reservas" element={<RutaProtegida roles={['admin_empresa']}><GestionReservas /></RutaProtegida>} />
-          <Route path="/admin/empleados" element={<RutaProtegida roles={['admin_empresa']}><GestionEmpleados /></RutaProtegida>} />
-          <Route path="/admin/entrenadores" element={<RutaProtegida roles={['admin_empresa']}><GestionEntrenadores /></RutaProtegida>} />
-          <Route path="/admin/torneos" element={<RutaProtegida roles={['admin_empresa']}><GestionTorneos /></RutaProtegida>} />
-          <Route path="/admin/entrenamientos" element={<RutaProtegida roles={['admin_empresa']}><GestionEntrenamientos /></RutaProtegida>} />
-          <Route path="/admin/recompensas" element={<RutaProtegida roles={['admin_empresa']}><GestionRecompensas /></RutaProtegida>} />
-          <Route path="/admin/calificaciones" element={<RutaProtegida roles={['admin_empresa']}><GestionCalificaciones /></RutaProtegida>} />
+          <Route path="/admin/dashboard" element={<RutaProtegida roles={['admin_empresa', 'superadmin']}><ComplejoElegido><DashboardAdmin /></ComplejoElegido></RutaProtegida>} />
+          <Route path="/admin/canchas" element={<RutaProtegida roles={['admin_empresa', 'superadmin']}><ComplejoElegido><GestionCanchas /></ComplejoElegido></RutaProtegida>} />
+          <Route path="/admin/reservas" element={<RutaProtegida roles={['admin_empresa', 'superadmin']}><ComplejoElegido><GestionReservas /></ComplejoElegido></RutaProtegida>} />
+          <Route path="/admin/empleados" element={<RutaProtegida roles={['admin_empresa', 'superadmin']}><ComplejoElegido><GestionEmpleados /></ComplejoElegido></RutaProtegida>} />
+          <Route path="/admin/entrenadores" element={<RutaProtegida roles={['admin_empresa', 'superadmin']}><ComplejoElegido><GestionEntrenadores /></ComplejoElegido></RutaProtegida>} />
+          <Route path="/admin/torneos" element={<RutaProtegida roles={['admin_empresa', 'superadmin']}><ComplejoElegido><GestionTorneos /></ComplejoElegido></RutaProtegida>} />
+          <Route path="/admin/entrenamientos" element={<RutaProtegida roles={['admin_empresa', 'superadmin']}><ComplejoElegido><GestionEntrenamientos /></ComplejoElegido></RutaProtegida>} />
+          <Route path="/admin/recompensas" element={<RutaProtegida roles={['admin_empresa', 'superadmin']}><ComplejoElegido><GestionRecompensas /></ComplejoElegido></RutaProtegida>} />
+          <Route path="/admin/calificaciones" element={<RutaProtegida roles={['admin_empresa', 'superadmin']}><ComplejoElegido><GestionCalificaciones /></ComplejoElegido></RutaProtegida>} />
 
           {/* Empleado del complejo */}
           <Route path="/empleado/panel" element={<RutaProtegida roles={['empleado']}><PanelEmpleado /></RutaProtegida>} />
@@ -121,6 +130,14 @@ export default function App() {
           <Route path="/superadmin/dashboard" element={<RutaProtegida roles={['superadmin']}><DashboardSuperAdmin /></RutaProtegida>} />
           <Route path="/superadmin/empresas" element={<RutaProtegida roles={['superadmin']}><GestionEmpresas /></RutaProtegida>} />
           <Route path="/superadmin/usuarios" element={<RutaProtegida roles={['superadmin']}><GestionUsuarios /></RutaProtegida>} />
+          {/* Lo de todos los complejos juntos, y «Ver un complejo» (solo lectura) */}
+          <Route path="/superadmin/complejo" element={<RutaProtegida roles={['superadmin']}><ElegirComplejo /></RutaProtegida>} />
+          <Route path="/superadmin/reservas" element={<RutaProtegida roles={['superadmin']}><ReservasGlobales /></RutaProtegida>} />
+          <Route path="/superadmin/torneos" element={<RutaProtegida roles={['superadmin']}><TorneosGlobales /></RutaProtegida>} />
+          <Route path="/superadmin/horario" element={<RutaProtegida roles={['superadmin']}><ConsultarHorario /></RutaProtegida>} />
+          <Route path="/superadmin/resenas" element={<RutaProtegida roles={['superadmin']}><ResenasGlobales /></RutaProtegida>} />
+          <Route path="/superadmin/bitacora" element={<RutaProtegida roles={['superadmin']}><BitacoraGlobal /></RutaProtegida>} />
+          <Route path="/superadmin/reportes" element={<RutaProtegida roles={['superadmin']}><Reportes /></RutaProtegida>} />
 
           {/* Una direccion que no existe se explica; antes te mandaba en
               silencio a la pagina de bienvenida */}

@@ -12,7 +12,7 @@ import { useNavigate } from 'react-router-dom'
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const CORREO_SOPORTE = 'vicholucho8@gmail.com'
-export const ACTUALIZADA = '20 de octubre de 2026'
+export const ACTUALIZADA = '12 de noviembre de 2026'
 
 export const Correo = () => (
   <a href={`mailto:${CORREO_SOPORTE}`} style={{ color: '#00BCD4' }}>{CORREO_SOPORTE}</a>

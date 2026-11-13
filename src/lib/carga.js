@@ -159,7 +159,9 @@ export async function cargarDatos({ forzar = false } = {}) {
         // Las mismas horas por separado, para revisar que algo quede adentro
         apertura: hora(e.horario_inicio), cierre: hora(e.horario_fin),
         deportes: sus,
-        lat: Number(e.lat), lng: Number(e.lng), referencia: e.referencia,
+        // Sin ubicación queda null (antes Number(null) daba 0: un punto en el mar)
+        lat: e.lat == null ? null : Number(e.lat), lng: e.lng == null ? null : Number(e.lng),
+        referencia: e.referencia,
         // Rutas dentro del deposito de archivos, no direcciones completas:
         // la direccion se arma al mostrarlas (src/lib/archivos.js)
         qrPago: e.qr_pago_url || null,
@@ -364,6 +366,9 @@ export async function cargarDatos({ forzar = false } = {}) {
 
     reemplazar(D.USUARIOS, (usuarios.data || []).map(u => ({
       id: u.id, nombre: u.nombre, email: u.correo, rol: u.rol,
+      // Los ve solo el super administrador (el detalle de cada complejo)
+      telefono: u.telefono || null, ciudad: u.ciudad || null,
+      actualizado: u.updated_at ? fechaCorta(fechaDeBolivia(u.updated_at)) : null,
       puntos: u.puntos ?? 0, foto: u.avatar_url || null,
       reservas: (reservas.data || []).filter(r => r.cliente_id === u.id).length,
       estado: u.activo ? 'activo' : 'suspendido',
@@ -514,6 +519,8 @@ export async function cargarDatos({ forzar = false } = {}) {
         empleado: b.actor_nombre, tipo: b.tipo, accion: b.accion, detalle: b.detalle,
         fecha: fechaCorta(fechaDeBolivia(b.created_at)),
         hora: horaDeBolivia(b.created_at),
+        // El día sin formatear, para buscar qué pasó en una fecha (Super Admin)
+        fechaISO: fechaDeBolivia(b.created_at),
       }
     }))
 

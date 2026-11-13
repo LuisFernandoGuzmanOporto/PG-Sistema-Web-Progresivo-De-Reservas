@@ -1,7 +1,55 @@
 import { useState } from 'react'
 import Layout from '../../components/layout/Layout'
-import { EMPRESAS, canchasDeEmpresa, empresaPorId } from '../../lib/datos'
+import { EMPRESAS, canchasDeEmpresa, empresaPorId, todosLosUsuarios, empleadosDeEmpresa, mismo } from '../../lib/datos'
+import Avatar from '../../components/Avatar'
 import { cambiarEstadoEmpresa } from '../../lib/guardar'
+import { urlPublica } from '../../lib/archivos'
+import { MapaDeUbicacion } from '../../components/SelectorUbicacion'
+
+// ── Piezas del detalle de una solicitud ─────────────────────────────────────
+
+function Bloque({ titulo, children }) {
+  return (
+    <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: '14px 16px', marginBottom: 14 }}>
+      <p style={{ fontSize: '0.68rem', color: '#555', textTransform: 'uppercase', letterSpacing: '0.07em', fontWeight: 700, marginBottom: 10 }}>{titulo}</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>{children}</div>
+    </div>
+  )
+}
+
+/** Un dato; si lo dejó vacío se dice «No lo indicó» en vez de dejar el hueco. */
+function Fila({ k, v, color = '#ccc' }) {
+  const vacio = v == null || String(v).trim() === ''
+  return (
+    <div style={{ display: 'flex', gap: 12, fontSize: '0.84rem' }}>
+      <span style={{ color: '#555', minWidth: 84, flexShrink: 0 }}>{k}</span>
+      <span style={{ color: vacio ? '#666' : color, fontWeight: vacio ? 400 : 500, fontStyle: vacio ? 'italic' : 'normal', wordBreak: 'break-word' }}>
+        {vacio ? 'No lo indicó' : v}
+      </span>
+    </div>
+  )
+}
+
+/** Una imagen subida, que se abre en grande; o el aviso de que no la subió. */
+function Imagen({ titulo, ruta, falta, contener = false }) {
+  const url = urlPublica(ruta)
+  return (
+    <div>
+      <p style={{ fontSize: '0.7rem', color: '#666', marginBottom: 5 }}>{titulo}</p>
+      {url ? (
+        <a href={url} target="_blank" rel="noopener noreferrer" title="Ver en grande">
+          <img src={url} alt={titulo} style={{ width: '100%', height: 130, objectFit: contener ? 'contain' : 'cover',
+            background: contener ? '#fff' : '#111', borderRadius: 8, border: '1px solid #2a2a2a', display: 'block' }} />
+        </a>
+      ) : (
+        <div style={{ height: 130, borderRadius: 8, border: '1px dashed #333', display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center', gap: 4, color: '#666', fontSize: '0.76rem', textAlign: 'center', padding: 8 }}>
+          <span style={{ fontSize: '1.4rem', opacity: 0.5 }}>🖼️</span>{falta}
+        </div>
+      )}
+    </div>
+  )
+}
 
 const ESTADO_STYLE = {
   activo:     { bg: 'rgba(34,197,94,0.12)',   color: '#22c55e', label: 'Activo'     },
@@ -198,77 +246,85 @@ export default function GestionEmpresas() {
       {/* ══ MODAL: DETALLE EMPRESA ══════════════════════════════════════ */}
       {detalle && (
         <div className="modal-overlay" onClick={() => setDetalle(null)}>
-          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 520 }}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 720 }}>
             <div className="modal-header">
               <h2 className="modal-title">Solicitud — {detalle.nombre}</h2>
               <button className="btn btn-ghost btn-sm" onClick={() => setDetalle(null)}>✕</button>
             </div>
 
-            {/* Estado */}
-            <div style={{ marginBottom: 20 }}>
+            {/* Estado y cuándo lo pidió */}
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 18 }}>
               {(() => { const est = ESTADO_STYLE[detalle.estado] || ESTADO_STYLE.suspendido; return (
                 <span style={{ padding: '4px 12px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 700, background: est.bg, color: est.color }}>{est.label}</span>
               )})()}
+              <span style={{ color: '#666', fontSize: '0.8rem' }}>Solicitud del {detalle.fecha}</span>
+              {detalle.estado === 'activo' && (
+                <span style={{ color: '#666', fontSize: '0.8rem' }}>· {detalle.canchas} cancha{detalle.canchas === 1 ? '' : 's'} publicada{detalle.canchas === 1 ? '' : 's'}</span>
+              )}
             </div>
 
-            {/* Fotos si existen */}
-            {(detalle.logoUrl || detalle.fotoUrl) && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 18 }}>
-                {detalle.logoUrl && (
-                  <div>
-                    <p style={{ fontSize: '0.68rem', color: '#555', marginBottom: 4 }}>Logo</p>
-                    <img src={detalle.logoUrl} alt="logo" style={{ width: '100%', height: 100, objectFit: 'cover', borderRadius: 8, border: '1px solid #2a2a2a' }} />
-                  </div>
-                )}
-                {detalle.fotoUrl && (
-                  <div>
-                    <p style={{ fontSize: '0.68rem', color: '#555', marginBottom: 4 }}>Foto del complejo</p>
-                    <img src={detalle.fotoUrl} alt="foto" style={{ width: '100%', height: 100, objectFit: 'cover', borderRadius: 8, border: '1px solid #2a2a2a' }} />
-                  </div>
-                )}
+            {/* Las imágenes que subió. Si no subió alguna, se dice: así se ve
+                que falta y no parece que no cargó */}
+            <Bloque titulo="Imágenes">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
+                <Imagen titulo="Logo" ruta={detalle.logo} falta="No subió logo" />
+                <Imagen titulo="Foto del complejo" ruta={detalle.foto} falta="No subió foto del complejo" />
+                <Imagen titulo="QR de pago" ruta={detalle.qrPago} falta="Todavía no subió su QR de pago" contener />
               </div>
-            )}
+            </Bloque>
 
-            {/* Datos empresa */}
-            <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: '14px 16px', marginBottom: 14 }}>
-              <p style={{ fontSize: '0.68rem', color: '#555', textTransform: 'uppercase', letterSpacing: '0.07em', fontWeight: 700, marginBottom: 10 }}>Datos de la empresa</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-                {[
-                  { label: 'Nombre',    value: detalle.nombre },
-                  { label: 'Zona',      value: detalle.zona },
-                  { label: 'Dirección', value: detalle.direccion },
-                  { label: 'Teléfono', value: detalle.telefono },
-                  { label: 'Deportes',  value: detalle.deportes.join(', ') },
-                ].map(r => (
-                  <div key={r.label} style={{ display: 'flex', gap: 12, fontSize: '0.83rem' }}>
-                    <span style={{ color: '#555', minWidth: 70, flexShrink: 0 }}>{r.label}</span>
-                    <span style={{ color: '#ccc', fontWeight: 500 }}>{r.value}</span>
-                  </div>
-                ))}
-                <div style={{ paddingTop: 6, borderTop: '1px solid #2a2a2a', marginTop: 2 }}>
-                  <p style={{ fontSize: '0.8rem', color: '#888', lineHeight: 1.5 }}>{detalle.descripcion}</p>
-                </div>
+            {/* Todo lo que llenó al registrarse */}
+            <Bloque titulo="Datos del complejo">
+              {[
+                ['Nombre',     detalle.nombre],
+                ['Zona',       detalle.zona],
+                ['Dirección',  detalle.direccion],
+                ['Referencia', detalle.referencia],
+                ['Teléfono',   detalle.telefono],
+                ['Horario',    detalle.horario],
+                ['Deportes',   (detalle.deportes || []).join(', ')],
+              ].map(([k, v]) => <Fila key={k} k={k} v={v} />)}
+              <div style={{ paddingTop: 8, borderTop: '1px solid #2a2a2a', marginTop: 4 }}>
+                <p style={{ color: '#555', fontSize: '0.74rem', marginBottom: 3 }}>Descripción</p>
+                <p style={{ fontSize: '0.84rem', color: detalle.descripcion ? '#bbb' : '#666', lineHeight: 1.55, whiteSpace: 'pre-wrap', fontStyle: detalle.descripcion ? 'normal' : 'italic' }}>
+                  {detalle.descripcion || 'No escribió una descripción'}
+                </p>
               </div>
-            </div>
+            </Bloque>
 
-            {/* Datos admin */}
-            <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
-              <p style={{ fontSize: '0.68rem', color: '#555', textTransform: 'uppercase', letterSpacing: '0.07em', fontWeight: 700, marginBottom: 10 }}>Administrador</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: '0.83rem' }}>
-                <div style={{ display: 'flex', gap: 12 }}>
-                  <span style={{ color: '#555', minWidth: 70 }}>Nombre</span>
-                  <span style={{ color: '#ccc', fontWeight: 500 }}>{detalle.admin}</span>
-                </div>
-                <div style={{ display: 'flex', gap: 12 }}>
-                  <span style={{ color: '#555', minWidth: 70 }}>Correo</span>
-                  <span style={{ color: '#00BCD4' }}>{detalle.adminCorreo}</span>
-                </div>
-                <div style={{ display: 'flex', gap: 12 }}>
-                  <span style={{ color: '#555', minWidth: 70 }}>Fecha</span>
-                  <span style={{ color: '#666' }}>{detalle.fecha}</span>
-                </div>
-              </div>
-            </div>
+            <Bloque titulo="Ubicación en el mapa">
+              <MapaDeUbicacion lat={detalle.lat} lng={detalle.lng} alto={220} />
+            </Bloque>
+
+            {/* Todo lo que se sabe de la persona que pidió el complejo: su
+                cuenta, no solo el nombre y el correo */}
+            {(() => {
+              const u = todosLosUsuarios().find(x => mismo(x.id, detalle.adminId))
+              const empleados = empleadosDeEmpresa(detalle.id)
+              return (
+                <Bloque titulo="Administrador">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
+                    <Avatar className="avatar" nombre={detalle.admin} foto={u?.foto} tam={48} />
+                    <div>
+                      <p style={{ color: '#f5f5f5', fontWeight: 700, fontSize: '0.95rem' }}>{detalle.admin}</p>
+                      <p style={{ color: u?.foto ? '#666' : '#555', fontSize: '0.74rem', fontStyle: u?.foto ? 'normal' : 'italic' }}>
+                        {u?.foto ? 'Con foto de perfil' : 'No subió foto de perfil'}
+                      </p>
+                    </div>
+                  </div>
+                  <Fila k="Correo" v={detalle.adminCorreo} color="#00BCD4" />
+                  <Fila k="Teléfono" v={u?.telefono} />
+                  <Fila k="Ciudad" v={u?.ciudad} />
+                  <Fila k="Cuenta" v={u ? (u.estado === 'activo' ? 'Activa' : 'Suspendida') : null}
+                    color={u?.estado === 'activo' ? '#22c55e' : '#ef4444'} />
+                  <Fila k="Se registró" v={u?.alta || detalle.fecha} />
+                  <Fila k="Último cambio" v={u?.actualizado} />
+                  <Fila k="Empleados" v={empleados.length
+                    ? empleados.length + ' con cuenta (' + empleados.filter(e => e.activo).length + ' activos)'
+                    : 'Ninguno: atiende el administrador'} />
+                </Bloque>
+              )
+            })()}
 
             {/* Acciones desde modal */}
             {detalle.estado === 'pendiente' && (

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { errorEnTelefono, errorEnNombre, errorEnNombreDeAlgo, errorEnClave, esCorreo, tieneLetras } from '../lib/validaciones'
 import { useNavigate } from 'react-router-dom'
 import { registrarSolicitudEmpresa, guardarImagenesEmpresa } from '../lib/guardar'
+import { useAuth, marcarRegistroDeComplejo } from '../lib/auth'
 import { subirPublico, revisarArchivo, TIPOS_IMAGEN } from '../lib/archivos'
 import AvisoFaltantes from '../components/AvisoFaltantes'
 import { propsCampo, MensajeCampo, irAlPrimerError } from '../components/Validacion'
@@ -14,6 +15,7 @@ const PASO_LABELS = ['Datos de la empresa', 'Datos del administrador', 'Solicitu
 
 export default function RegistroEmpresa() {
   const navigate = useNavigate()
+  const { salir } = useAuth()
   const [paso, setPaso] = useState(1)
 
   // Paso 1 — empresa
@@ -61,6 +63,10 @@ export default function RegistroEmpresa() {
 
     setEnviando(true)
     setErrorAlta(null)
+    // Crear la cuenta abre una sesión. Hace falta para guardar el complejo y
+    // sus fotos, y al final se cierra: el dueño entra recién cuando Sportika
+    // apruebe el complejo (antes quedaba adentro, en un panel sin aprobar).
+    marcarRegistroDeComplejo(true)
     const g = await registrarSolicitudEmpresa({
       nombreEmpresa: nombre.trim(), zona, direccion: direccion.trim(),
       telefono: telefono.trim(), descripcion: descripcion.trim(), deportes,
@@ -69,7 +75,12 @@ export default function RegistroEmpresa() {
       adminNombre: adminNombre.trim(), adminCorreo: adminCorreo.trim(),
       adminPassword,
     })
-    if (g.error) { setEnviando(false); setErrorAlta(g.error); return }
+    if (g.error) {
+      marcarRegistroDeComplejo(false)
+      // Si la cuenta llegó a crearse, igual se cierra la sesión
+      await salir()
+      setEnviando(false); setErrorAlta(g.error); return
+    }
 
     // El logo y la foto van despues: su ruta lleva el id del complejo, que
     // recién existe ahora. Si alguna falla, la solicitud igual quedo enviada
@@ -85,6 +96,8 @@ export default function RegistroEmpresa() {
       await guardarImagenesEmpresa({ empresaId: g.empresa.id, ...rutas })
     }
 
+    marcarRegistroDeComplejo(false)
+    await salir()
     setEnviando(false)
     setIntento(false)
     setPaso(3)
@@ -478,7 +491,7 @@ export default function RegistroEmpresa() {
                 ¡Solicitud Enviada!
               </h2>
               <p style={{ color: '#888', fontSize: '0.9rem', lineHeight: 1.7, marginBottom: 28, maxWidth: 400, margin: '0 auto 28px' }}>
-                Recibimos la solicitud de registro de <strong style={{ color: '#f5f5f5' }}>{nombre}</strong>. El equipo de Sportika la revisará y te notificará a <strong style={{ color: '#00BCD4' }}>{adminCorreo}</strong> cuando sea aprobada.
+                Recibimos la solicitud de registro de <strong style={{ color: '#f5f5f5' }}>{nombre}</strong>. El equipo de Sportika la revisará y te notificará a <strong style={{ color: '#00BCD4' }}>{adminCorreo}</strong> cuando sea aprobada. Hasta entonces no podrás iniciar sesión con esa cuenta.
               </p>
 
               {/* Resumen */}

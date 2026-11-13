@@ -27,7 +27,7 @@ import { DIAS_SEMANA, DIA_INDICE, MESES, formatFecha,
          fechaLegible } from './empresa/calendario'
 
 // Las imágenes del marcador del mapa (ver lib/iconoMapa.js)
-import '../../lib/iconoMapa'
+import { CAPA_MAPA } from '../../lib/iconoMapa'
 import { montoBs } from '../../lib/dinero'
 import { diaDeReserva, nombreDia } from '../../lib/fecha'
 
@@ -569,11 +569,9 @@ export default function EmpresaDetalle() {
               zoom={15}
               scrollWheelZoom={false}
               style={{ height:'100%', width:'100%' }}
-              attributionControl={false}
             >
-              <TileLayer
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
+              {/* El crédito del mapa queda visible: lo piden OpenStreetMap y CARTO */}
+              <TileLayer {...CAPA_MAPA} />
               <Marker position={[empresa.lat, empresa.lng]}>
                 <Popup>
                   <strong>{empresa.nombre}</strong><br />

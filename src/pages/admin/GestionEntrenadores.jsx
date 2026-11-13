@@ -155,7 +155,7 @@ export default function GestionEntrenadores() {
           <h1 style={{ fontFamily: 'Bebas Neue', fontSize: '2rem', color: '#f5f5f5' }}>🏃 Gestión de Entrenadores</h1>
           <p style={{ color: '#666', fontSize: '0.85rem' }}>Administra los entrenadores de tu empresa</p>
         </div>
-        <button className="btn btn-primary" onClick={abrirNuevo}>+ Agregar Entrenador</button>
+        <button data-escribe className="btn btn-primary" onClick={abrirNuevo}>+ Agregar Entrenador</button>
       </div>
 
       {/* Lo que falla desde la lista (activar, dar de baja, eliminar) pasa con
@@ -276,7 +276,7 @@ export default function GestionEntrenadores() {
             )}
 
             {/* Acciones */}
-            <div style={{ display:'flex', gap:8, marginTop:'auto' }}>
+            <div data-escribe style={{ display:'flex', gap:8, marginTop:'auto' }}>
               <button onClick={() => abrirEditar(ent)} style={{
                 flex:1, padding:'0.5rem', borderRadius:7, border:'1px solid #444',
                 background:'transparent', color:'#fff', cursor:'pointer', fontWeight:600, fontSize:'0.88rem'

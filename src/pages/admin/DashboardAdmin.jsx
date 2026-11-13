@@ -291,7 +291,7 @@ export default function DashboardAdmin() {
                     <td><span className={`badge ${r.estado === 'confirmada' ? 'badge-success' : 'badge-warning'}`}>{r.estado}</span></td>
                     <td>
                       {r.estado === 'pendiente' && (
-                        <div style={{ display: 'flex', gap: 4 }}>
+                        <div data-escribe style={{ display: 'flex', gap: 4 }}>
                           <button title="Confirmar" onClick={() => resolver(r, 'confirmada')} className="btn btn-sm" style={{ padding: '4px 10px', background: 'rgba(34,197,94,0.15)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 6, cursor: 'pointer' }}>✓</button>
                           <button title="Rechazar" onClick={() => resolver(r, 'rechazada')} className="btn btn-sm" style={{ padding: '4px 10px', background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 6, cursor: 'pointer' }}>✕</button>
                         </div>
@@ -307,7 +307,7 @@ export default function DashboardAdmin() {
 
         {/* Quick actions */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div className="card" style={{ padding: 20 }}>
+          <div data-escribe className="card" style={{ padding: 20 }}>
             <h3 className="section-title" style={{ fontSize: '1rem', marginBottom: 14 }}>⚡ Acciones Rápidas</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {[

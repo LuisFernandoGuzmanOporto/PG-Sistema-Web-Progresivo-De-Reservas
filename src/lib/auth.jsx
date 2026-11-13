@@ -62,6 +62,9 @@ export function AuthProvider({ children }) {
   // pagina expulsaba al usuario aunque su sesion siguiera viva.
   const [sesionLeida, setSesionLeida] = useState(false)
 
+  // Por qué se cerró la sesión de un complejo sin aprobar. Lo muestra el login.
+  const [accesoNegado, setAccesoNegado] = useState(null)
+
   /** Trae el perfil y, segun el rol, la empresa y los permisos que le tocan. */
   const cargarPerfil = async (userId) => {
     if (!userId) { setPerfil(null); return }
@@ -87,7 +90,22 @@ export function AuthProvider({ children }) {
 
     if (p.rol === 'admin_empresa') {
       const { data: e } = await supabase
-        .from('empresas').select('id, nombre').eq('admin_id', userId).maybeSingle()
+        .from('empresas').select('id, nombre, estado').eq('admin_id', userId).maybeSingle()
+
+      // Un complejo que todavía no se aprobó (o que se rechazó) no entra: se
+      // cierra la sesión y el login explica por qué. Cubre también la sesión
+      // que ya estaba abierta y el ingreso con Google, que no pasan por entrar().
+      // Mientras se está registrando, no: la cuenta recién creada todavía
+      // tiene que guardar el complejo y sus fotos (RegistroEmpresa la cierra al final).
+      const negado = !registroEnCurso && mensajeDeAcceso(e)
+      if (negado) {
+        setAccesoNegado(negado)
+        olvidarPerfil()
+        await supabase.auth.signOut()
+        setPerfil(null)
+        setSesion(null)
+        return
+      }
       empresaId = e?.id ?? null
       empresaNombre = e?.nombre ?? null
     }
@@ -104,7 +122,12 @@ export function AuthProvider({ children }) {
       if (em && !em.activo) p.activo = false
     }
 
-    if (p.rol === 'superadmin') empresaNombre = 'Sportika Cochabamba'
+    // El super administrador no tiene complejo propio: mira el que elija en
+    // «Ver un complejo» (solo lectura). Se recuerda mientras dure la pestaña.
+    if (p.rol === 'superadmin') {
+      empresaNombre = 'Sportika Cochabamba'
+      empresaId = complejoGuardado()
+    }
 
     const completo = { ...p, empresaId, empresaNombre, permisos }
     guardarPerfil(completo)
@@ -199,10 +222,24 @@ export function AuthProvider({ children }) {
    * agrega el dominio interno. Asi el empleado escribe solo 'rosa.v'.
    */
   const entrar = async (correo, password) => {
+    setAccesoNegado(null)
     const { data, error } = await supabase.auth.signInWithPassword({
       email: correoDeAcceso(correo), password,
     })
     if (error) return { error: mensajeDeError(error) }
+
+    // El dueño de un complejo que todavía no se aprobó no entra. Se revisa
+    // aquí, antes de devolver, para que el login no lo lleve al panel ni por
+    // un instante.
+    // Se pregunta por el complejo del que es dueño, sin mirar el rol de los
+    // metadatos: así no depende de cómo se creó la cuenta.
+    const { data: e } = await supabase
+      .from('empresas').select('nombre, estado').eq('admin_id', data.user.id).maybeSingle()
+    const negado = mensajeDeAcceso(e)
+    if (negado) {
+      await supabase.auth.signOut()
+      return { aviso: negado }
+    }
     return { usuario: data.user }
   }
 
@@ -302,8 +339,23 @@ export function AuthProvider({ children }) {
     return cambiarMiClave(nueva)
   }
 
+  /**
+   * El super administrador elige qué complejo mirar (o ninguno, con null).
+   * Las pantallas del complejo leen SESION.empresaId, así que basta con
+   * cambiarlo: ven ese complejo como lo ve su administrador, sin poder tocar
+   * nada (lo esconde «solo-lectura» en Layout y lo impide RLS en la base).
+   */
+  const verComplejo = (empresaId) => {
+    if (perfil?.rol !== 'superadmin') return
+    const id = empresaId || null
+    recordarComplejo(id)
+    SESION.empresaId = id
+    setPerfil(p => (p ? { ...p, empresaId: id } : p))
+  }
+
   const salir = async () => {
     olvidarPerfil()
+    recordarComplejo(null)
     await supabase.auth.signOut()
     setPerfil(null)
     setSesion(null)
@@ -316,6 +368,10 @@ export function AuthProvider({ children }) {
     primeraCarga: !sesionLeida || (Boolean(usuarioId) && cargadoPara !== usuarioId),
     autenticado: Boolean(sesion && perfil),
     rol: perfil?.rol ?? null,
+    // Solo para el super administrador: el complejo que está mirando
+    complejoVisto: perfil?.rol === 'superadmin' ? (perfil.empresaId || null) : null,
+    verComplejo,
+    accesoNegado,
     entrar, registrarse, salir, recuperarClave, verificarCodigo, cambiarMiClave, cambiarClaveConLaActual,
     recargarPerfil: () => cargarPerfil(sesion?.user?.id),
   }
@@ -367,6 +423,42 @@ function perfilGuardado(userId) {
 
 function olvidarPerfil() {
   try { localStorage.removeItem(CLAVE_PERFIL) } catch { /* modo privado */ }
+}
+
+// ── Complejos que todavía no pueden entrar ──────────────────────────────────
+// Mientras RegistroEmpresa crea la cuenta y guarda el complejo, la sesión
+// recién abierta no se cierra (si no, no podría terminar de guardar).
+let registroEnCurso = false
+export const marcarRegistroDeComplejo = (enCurso) => { registroEnCurso = Boolean(enCurso) }
+
+/** Por qué el dueño de este complejo no puede entrar todavía, o null si puede. */
+function mensajeDeAcceso(empresa) {
+  if (!empresa) return null
+  const nombre = empresa.nombre ? '«' + empresa.nombre + '»' : ''
+  if (empresa.estado === 'pendiente') {
+    return `Tu complejo ${nombre} todavía está en revisión. Podrás iniciar sesión cuando el ` +
+           'equipo de Sportika lo apruebe; te avisaremos por correo.'
+  }
+  if (empresa.estado === 'rechazado') {
+    return `La solicitud de tu complejo ${nombre} no fue aprobada. Si crees que es un error, ` +
+           'comunícate con Sportika.'
+  }
+  return null
+}
+
+// El complejo que mira el super administrador. En sessionStorage: dura lo que
+// la pestaña, así recargar la página no lo saca del complejo que revisaba.
+const CLAVE_COMPLEJO = 'sportika.complejoVisto'
+
+function complejoGuardado() {
+  try { return sessionStorage.getItem(CLAVE_COMPLEJO) || null } catch { return null }
+}
+
+function recordarComplejo(id) {
+  try {
+    if (id) sessionStorage.setItem(CLAVE_COMPLEJO, String(id))
+    else sessionStorage.removeItem(CLAVE_COMPLEJO)
+  } catch { /* modo privado */ }
 }
 
 /** Traduce los mensajes de Supabase, que vienen en ingles. */

@@ -236,7 +236,7 @@ export default function GestionEntrenamientos() {
           <h1 style={{ fontFamily: 'Bebas Neue', fontSize: '2rem', color: '#f5f5f5' }}>Gestión de Entrenamientos</h1>
           <p style={{ color: '#666', fontSize: '0.85rem' }}>Publica los horarios de entrenamiento para que tus clientes los vean</p>
         </div>
-        <button className="btn btn-primary" onClick={abrirNuevo}>+ Nuevo Entrenamiento</button>
+        <button data-escribe className="btn btn-primary" onClick={abrirNuevo}>+ Nuevo Entrenamiento</button>
       </div>
 
       {/* Aviso del modelo: horario informativo, sin inscripcion */}
@@ -293,10 +293,10 @@ export default function GestionEntrenamientos() {
                 <p style={{ fontSize: '0.8rem', color: '#888', marginBottom: 12 }}>{e.entrenador}</p>
 
                 <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #1e1e1e', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                  <button className="btn btn-ghost btn-sm" style={{ padding: '4px 12px', fontSize: '0.78rem' }} onClick={ev => { ev.stopPropagation(); abrirEdicion(e) }}>
+                  <button data-escribe className="btn btn-ghost btn-sm" style={{ padding: '4px 12px', fontSize: '0.78rem' }} onClick={ev => { ev.stopPropagation(); abrirEdicion(e) }}>
                     Editar
                   </button>
-                  <button style={{ padding: '4px 12px', fontSize: '0.78rem', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 8, color: '#ef4444', cursor: 'pointer', fontFamily: 'Outfit', fontWeight: 600 }} onClick={ev => { ev.stopPropagation(); setShowEliminar(e) }}>
+                  <button data-escribe style={{ padding: '4px 12px', fontSize: '0.78rem', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 8, color: '#ef4444', cursor: 'pointer', fontFamily: 'Outfit', fontWeight: 600 }} onClick={ev => { ev.stopPropagation(); setShowEliminar(e) }}>
                     Eliminar
                   </button>
                   <button className="btn btn-primary btn-sm" style={{ padding: '4px 14px', fontSize: '0.78rem' }} onClick={ev => { ev.stopPropagation(); abrirCalendario(e) }}>
@@ -307,7 +307,7 @@ export default function GestionEntrenamientos() {
             </div>
           )
         })}
-        <div className="card" style={{ padding: 20, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 180, cursor: 'pointer', border: '2px dashed #2a2a2a' }} onClick={abrirNuevo}>
+        <div data-escribe className="card" style={{ padding: 20, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 180, cursor: 'pointer', border: '2px dashed #2a2a2a' }} onClick={abrirNuevo}>
           <span style={{ fontSize: '2rem', opacity: 0.3, marginBottom: 8 }}>+</span>
           <p style={{ color: '#555', fontSize: '0.85rem' }}>Agregar Entrenamiento</p>
         </div>
@@ -380,7 +380,7 @@ export default function GestionEntrenamientos() {
 
               <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
                 <button className="btn btn-outline w-full" style={{ justifyContent: 'center' }} onClick={() => setVistaEnt(null)}>Cerrar</button>
-                <button className="btn btn-primary w-full" style={{ justifyContent: 'center' }} onClick={() => { const e = vistaEnt; setVistaEnt(null); abrirEdicion(e) }}>Editar</button>
+                <button data-escribe className="btn btn-primary w-full" style={{ justifyContent: 'center' }} onClick={() => { const e = vistaEnt; setVistaEnt(null); abrirEdicion(e) }}>Editar</button>
               </div>
             </div>
           </div>

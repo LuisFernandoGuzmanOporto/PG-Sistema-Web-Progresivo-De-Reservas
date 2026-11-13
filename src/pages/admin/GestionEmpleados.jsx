@@ -172,7 +172,7 @@ export default function GestionEmpleados() {
             Crea las cuentas de tu personal y decide qué puede hacer cada uno
           </p>
         </div>
-        <button className="btn btn-primary" onClick={() => { setForm(FORM_INIT); setIntento(false); setErrorForm(null); setShowForm(true) }}>
+        <button data-escribe className="btn btn-primary" onClick={() => { setForm(FORM_INIT); setIntento(false); setErrorForm(null); setShowForm(true) }}>
           + Nuevo empleado
         </button>
       </div>
@@ -237,8 +237,8 @@ export default function GestionEmpleados() {
 
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     <button className="btn btn-outline btn-sm" onClick={() => setEditando({ ...e })}>Permisos</button>
-                    <button className="btn btn-outline btn-sm" onClick={() => { setClaveDe(e); setClave({ a: '', b: '' }); setIntentoClave(false); setErrorForm(null) }}>🔑 Contraseña</button>
-                    <button className="btn btn-ghost btn-sm" onClick={() => alternarActivo(e)}>
+                    <button data-escribe className="btn btn-outline btn-sm" onClick={() => { setClaveDe(e); setClave({ a: '', b: '' }); setIntentoClave(false); setErrorForm(null) }}>🔑 Contraseña</button>
+                    <button data-escribe className="btn btn-ghost btn-sm" onClick={() => alternarActivo(e)}>
                       {e.activo ? 'Dar de baja' : 'Reactivar'}
                     </button>
                   </div>
@@ -448,7 +448,7 @@ export default function GestionEmpleados() {
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button className="btn btn-outline w-full" style={{ justifyContent: 'center' }} onClick={() => setEditando(null)}>Cancelar</button>
-              <button className="btn btn-primary w-full" style={{ justifyContent: 'center' }} onClick={guardarPermisos}>Guardar permisos</button>
+              <button data-escribe className="btn btn-primary w-full" style={{ justifyContent: 'center' }} onClick={guardarPermisos}>Guardar permisos</button>
             </div>
           </div>
         </div>

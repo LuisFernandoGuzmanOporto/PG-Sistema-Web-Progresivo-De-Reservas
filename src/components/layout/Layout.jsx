@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { identidadDeRol, pts } from '../../lib/datos'
+import { identidadDeRol, pts, EMPRESAS, empresaPorId } from '../../lib/datos'
 import { useAuth } from '../../lib/auth'
 import Notificaciones from '../Notificaciones'
 import Avatar from '../Avatar'
@@ -33,11 +33,33 @@ const EMPLEADO_NAV = [
   { icon: '👤', label: 'Mi cuenta', path: '/mi-cuenta'      },
 ]
 
-const SUPERADMIN_NAV = [
-  { icon: '📊', label: 'Dashboard', path: '/superadmin/dashboard' },
-  { icon: '🏢', label: 'Empresas',  path: '/superadmin/empresas'  },
-  { icon: '👥', label: 'Usuarios',  path: '/superadmin/usuarios'  },
-  { icon: '👤', label: 'Mi cuenta', path: '/mi-cuenta'            },
+// El super administrador ve todo, en tres partes:
+//  · Plataforma: lo de todos los complejos juntos.
+//  · Ver un complejo: elige uno y ve las mismas pantallas que su
+//    administrador, en solo lectura.
+//  · Su cuenta.
+const SUPERADMIN_PLATAFORMA = [
+  { icon: '📊', label: 'Dashboard',            path: '/superadmin/dashboard'  },
+  { icon: '🏢', label: 'Empresas',             path: '/superadmin/empresas'   },
+  { icon: '👥', label: 'Usuarios',             path: '/superadmin/usuarios'   },
+  { icon: '📅', label: 'Reservas',             path: '/superadmin/reservas'   },
+  { icon: '🏆', label: 'Torneos',              path: '/superadmin/torneos'    },
+  { icon: '🔍', label: 'Consultar un horario', path: '/superadmin/horario'    },
+  { icon: '💬', label: 'Reseñas y comentarios', path: '/superadmin/resenas'   },
+  { icon: '📋', label: 'Bitácora',             path: '/superadmin/bitacora'   },
+  { icon: '📈', label: 'Reportes',             path: '/superadmin/reportes'   },
+]
+
+// Las pantallas del complejo que puede mirar. «Mi cuenta» no: son los datos
+// privados del dueño del complejo.
+const SUPERADMIN_COMPLEJO = ADMIN_NAV
+  .filter(i => i.path !== '/mi-cuenta')
+  .map(i => i.path === '/admin/dashboard' ? { ...i, label: 'Resumen' }
+          : i.path === '/admin/canchas'   ? { ...i, label: 'Canchas' }
+          : i)
+
+const SUPERADMIN_CUENTA = [
+  { icon: '👤', label: 'Mi cuenta', path: '/mi-cuenta' },
 ]
 
 // Detecta si es móvil al montar
@@ -52,7 +74,17 @@ export default function Layout({ children, role = 'user' }) {
   // Sidebar colapsado a solo íconos (solo desktop)
   const [collapsed, setCollapsed] = useState(false)
 
-  const navItems  = role === 'superadmin' ? SUPERADMIN_NAV
+  const { perfil, salir, errorDatos, sinConexion, reintentar, complejoVisto, verComplejo } = useAuth()
+
+  // El super administrador también abre pantallas del complejo y de torneos
+  // (que se dibujan con role="admin" o "user"). Su menú y su etiqueta son
+  // siempre los suyos, y en esas pantallas todo queda en solo lectura.
+  const esSuper     = perfil?.rol === 'superadmin'
+  if (esSuper) role = 'superadmin'
+  const soloLectura = esSuper && !location.pathname.startsWith('/superadmin') && location.pathname !== '/mi-cuenta'
+  const complejo    = esSuper && complejoVisto ? empresaPorId(complejoVisto) : null
+
+  const navItems  = role === 'superadmin' ? null
                   : role === 'admin'      ? ADMIN_NAV
                   : role === 'empleado'   ? EMPLEADO_NAV
                   : USER_NAV
@@ -60,7 +92,6 @@ export default function Layout({ children, role = 'user' }) {
                   : role === 'admin'      ? 'Admin Empresa'
                   : role === 'empleado'   ? 'Empleado'
                   : 'Cliente'
-  const { perfil, salir, errorDatos, sinConexion, reintentar } = useAuth()
 
   // Quien inicio sesion. Si todavia no hay perfil cargado se muestra el de
   // demostracion, para que la pantalla no quede en blanco un instante.
@@ -243,50 +274,51 @@ export default function Layout({ children, role = 'user' }) {
           transform: open ? 'translateX(0)' : 'translateX(-100%)',
         }}
       >
-        {/* Label "Menú" — solo cuando expandido */}
-        {!collapsed && (
-          <div className="sidebar-section">Menú</div>
-        )}
+        {navItems ? (
+          <>
+            {/* Label "Menú" — solo cuando expandido */}
+            {!collapsed && <div className="sidebar-section">Menú</div>}
+            {navItems.map(item => itemMenu(item))}
+          </>
+        ) : (
+          <>
+            {!collapsed && <div className="sidebar-section">Plataforma</div>}
+            {SUPERADMIN_PLATAFORMA.map(item => itemMenu(item))}
 
-        {navItems.map(item => (
-          <div
-            key={item.path}
-            onClick={() => handleNav(item.path)}
-            title={collapsed ? item.label : undefined}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: collapsed ? 0 : 12,
-              justifyContent: collapsed ? 'center' : 'flex-start',
-              padding: collapsed ? '10px' : '10px 14px',
-              borderRadius: 10,
-              cursor: 'pointer',
-              transition: 'all 0.15s',
-              fontWeight: 500,
-              fontSize: '0.9rem',
-              color: location.pathname === item.path ? '#ff6b6b' : '#999',
-              background: location.pathname === item.path ? 'rgba(139,0,0,0.2)' : 'transparent',
-              borderLeft: !collapsed && location.pathname === item.path ? '3px solid #8B0000' : !collapsed ? '3px solid transparent' : 'none',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-            }}
-            onMouseEnter={e => {
-              if (location.pathname !== item.path) {
-                e.currentTarget.style.background = '#2a2a2a'
-                e.currentTarget.style.color = '#f5f5f5'
-              }
-            }}
-            onMouseLeave={e => {
-              if (location.pathname !== item.path) {
-                e.currentTarget.style.background = 'transparent'
-                e.currentTarget.style.color = '#999'
-              }
-            }}
-          >
-            <span style={{ fontSize: '1.15rem', flexShrink: 0 }}>{item.icon}</span>
-            {!collapsed && <span>{item.label}</span>}
-          </div>
-        ))}
+            {!collapsed && <div className="sidebar-section" style={{ marginTop: 14 }}>Ver un complejo</div>}
+            {collapsed ? (
+              itemMenu({ icon: '🔎', label: complejo ? 'Complejo: ' + complejo.nombre : 'Elegir un complejo',
+                                path: '/superadmin/complejo' })
+            ) : (
+              <select
+                aria-label="Complejo que quieres ver"
+                value={complejoVisto || ''}
+                onChange={e => {
+                  const id = e.target.value || null
+                  verComplejo(id)
+                  handleNav(id ? '/admin/dashboard' : '/superadmin/complejo')
+                }}
+                style={{
+                  margin: '2px 4px 6px', padding: '9px 10px', borderRadius: 8,
+                  background: '#111', color: complejoVisto ? '#f5f5f5' : '#888',
+                  border: '1px solid ' + (complejoVisto ? '#f59e0b55' : '#333'),
+                  fontFamily: 'Outfit', fontSize: '0.84rem', cursor: 'pointer',
+                }}
+              >
+                <option value="">— Elegir un complejo —</option>
+                {[...EMPRESAS].sort((a, b) => a.nombre.localeCompare(b.nombre)).map(e => (
+                  <option key={e.id} value={e.id}>
+                    {e.nombre}{e.estado !== 'activo' ? ' (' + e.estado + ')' : ''}
+                  </option>
+                ))}
+              </select>
+            )}
+            {complejo && SUPERADMIN_COMPLEJO.map(item => itemMenu(item))}
+
+            {!collapsed && <div className="sidebar-section" style={{ marginTop: 14 }}>Cuenta</div>}
+            {SUPERADMIN_CUENTA.map(item => itemMenu(item))}
+          </>
+        )}
 
         <div style={{ flex: 1 }} />
         <div style={{ height: 1, background: '#333', margin: '8px 0' }} />
@@ -352,11 +384,71 @@ export default function Layout({ children, role = 'user' }) {
           transition: 'margin-left 0.25s ease',
         }}
       >
-        {/* En el celular el margen baja a 16 px (ver globals.css) */}
-        <div className="contenido-pagina" style={{ padding: 32 }}>
+        {/* En el celular el margen baja a 16 px (ver globals.css).
+            «solo-lectura» esconde los botones que guardan algo (data-escribe):
+            el super administrador mira, no cambia. */}
+        <div className={'contenido-pagina' + (soloLectura ? ' solo-lectura' : '')} style={{ padding: 32 }}>
+          {soloLectura && (
+            <div role="status" className="aviso-solo-lectura">
+              <span>
+                👁️ Estás viendo {complejo && location.pathname.startsWith('/admin')
+                  ? <strong>{complejo.nombre}</strong> : 'esta pantalla'} como Super Admin · <strong>solo lectura</strong>
+              </span>
+              {complejo && location.pathname.startsWith('/admin') && (
+                <span style={{ display: 'flex', gap: 8 }}>
+                  <button className="btn btn-ghost btn-sm" onClick={() => handleNav('/superadmin/complejo')}>Cambiar de complejo</button>
+                  <button className="btn btn-ghost btn-sm" onClick={() => { verComplejo(null); handleNav('/superadmin/dashboard') }}>Salir del complejo</button>
+                </span>
+              )}
+            </div>
+          )}
           {children}
         </div>
       </main>
     </div>
   )
+
+  /** Una opción del menú lateral. */
+  function itemMenu(item) {
+    const activo = location.pathname === item.path
+    return (
+          <div
+            key={item.path}
+            onClick={() => handleNav(item.path)}
+            title={collapsed ? item.label : undefined}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: collapsed ? 0 : 12,
+              justifyContent: collapsed ? 'center' : 'flex-start',
+              padding: collapsed ? '10px' : '10px 14px',
+              borderRadius: 10,
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+              fontWeight: 500,
+              fontSize: '0.9rem',
+              color: activo ? '#ff6b6b' : '#999',
+              background: activo ? 'rgba(139,0,0,0.2)' : 'transparent',
+              borderLeft: !collapsed && activo ? '3px solid #8B0000' : !collapsed ? '3px solid transparent' : 'none',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+            }}
+            onMouseEnter={e => {
+              if (!activo) {
+                e.currentTarget.style.background = '#2a2a2a'
+                e.currentTarget.style.color = '#f5f5f5'
+              }
+            }}
+            onMouseLeave={e => {
+              if (!activo) {
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.color = '#999'
+              }
+            }}
+          >
+            <span style={{ fontSize: '1.15rem', flexShrink: 0 }}>{item.icon}</span>
+            {!collapsed && <span>{item.label}</span>}
+          </div>
+    )
+  }
 }

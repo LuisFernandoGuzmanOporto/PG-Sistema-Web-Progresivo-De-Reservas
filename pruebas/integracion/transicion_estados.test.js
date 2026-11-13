@@ -44,7 +44,7 @@ describe.skipIf(!hayBase)('Estados de una reserva', () => {
 
   const avisosAlComplejo = async (titulo, hora) => {
     const { data } = await admin.sb.from('notificaciones').select('id')
-      .eq('titulo', titulo).like('detalle', `%el 11/02 ${hora}%`)
+      .eq('titulo', titulo).like('detalle', `% 11/02 a las ${hora}%`)
     return (data || []).length
   }
 
@@ -68,7 +68,8 @@ describe.skipIf(!hayBase)('Estados de una reserva', () => {
                       CUENTAS.empleado, 'willy.a@sportika.bo', 'diego@email.com']
     for (const correo of personas) {
       const { sb } = await entrarComo(correo)
-      await sb.from('notificaciones').delete().like('detalle', '%el 11/02 %')
+      // El aviso dice la fecha como «el mar 11/02 a las 10:00» (migraciones/046)
+      await sb.from('notificaciones').delete().like('detalle', '% 11/02 a las %')
     }
   }
 
