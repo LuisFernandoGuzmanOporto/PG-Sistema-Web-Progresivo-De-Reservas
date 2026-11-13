@@ -535,7 +535,7 @@ export default function TorneoMesa() {
           ))}
         </div>
 
-        <div ref={panelRef} style={{ scrollMarginTop: 80 }}>
+        <div ref={panelRef} style={{ scrollMarginTop: 80, minWidth: 0 }}>
           {!partido ? (
             <div className="empty-state" style={{ minHeight: 300 }}>
               <div className="empty-state-icon">-</div>
