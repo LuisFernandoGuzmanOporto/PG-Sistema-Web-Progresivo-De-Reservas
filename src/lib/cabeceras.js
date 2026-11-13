@@ -43,9 +43,11 @@ const CSP = [
   // 'data:' y 'blob:' son para las vistas previas antes de subir un archivo.
   "img-src 'self' data: blob: https://*.supabase.co https://*.tile.openstreetmap.org https://tile.openstreetmap.org https://*.googleusercontent.com",
 
-  // A donde puede hablar: solo a Supabase. 'wss' es la conexion viva que usa
-  // para avisar de cambios.
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+  // A donde puede hablar: Supabase ('wss' es la conexion viva que usa para
+  // avisar de cambios) y el servidor del mapa. El mapa va aqui tambien porque
+  // el service worker guarda sus imagenes en el telefono, y para eso las pide
+  // con fetch(): sin esto el sitio publicado mostraba el mapa gris.
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://tile.openstreetmap.org",
 
   // El service worker de la PWA y el archivo de instalacion, del propio sitio
   "worker-src 'self'",
