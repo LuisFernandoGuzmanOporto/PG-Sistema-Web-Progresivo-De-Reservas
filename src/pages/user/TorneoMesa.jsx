@@ -106,15 +106,23 @@ export default function TorneoMesa() {
 
   const gruposListos = useMemo(() => gruposFinalizados(partidos), [partidos])
 
+  // Cada llave lleva la regla de sets del torneo: así quien avanza es quien
+  // ganó los sets, también en las llaves que se crearon en esta pantalla.
+  const resultadosConSets = useMemo(() => {
+    if (!TORNEO?.puntosPorSet || !TORNEO?.setsParaGanar) return resultadosLlaves
+    const sets = { puntosPorSet: TORNEO.puntosPorSet, setsParaGanar: TORNEO.setsParaGanar }
+    return Object.fromEntries(Object.entries(resultadosLlaves).map(([k, v]) => [k, { ...v, sets }]))
+  }, [resultadosLlaves])
+
   const cuadro = useMemo(
-    () => gruposListos ? generarCuadro(tablas, 2, resultadosLlaves) : [],
-    [gruposListos, tablas, resultadosLlaves])
+    () => gruposListos ? generarCuadro(tablas, 2, resultadosConSets) : [],
+    [gruposListos, tablas, resultadosConSets])
 
   // El partido por el tercer puesto lo juegan los perdedores de las semifinales
   const tercerPuesto = useMemo(() => {
     const semis = cuadro.find(r => r.length === 2)
-    return semis ? partidoTercerPuesto(semis, resultadosLlaves) : null
-  }, [cuadro, resultadosLlaves])
+    return semis ? partidoTercerPuesto(semis, resultadosConSets) : null
+  }, [cuadro, resultadosConSets])
 
   // Las llaves ya definidas se convierten en partidos jugables por la mesa
   const partidosLlave = useMemo(() => [...cuadro.flat(), ...(tercerPuesto ? [tercerPuesto] : [])]
@@ -406,7 +414,8 @@ export default function TorneoMesa() {
       else {
         TORNEO.estado = 'finalizado'
         registrarAccion('Torneo finalizado. Campeón: ' +
-          (p.g1 > p.g2 ? p.equipo1 : p.g2 > p.g1 ? p.equipo2
+          (setsDelPartido?.ganador ? (setsDelPartido.ganador === 1 ? p.equipo1 : p.equipo2)
+            : p.g1 > p.g2 ? p.equipo1 : p.g2 > p.g1 ? p.equipo2
             : tandaEstado.a > tandaEstado.b ? p.equipo1 : p.equipo2))
       }
     }

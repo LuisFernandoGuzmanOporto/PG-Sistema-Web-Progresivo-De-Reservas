@@ -494,6 +494,9 @@ export async function cargarDatos({ forzar = false } = {}) {
           am1: p.amarillas_a, am2: p.amarillas_b, rj1: p.rojas_a, rj2: p.rojas_b,
           pen1: p.penales_a, pen2: p.penales_b, tanda: p.tanda || undefined,
           estado: p.estado, minuto: p.minuto,
+          // La regla de sets del torneo: con ella la tabla y la llave saben
+          // quien gano por sets (ganadorPorSets en torneo.js)
+          sets: reglaDeSets(t.puntos_por_set, t.sets_para_ganar),
           // Con que orden se creo el fixture. Es lo que ordena los partidos de
           // un equipo para contar amarillas y rojas: sin esto llegaban en el
           // orden que quisiera la base y una suspension se podia perder.
@@ -680,6 +683,12 @@ function calcularEstadisticas() {
  * Es una consulta chica a proposito. Recargar todo cada quince segundos serian
  * veintidos consultas por espectador.
  */
+/** La regla de sets de un torneo, o null si no se juega por sets. */
+function reglaDeSets(puntosPorSet, setsParaGanar) {
+  return Number(puntosPorSet) && Number(setsParaGanar)
+    ? { puntosPorSet: Number(puntosPorSet), setsParaGanar: Number(setsParaGanar) } : null
+}
+
 export async function recargarPartidosDeTorneo(torneoId) {
   const torneo = D.TORNEOS.find(t => D.mismo(t.id, torneoId))
   if (!torneo) return { error: 'Ese torneo ya no está' }
@@ -706,6 +715,7 @@ export async function recargarPartidosDeTorneo(torneoId) {
     am1: p.amarillas_a, am2: p.amarillas_b, rj1: p.rojas_a, rj2: p.rojas_b,
     pen1: p.penales_a, pen2: p.penales_b, tanda: p.tanda || undefined,
     estado: p.estado, minuto: p.minuto,
+    sets: reglaDeSets(torneo.puntosPorSet, torneo.setsParaGanar),
     creado: p.created_at,
     hora: horaDeBolivia(p.fecha_hora), fecha: fechaDeBolivia(p.fecha_hora) || null,
     cancha: p.cancha_id ? (torneo.cancha || '') : '',

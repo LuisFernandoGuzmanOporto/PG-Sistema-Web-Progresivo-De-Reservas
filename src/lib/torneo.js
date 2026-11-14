@@ -66,11 +66,16 @@ export function calcularTabla(equipos, partidos, deporte = 'Futbol', { enVivo = 
     const g1 = Number(p.g1) || 0
     const g2 = Number(p.g2) || 0
     const vivo = p.estado === 'en_vivo'
+    // Por sets gana quien ganó los sets, aunque haya hecho menos puntos
+    // (15-0, 13-15, 13-15). Sin ganador de sets todavía, cuentan los puntos.
+    const porSets = ganadorPorSets(p)
+    const gana1 = porSets ? porSets === 1 : g1 > g2
+    const gana2 = porSets ? porSets === 2 : g2 > g1
     a.pj++; b.pj++
     a.gf += g1; a.gc += g2
     b.gf += g2; b.gc += g1
-    if (g1 > g2)      { a.pg++; b.pp++; a.pts += pt.victoria; b.pts += pt.derrota }
-    else if (g2 > g1) { b.pg++; a.pp++; b.pts += pt.victoria; a.pts += pt.derrota }
+    if (gana1)      { a.pg++; b.pp++; a.pts += pt.victoria; b.pts += pt.derrota }
+    else if (gana2) { b.pg++; a.pp++; b.pts += pt.victoria; a.pts += pt.derrota }
     // En los deportes sin empate, un partido igualado todavia se esta
     // definiendo: cuenta como jugado, pero no suma nada a nadie
     else if (vivo && !pt.admiteEmpate) { /* sin puntos hasta que alguien gane */ }
@@ -249,6 +254,8 @@ export function resultadosDeLlave(partidos = []) {
   for (const p of partidos) {
     if (p.fase === 'grupos' || !p.llave) continue
     out[p.llave] = {
+      // Para saber quién ganó por sets (wally, vóley, pádel)
+      sets: p.sets, equipo1_id: p.equipo1_id,
       g1: p.g1, g2: p.g2, am1: p.am1, am2: p.am2, rj1: p.rj1, rj2: p.rj2,
       pen1: p.pen1, pen2: p.pen2, tanda: p.tanda,
       estado: p.estado, minuto: p.minuto, eventos: p.eventos,
@@ -270,6 +277,8 @@ export function marcarClasificados(tabla, clasificanPorGrupo = 2) {
 // el ganador se define por la tanda de penales que carga la mesa técnica.
 export function ganadorDeLlave(l) {
   if (!l || l.estado !== 'finalizado') return null
+  const porSets = ganadorPorSets(l)
+  if (porSets) return porSets === 1 ? l.equipo1 : l.equipo2
   if (l.g1 > l.g2) return l.equipo1
   if (l.g2 > l.g1) return l.equipo2
   if (l.pen1 != null && l.pen2 != null && l.pen1 !== l.pen2) {
@@ -668,4 +677,22 @@ export function marcadorPorSets(eventos, equipo1Id, { puntosPorSet, setsParaGana
     }
   }
   return { sets, actual: { a, b }, ganados1, ganados2, ganador, setEnJuego: sets.length + 1 }
+}
+
+/**
+ * Quién ganó un partido por sets: 1, 2, o null si nadie llegó todavía a los
+ * sets que hacen falta. Undefined si el partido no se juega por sets.
+ *
+ * `p.sets` es la regla de su torneo ({ puntosPorSet, setsParaGanar }), que
+ * cada partido trae al cargarse. Los puntos se reconocen por el id del equipo
+ * y, en las llaves que solo traen el nombre, por el nombre.
+ */
+export function ganadorPorSets(p) {
+  if (!p?.sets) return undefined
+  const uno = p.equipo1_id
+  const eventos = (p.eventos || []).map(ev => ({
+    ...ev,
+    equipo_id: (uno != null ? String(ev.equipo_id) === String(uno) : ev.equipo === p.equipo1) ? 1 : 2,
+  }))
+  return marcadorPorSets(eventos, 1, p.sets)?.ganador ?? null
 }
