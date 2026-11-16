@@ -732,3 +732,9 @@ img, video { max-width: 100%; }
   .hoja-reporte .encabezado { margin: -18px -14px 14px; padding: 12px 14px; }
   .hoja-reporte .cajas { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ── Panel del Super Admin: una sección ancha y una angosta por fila ── */
+.panel-fila { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 16px; margin-bottom: 16px; }
+.panel-fila > * { min-width: 0; }
+@media (max-width: 1200px) { .panel-fila { grid-template-columns: minmax(0, 1fr); } }
+.barra-mes:hover > div { filter: brightness(1.25); }

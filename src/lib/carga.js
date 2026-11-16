@@ -171,6 +171,7 @@ export async function cargarDatos({ forzar = false } = {}) {
         admin: nombrePorPerfil.get(e.admin_id) || '—',
         adminEmail: correoPorPerfil.get(e.admin_id) || '',
         fechaSolicitud: fechaCorta(fechaDeBolivia(e.created_at)),
+        fechaSolicitudISO: fechaDeBolivia(e.created_at),
       }
     }))
 
@@ -375,6 +376,8 @@ export async function cargarDatos({ forzar = false } = {}) {
       reservas: (reservas.data || []).filter(r => r.cliente_id === u.id).length,
       estado: u.activo ? 'activo' : 'suspendido',
       alta: fechaCorta(fechaDeBolivia(u.created_at)),
+      // El día sin formatear, para contar los nuevos del mes (panel del Super Admin)
+      altaISO: fechaDeBolivia(u.created_at),
       empresa: empresaDelAdmin.get(u.id) || empresaDelEmpleado.get(u.id) || null,
     })))
 
