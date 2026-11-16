@@ -96,7 +96,15 @@ export default function ConsultarHorario() {
     <Layout role="superadmin">
       <Titulo icono="🔍" texto="Consultar un horario"
         sub="Qué pasaba en un complejo un día a una hora: quién tenía la cancha, si llegó, quién lo atendió y qué hizo el personal. Sirve ante un accidente o un reclamo.">
-        {empresa && <button className="btn btn-outline btn-sm" onClick={() => window.print()}>🖨️ Imprimir</button>}
+        {empresa && (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button className="btn btn-outline btn-sm" onClick={() => window.print()}>🖨️ Imprimir</button>
+            <button className="btn btn-outline btn-sm"
+              onClick={() => navigate('/superadmin/reportes?vista=complejo&complejo=' + encodeURIComponent(empresa.id))}>
+              📄 Reporte completo del complejo
+            </button>
+          </div>
+        )}
       </Titulo>
 
       {/* ── La pregunta ── */}

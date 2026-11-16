@@ -282,6 +282,8 @@ export async function cargarDatos({ forzar = false } = {}) {
           cliente_id: c.cliente_id,
           estrellas: c.estrellas,
           fecha: fechaReserva(fechaDeBolivia(c.created_at)),
+          // El día sin formatear, para el reporte de un período (Super Admin)
+          fechaISO: fechaDeBolivia(c.created_at),
         }
       })
     }

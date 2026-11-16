@@ -1,15 +1,49 @@
+import { useSearchParams } from 'react-router-dom'
 import Layout from '../../components/layout/Layout'
 import { EMPRESAS, estadisticasDe, canchasDeEmpresa, reservasDeEmpresa, torneosDeEmpresa,
          calificacionesDeEmpresa, promedioEstrellas, torneoActivo } from '../../lib/datos'
 import { montoBs } from '../../lib/dinero'
 import { Titulo, Tarjetas, Vacio } from './comun'
+import ReporteComplejo from './ReporteComplejo'
+
+/**
+ * Dos vistas: todos los complejos lado a lado, o el reporte completo de uno
+ * (con vista previa y PDF). La vista y el complejo van en la dirección
+ * (?vista=complejo&complejo=ID) para poder llegar directo desde otra pantalla.
+ */
+export default function Reportes() {
+  const [params, setParams] = useSearchParams()
+  const vista = params.get('vista') === 'complejo' || params.get('complejo') ? 'complejo' : 'comparar'
+  const cambiar = (v) => {
+    const p = new URLSearchParams(params)
+    if (v === 'complejo') p.set('vista', 'complejo'); else { p.delete('vista'); p.delete('complejo') }
+    setParams(p, { replace: true })
+  }
+
+  return (
+    <Layout role="superadmin">
+      <Titulo icono="📈" texto="Reportes" sub={vista === 'complejo'
+        ? 'Todo lo de un complejo en un período, cancha por cancha, para ver y descargar en PDF'
+        : 'Cómo le va a cada complejo, uno al lado del otro'} />
+      <div className="tabs" role="tablist" style={{ marginBottom: 18, width: 'fit-content', maxWidth: '100%' }}>
+        <button role="tab" aria-selected={vista === 'comparar'} className={'tab' + (vista === 'comparar' ? ' active' : '')}
+          onClick={() => cambiar('comparar')}>📊 Comparar</button>
+        <button role="tab" aria-selected={vista === 'complejo'} className={'tab' + (vista === 'complejo' ? ' active' : '')}
+          onClick={() => cambiar('complejo')}>📄 Por complejo</button>
+      </div>
+      {vista === 'complejo' ? <ReporteComplejo /> : (
+        <CompararComplejos onVer={(id) => setParams({ vista: 'complejo', complejo: String(id) }, { replace: true })} />
+      )}
+    </Layout>
+  )
+}
 
 /**
  * Cómo le va a cada complejo en el mes: reservas, horas vendidas, ingresos y
  * ocupación. Son las mismas cuentas del panel de cada complejo (carga.js),
  * puestas una al lado de la otra.
  */
-export default function Reportes() {
+function CompararComplejos({ onVer }) {
   const filas = EMPRESAS
     .filter(e => e.estado === 'activo' || e.estado === 'suspendido')
     .map(e => {
@@ -30,8 +64,8 @@ export default function Reportes() {
   const maxIngreso = Math.max(1, ...filas.map(x => x.est.ingresoMes))
 
   return (
-    <Layout role="superadmin">
-      <Titulo icono="📈" texto="Reportes" sub={periodo + ' · cómo le va a cada complejo, uno al lado del otro'} />
+    <>
+      <p style={{ color: '#888', fontSize: '0.8rem', marginBottom: 14 }}>{periodo}</p>
 
       <Tarjetas items={[
         { label: 'Ingresos del mes', value: 'Bs. ' + montoBs(total(x => x.est.ingresoMes)), icon: '💰', sub: 'reservas confirmadas de todos' },
@@ -72,6 +106,8 @@ export default function Reportes() {
                   <td>
                     <p style={{ color: '#f5f5f5', fontWeight: 600 }}>{x.e.nombre}</p>
                     {x.e.estado !== 'activo' && <p style={{ color: '#ef4444', fontSize: '0.72rem' }}>{x.e.estado}</p>}
+                    <button className="btn btn-ghost btn-sm" style={{ padding: '2px 0', fontSize: '0.72rem' }}
+                      onClick={() => onVer(x.e.id)}>📄 Ver su reporte</button>
                   </td>
                   <td style={{ color: '#ccc' }}>{x.canchas}</td>
                   <td style={{ color: '#ccc' }}>{x.est.totalReservas} <span style={{ color: '#555', fontSize: '0.72rem' }}>de {x.reservasTotales} en total</span></td>
@@ -93,6 +129,6 @@ export default function Reportes() {
         Se cuenta solo lo confirmado y lo que pagó un cliente: las horas que ocupa un torneo no son ingreso.
         La ocupación compara las horas vendidas con las que cada complejo podría vender en el mes.
       </p>
-    </Layout>
+    </>
   )
 }
