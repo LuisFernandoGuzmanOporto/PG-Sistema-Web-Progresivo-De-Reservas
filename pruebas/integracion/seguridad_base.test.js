@@ -45,9 +45,11 @@ describe.skipIf(!hayBase)('Seguridad de los datos en la base', () => {
 
   it('PI-07 · un cliente no puede cambiar el monto de su propia reserva', async () => {
     // Arrange
-    const { sb } = cliente
+    // Una reserva SUYA: el organizador de un torneo también ve las jornadas
+    // de su torneo, que no tienen dueño y no son las que se quiere probar
+    const { sb, usuario } = cliente
     const { data: [reserva] } = await sb.from('reservas')
-      .select('id, monto_total').eq('estado', 'pendiente').limit(1)
+      .select('id, monto_total').eq('estado', 'pendiente').eq('cliente_id', usuario.id).limit(1)
 
     // Act
     const { data: cambiada, error } = await sb.from('reservas')
