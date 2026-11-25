@@ -11,6 +11,7 @@
     "test:unitarias": "vitest run pruebas/unitarias",
     "test:integracion": "vitest run pruebas/integracion",
     "test:caja-blanca": "vitest run pruebas/unitarias pruebas/integracion",
+    "test:cobertura": "vitest run pruebas/unitarias pruebas/integracion --coverage",
     "test:sistema": "vitest run pruebas/sistema",
     "test:seguridad": "vitest run pruebas/seguridad",
     "test:e2e": "playwright test",
@@ -29,6 +30,7 @@
   "devDependencies": {
     "@playwright/test": "^1.63.0",
     "@vitejs/plugin-react": "^4.2.1",
+    "@vitest/coverage-v8": "^1.6.1",
     "undici": "^6.28.1",
     "vite": "^5.0.8",
     "vite-plugin-pwa": "^0.17.4",

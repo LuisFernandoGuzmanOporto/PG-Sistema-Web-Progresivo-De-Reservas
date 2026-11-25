@@ -21,6 +21,7 @@ playwright-report/
 pruebas/e2e/resultados.json
 pruebas/e2e/capturas/
 pruebas/carga/resultados.json
+cobertura/
 
 # Datos de prueba generados: llevan la contraseña de las cuentas demo
 sportika_datos_iniciales.sql

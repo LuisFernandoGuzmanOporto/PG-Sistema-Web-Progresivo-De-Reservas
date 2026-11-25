@@ -23,6 +23,12 @@ import { defineConfig } from 'vitest/config'
 // puntos que esta sumando el otro.
 //
 // Se corren con:  npm test
+//
+// Cobertura de las pruebas de caja blanca (Capitulo IV, 4.2.1):
+//   npm run test:cobertura
+// Mide que parte de la logica de src/lib (sin las pantallas, que se prueban
+// de extremo a extremo con Playwright) recorren las pruebas unitarias y de
+// integracion. El resumen queda en cobertura/coverage-summary.json.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default defineConfig({
@@ -34,5 +40,11 @@ export default defineConfig({
     testTimeout: 30000,
     hookTimeout: 60000,
     reporters: ['verbose'],
+    coverage: {
+      provider: 'v8',
+      include: ['src/lib/**/*.{js,jsx}'],
+      reporter: ['text', 'json-summary'],
+      reportsDirectory: 'cobertura',
+    },
   },
 })
